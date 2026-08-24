@@ -69,6 +69,7 @@
 
 	async function handleDrawerClosed() {
 		drawerOpen = false;
+		formOpen = false;
 		await load();
 	}
 </script>
