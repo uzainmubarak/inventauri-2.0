@@ -66,3 +66,35 @@ export async function createStockDress(dress) {
 	}
 	return { data, error: null };
 }
+
+/**
+ * Update fields on an existing stock dress. Never pass `sku` — it is
+ * database-generated and immutable after creation.
+ * @param {string} id
+ * @param {{ name?: string, garment_type?: string, category?: string, subcategory?: string | null, base_price?: number, production_cost?: number | null, notes?: string | null, status?: string }} updates
+ * @returns {Promise<{ data: any | null, error: string | null }>}
+ */
+export async function updateStockDress(id, updates) {
+	const { data, error } = await supabase
+		.from("stock_dresses")
+		.update(updates)
+		.eq("id", id)
+		.select()
+		.single();
+
+	if (error) {
+		console.error("updateStockDress failed:", error.message);
+		return { data: null, error: error.message };
+	}
+	return { data, error: null };
+}
+
+/**
+ * Soft-delete: sets status to 'archived'. Never hard-deletes a dress —
+ * matches the Available/Reserved/Sold/Archived lifecycle in the schema.
+ * @param {string} id
+ * @returns {Promise<{ data: any | null, error: string | null }>}
+ */
+export async function archiveStockDress(id) {
+	return updateStockDress(id, { status: "archived" });
+}
