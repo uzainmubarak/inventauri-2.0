@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Golden Studio — Agent Ledger</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:#FAFAF9; --bg2:#F3F1EE; --bg3:#EDEBE7;
+  --gold:#C9A961; --gold-dim:rgba(201,169,97,0.12); --gold-mid:rgba(201,169,97,0.25);
+  --error:#8B3A3A; --error-dim:rgba(139,58,58,0.10);
+  --green:#3A6B4A; --green-dim:rgba(58,107,74,0.10);
+  --text:#1C1C1C; --text-muted:#7A7671; --text-faint:#B0AAA2;
+  --border:#E4E1DB; --border-light:#EDEBE7;
+  --sidebar-bg:#1C1A18; --sidebar-text:#C8C3BB;
+  --white:#ffffff;
+  --shadow:0 1px 3px rgba(0,0,0,0.06),0 4px 12px rgba(0,0,0,0.04);
+  --shadow-lg:0 8px 32px rgba(0,0,0,0.12);
+}
+body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text); display:flex; height:100vh; overflow:hidden; }
+
+/* SIDEBAR */
+.sidebar { width:230px; min-width:230px; background:var(--sidebar-bg); display:flex; flex-direction:column; height:100vh; overflow-y:auto; flex-shrink:0; }
+.sidebar-brand { padding:28px 24px 24px; border-bottom:1px solid rgba(255,255,255,0.06); }
+.brand-name { font-family:'Playfair Display',serif; font-size:17px; font-weight:600; color:#fff; }
+.brand-sub { font-size:10px; color:var(--gold); letter-spacing:0.12em; text-transform:uppercase; margin-top:3px; font-weight:500; }
+.sidebar-section { padding:20px 0 8px; }
+.sidebar-label { font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:rgba(255,255,255,0.22); font-weight:500; padding:0 24px; margin-bottom:4px; }
+.nav-item { display:flex; align-items:center; gap:10px; padding:9px 24px; font-size:13px; color:var(--sidebar-text); cursor:pointer; transition:all 0.15s; border-left:2px solid transparent; }
+.nav-item:hover { background:rgba(255,255,255,0.04); color:#fff; }
+.nav-item.active { color:var(--gold); border-left-color:var(--gold); background:rgba(201,169,97,0.07); font-weight:500; }
+.nav-icon { width:15px; opacity:0.7; font-size:13px; }
+.nav-item.active .nav-icon { opacity:1; }
+.nav-badge { margin-left:auto; background:var(--error); color:#fff; font-size:9px; font-weight:600; padding:2px 6px; border-radius:10px; font-family:'JetBrains Mono',monospace; }
+.sidebar-bottom { margin-top:auto; padding:16px 20px; border-top:1px solid rgba(255,255,255,0.06); }
+.user-card { display:flex; align-items:center; gap:10px; }
+.user-avatar { width:30px; height:30px; border-radius:50%; background:var(--gold-mid); border:1px solid var(--gold); display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:600; color:var(--gold); }
+.user-name { font-size:12px; color:#fff; font-weight:500; }
+.user-role { font-size:10px; color:var(--sidebar-text); }
+
+/* MAIN */
+.main { flex:1; display:flex; flex-direction:column; overflow:hidden; min-width:0; }
+.topbar { background:var(--bg); border-bottom:1px solid var(--border); padding:0 28px; height:56px; display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
+.breadcrumb { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-muted); }
+.breadcrumb span { color:var(--text); font-weight:500; }
+.topbar-right { display:flex; align-items:center; gap:8px; }
+.btn-ghost { display:flex; align-items:center; gap:6px; background:transparent; border:1px solid var(--border); border-radius:8px; padding:7px 13px; font-size:12px; font-weight:500; color:var(--text-muted); cursor:pointer; font-family:'DM Sans',sans-serif; transition:all 0.15s; }
+.btn-ghost:hover { border-color:var(--text-muted); color:var(--text); }
+.btn-gold { display:flex; align-items:center; gap:6px; background:var(--gold); border:none; border-radius:8px; padding:7px 14px; font-size:12px; font-weight:500; color:#fff; cursor:pointer; font-family:'DM Sans',sans-serif; box-shadow:0 2px 8px rgba(201,169,97,0.3); transition:all 0.15s; }
+.btn-gold:hover { background:#b8953a; }
+
+/* SPLIT LAYOUT */
+.split-layout { flex:1; display:flex; overflow:hidden; }
+
+/* AGENT LIST PANEL */
+.agent-panel { width:260px; min-width:260px; border-right:1px solid var(--border); background:var(--white); display:flex; flex-direction:column; overflow:hidden; }
+.agent-panel-header { padding:16px 18px 12px; border-bottom:1px solid var(--border-light); flex-shrink:0; }
+.agent-panel-title { font-size:11px; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-faint); margin-bottom:10px; }
+.agent-search { width:100%; padding:7px 10px 7px 30px; background:var(--bg2); border:1px solid var(--border); border-radius:8px; font-size:12px; font-family:'DM Sans',sans-serif; color:var(--text); outline:none; }
+.agent-search:focus { border-color:var(--gold); }
+.agent-search-wrap { position:relative; }
+.agent-search-icon { position:absolute; left:9px; top:50%; transform:translateY(-50%); font-size:12px; color:var(--text-faint); pointer-events:none; }
+.agent-list { flex:1; overflow-y:auto; padding:8px 0; }
+.agent-list-item { padding:12px 18px; cursor:pointer; transition:background 0.1s; border-left:3px solid transparent; }
+.agent-list-item:hover { background:var(--bg2); }
+.agent-list-item.active { background:rgba(201,169,97,0.06); border-left-color:var(--gold); }
+.ali-name { font-size:13px; font-weight:500; color:var(--text); margin-bottom:3px; }
+.ali-vendors { font-size:11px; color:var(--text-muted); margin-bottom:4px; }
+.ali-balance { font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:500; }
+.ali-balance.owed { color:var(--error); }
+.ali-balance.clear { color:var(--green); }
+
+/* LEDGER PANEL */
+.ledger-panel { flex:1; display:flex; flex-direction:column; overflow:hidden; min-width:0; }
+.ledger-scroll { flex:1; overflow-y:auto; padding:24px 28px; }
+
+/* LEDGER HEADER */
+.ledger-header { background:var(--white); border:1px solid var(--border); border-radius:14px; padding:20px 24px; margin-bottom:18px; box-shadow:var(--shadow); }
+.ledger-header-top { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:16px; }
+.ledger-agent-name { font-family:'Playfair Display',serif; font-size:24px; font-weight:500; }
+.ledger-agent-meta { font-size:12px; color:var(--text-muted); margin-top:4px; }
+.ledger-actions { display:flex; align-items:center; gap:8px; }
+
+/* LEDGER STATS */
+.ledger-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:0; border:1px solid var(--border-light); border-radius:10px; overflow:hidden; }
+.ls-cell { padding:13px 16px; border-right:1px solid var(--border-light); background:var(--bg2); }
+.ls-cell:last-child { border-right:none; }
+.ls-label { font-size:10px; color:var(--text-faint); font-weight:500; letter-spacing:0.08em; text-transform:uppercase; margin-bottom:4px; }
+.ls-value { font-family:'JetBrains Mono',monospace; font-size:15px; font-weight:500; }
+.ls-value.red { color:var(--error); }
+.ls-value.green { color:var(--green); }
+.ls-value.gold { color:#8B6914; }
+
+/* FILTERS ROW */
+.filters-row { display:flex; align-items:center; gap:10px; margin-bottom:16px; flex-wrap:wrap; }
+.filter-select { appearance:none; background:var(--white); border:1px solid var(--border); border-radius:8px; padding:7px 28px 7px 11px; font-size:12px; color:var(--text); font-family:'DM Sans',sans-serif; cursor:pointer; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23B0AAA2' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 9px center; outline:none; transition:border-color 0.15s; }
+.filter-select:focus { border-color:var(--gold); }
+.filter-date { background:var(--white); border:1px solid var(--border); border-radius:8px; padding:7px 11px; font-size:12px; color:var(--text); font-family:'DM Sans',sans-serif; outline:none; }
+.filter-date:focus { border-color:var(--gold); }
+.filter-sep { color:var(--text-faint); font-size:12px; }
+.filter-clear { font-size:11px; color:var(--text-faint); cursor:pointer; margin-left:4px; }
+.filter-clear:hover { color:var(--text-muted); }
+
+/* ADD PAYMENT FORM */
+.add-payment-form { background:var(--white); border:1px solid var(--border); border-radius:12px; padding:18px 20px; margin-bottom:18px; box-shadow:var(--shadow); display:none; animation:panelIn 0.15s ease; }
+.add-payment-form.visible { display:block; }
+@keyframes panelIn { from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)} }
+.apf-title { font-size:11px; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-faint); margin-bottom:14px; }
+.apf-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:10px; }
+.apf-full { margin-bottom:10px; }
+.apf-label { font-size:10px; color:var(--text-faint); font-weight:500; margin-bottom:4px; }
+.apf-input { width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:7px; font-size:12px; font-family:'DM Sans',sans-serif; color:var(--text); outline:none; background:var(--bg2); }
+.apf-input:focus { border-color:var(--gold); background:var(--white); }
+select.apf-input { appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23B0AAA2' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 9px center; padding-right:26px; background-color:var(--bg2); }
+select.apf-input:focus { background-color:var(--white); }
+.apf-actions { display:flex; gap:8px; }
+.btn-save { background:var(--gold); border:none; border-radius:7px; padding:8px 16px; font-size:12px; font-weight:600; color:#fff; cursor:pointer; font-family:'DM Sans',sans-serif; }
+.btn-cancel { background:transparent; border:1px solid var(--border); border-radius:7px; padding:8px 16px; font-size:12px; color:var(--text-muted); cursor:pointer; font-family:'DM Sans',sans-serif; }
+
+/* LEDGER TABLE */
+.ledger-table-wrap { background:var(--white); border:1px solid var(--border); border-radius:12px; overflow:hidden; box-shadow:var(--shadow); }
+.ledger-table { width:100%; border-collapse:collapse; }
+.ledger-table thead tr { background:#F5F3F0; border-bottom:1px solid var(--border); position:sticky; top:0; z-index:5; }
+.ledger-table th { padding:10px 16px; font-size:10px; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-faint); text-align:left; white-space:nowrap; }
+.ledger-table th:first-child { padding-left:20px; }
+.ledger-table th.right { text-align:right; }
+.ledger-row { border-bottom:1px solid var(--border-light); transition:background 0.1s; }
+.ledger-row:last-child { border-bottom:none; }
+.ledger-row:hover { background:#FAFAF6; }
+.ledger-table td { padding:13px 16px; font-size:13px; vertical-align:middle; }
+.ledger-table td:first-child { padding-left:20px; }
+.ledger-table td.right { text-align:right; }
+
+.date-mono { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text-muted); white-space:nowrap; }
+.amount-in { font-family:'JetBrains Mono',monospace; font-size:13px; font-weight:600; color:var(--green); }
+.running-bal { font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:500; color:var(--error); }
+.running-bal.ok { color:var(--green); }
+.vendor-chip-small { display:inline-block; background:var(--gold-dim); border:1px solid var(--gold-mid); color:#8B6914; font-size:10px; font-weight:500; padding:2px 8px; border-radius:10px; }
+.method-chip { font-size:10px; background:var(--bg2); border:1px solid var(--border-light); padding:2px 7px; border-radius:5px; color:var(--text-muted); font-weight:500; }
+.note-text { font-size:11px; color:var(--text-muted); }
+
+/* TABLE FOOTER */
+.table-footer { display:flex; align-items:center; justify-content:space-between; padding:12px 20px; background:#FAFAF8; border-top:1px solid var(--border-light); }
+.showing-text { font-size:11px; color:var(--text-faint); font-family:'JetBrains Mono',monospace; }
+.pagination { display:flex; align-items:center; gap:4px; }
+.page-btn { width:28px; height:28px; border-radius:6px; border:1px solid var(--border); background:#fff; font-size:12px; color:var(--text-muted); cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.12s; }
+.page-btn:hover { border-color:var(--gold); color:var(--text); }
+.page-btn.active { background:var(--gold); border-color:var(--gold); color:#fff; font-weight:600; }
+
+/* EMPTY STATE */
+.empty-state { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; padding:60px 40px; text-align:center; color:var(--text-faint); }
+.empty-icon { font-size:40px; margin-bottom:14px; opacity:0.4; }
+.empty-title { font-family:'Playfair Display',serif; font-size:18px; color:var(--text-muted); margin-bottom:6px; }
+.empty-sub { font-size:13px; }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="brand-name">Golden Studio</div>
+    <div class="brand-sub">Production Suite</div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">Production</div>
+    <div class="nav-item"><span class="nav-icon">◈</span> Orders <span class="nav-badge">3</span></div>
+    <div class="nav-item"><span class="nav-icon">◉</span> Karigar Dashboard</div>
+    <div class="nav-item"><span class="nav-icon">⬡</span> Design Library</div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">People</div>
+    <div class="nav-item"><span class="nav-icon">◎</span> Contacts</div>
+    <div class="nav-item active"><span class="nav-icon">⬢</span> Agent Ledger</div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">Stock</div>
+    <div class="nav-item"><span class="nav-icon">▦</span> Inventory</div>
+  </div>
+  <div class="sidebar-bottom">
+    <div class="user-card">
+      <div class="user-avatar">U</div>
+      <div><div class="user-name">Uzain</div><div class="user-role">Operations Manager</div></div>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="topbar">
+    <div class="breadcrumb"><span>Agent Ledger</span></div>
+    <div class="topbar-right">
+      <button class="btn-ghost" onclick="printLedger()">🖨 Print Statement</button>
+    </div>
+  </div>
+
+  <div class="split-layout">
+
+    <!-- AGENT LIST PANEL -->
+    <div class="agent-panel">
+      <div class="agent-panel-header">
+        <div class="agent-panel-title">Agents</div>
+        <div class="agent-search-wrap">
+          <span class="agent-search-icon">⌕</span>
+          <input class="agent-search" placeholder="Search agents...">
+        </div>
+      </div>
+      <div class="agent-list">
+        <div class="agent-list-item active" onclick="selectAgent('kamran', this)">
+          <div class="ali-name">Kamran Riaz</div>
+          <div class="ali-vendors">Azra Collection · Noor Fabrics · Zara</div>
+          <div class="ali-balance owed">PKR 1,35,000 outstanding</div>
+        </div>
+        <div class="agent-list-item" onclick="selectAgent('sadia', this)">
+          <div class="ali-name">Sadia Pervaiz</div>
+          <div class="ali-vendors">Noor Fabrics · Hira Threads</div>
+          <div class="ali-balance owed">PKR 60,000 outstanding</div>
+        </div>
+        <div class="agent-list-item" onclick="selectAgent('ali', this)">
+          <div class="ali-name">Ali Hassan</div>
+          <div class="ali-vendors">Zahra Garments · Direct clients</div>
+          <div class="ali-balance clear">Cleared</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LEDGER PANEL -->
+    <div class="ledger-panel">
+      <div class="ledger-scroll" id="ledgerContent">
+
+        <!-- KAMRAN LEDGER (default visible) -->
+        <div id="ledger-kamran">
+
+          <div class="ledger-header">
+            <div class="ledger-header-top">
+              <div>
+                <div class="ledger-agent-name">Kamran Riaz</div>
+                <div class="ledger-agent-meta">+92 300 1234567 · 3 vendors · 18 active orders</div>
+              </div>
+              <div class="ledger-actions">
+                <button class="btn-gold" onclick="togglePayForm('kamran')">＋ Record Payment</button>
+              </div>
+            </div>
+            <div class="ledger-stats">
+              <div class="ls-cell">
+                <div class="ls-label">Total Order Value</div>
+                <div class="ls-value gold">PKR 8,10,000</div>
+              </div>
+              <div class="ls-cell">
+                <div class="ls-label">Total Received</div>
+                <div class="ls-value green">PKR 6,75,000</div>
+              </div>
+              <div class="ls-cell">
+                <div class="ls-label">Outstanding</div>
+                <div class="ls-value red">PKR 1,35,000</div>
+              </div>
+              <div class="ls-cell">
+                <div class="ls-label">Last Payment</div>
+                <div class="ls-value" style="font-size:13px;">15 Oct 2025</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ADD PAYMENT FORM -->
+          <div class="add-payment-form" id="payform-kamran">
+            <div class="apf-title">Record Payment — Kamran Riaz</div>
+            <div class="apf-grid">
+              <div>
+                <div class="apf-label">Amount (PKR)</div>
+                <input class="apf-input" type="number" placeholder="0" id="kamt">
+              </div>
+              <div>
+                <div class="apf-label">From Vendor</div>
+                <select class="apf-input" id="kvendor">
+                  <option value="">— General —</option>
+                  <option>Azra Collection</option>
+                  <option>Noor Fabrics</option>
+                  <option>Zara Boutique</option>
+                </select>
+              </div>
+              <div>
+                <div class="apf-label">Method</div>
+                <select class="apf-input" id="kmethod">
+                  <option>Cash</option>
+                  <option>Bank Transfer</option>
+                  <option>Cheque</option>
+                </select>
+              </div>
+            </div>
+            <div class="apf-full">
+              <div class="apf-label">Note</div>
+              <input class="apf-input" placeholder="e.g. Batch payment for Oct orders..." id="knote">
+            </div>
+            <div class="apf-actions">
+              <button class="btn-save" onclick="recordPayment('kamran')">Record</button>
+              <button class="btn-cancel" onclick="togglePayForm('kamran')">Cancel</button>
+            </div>
+          </div>
+
+          <!-- FILTERS -->
+          <div class="filters-row">
+            <select class="filter-select" id="kfvendor">
+              <option>All Vendors</option>
+              <option>Azra Collection</option>
+              <option>Noor Fabrics</option>
+              <option>Zara Boutique</option>
+            </select>
+            <input type="date" class="filter-date" title="From date">
+            <span class="filter-sep">→</span>
+            <input type="date" class="filter-date" title="To date">
+            <span class="filter-clear">Clear</span>
+          </div>
+
+          <!-- LEDGER TABLE -->
+          <div class="ledger-table-wrap">
+            <table class="ledger-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Vendor</th>
+                  <th>Amount Received</th>
+                  <th>Method</th>
+                  <th>Note</th>
+                  <th class="right">Running Balance</th>
+                </tr>
+              </thead>
+              <tbody id="ktbody">
+                <tr class="ledger-row">
+                  <td><div class="date-mono">15 Oct 2025</div></td>
+                  <td><span class="vendor-chip-small">Azra Collection</span></td>
+                  <td><div class="amount-in">+ PKR 45,000</div></td>
+                  <td><span class="method-chip">Bank</span></td>
+                  <td><div class="note-text">Batch payment · Oct orders</div></td>
+                  <td class="right"><div class="running-bal">PKR 1,35,000</div></td>
+                </tr>
+                <tr class="ledger-row">
+                  <td><div class="date-mono">10 Oct 2025</div></td>
+                  <td><span class="vendor-chip-small">Noor Fabrics</span></td>
+                  <td><div class="amount-in">+ PKR 30,000</div></td>
+                  <td><span class="method-chip">Cash</span></td>
+                  <td><div class="note-text">Partial payment</div></td>
+                  <td class="right"><div class="running-bal">PKR 1,80,000</div></td>
+                </tr>
+                <tr class="ledger-row">
+                  <td><div class="date-mono">02 Oct 2025</div></td>
+                  <td><span class="vendor-chip-small">Azra Collection</span></td>
+                  <td><div class="amount-in">+ PKR 60,000</div></td>
+                  <td><span class="method-chip">Bank</span></td>
+                  <td><div class="note-text">Advance for GS-1041</div></td>
+                  <td class="right"><div class="running-bal">PKR 2,10,000</div></td>
+                </tr>
+                <tr class="ledger-row">
+                  <td><div class="date-mono">20 Sep 2025</div></td>
+                  <td><span class="vendor-chip-small">Zara Boutique</span></td>
+                  <td><div class="amount-in">+ PKR 84,000</div></td>
+                  <td><span class="method-chip">Bank</span></td>
+                  <td><div class="note-text">Full payment · Sep orders</div></td>
+                  <td class="right"><div class="running-bal">PKR 2,70,000</div></td>
+                </tr>
+                <tr class="ledger-row">
+                  <td><div class="date-mono">05 Sep 2025</div></td>
+                  <td><span class="vendor-chip-small">Noor Fabrics</span></td>
+                  <td><div class="amount-in">+ PKR 50,000</div></td>
+                  <td><span class="method-chip">Cash</span></td>
+                  <td><div class="note-text">Batch payment</div></td>
+                  <td class="right"><div class="running-bal">PKR 3,54,000</div></td>
+                </tr>
+                <tr class="ledger-row">
+                  <td><div class="date-mono">18 Aug 2025</div></td>
+                  <td><span class="vendor-chip-small">Azra Collection</span></td>
+                  <td><div class="amount-in">+ PKR 1,20,000</div></td>
+                  <td><span class="method-chip">Bank</span></td>
+                  <td><div class="note-text">Full payment · Aug orders</div></td>
+                  <td class="right"><div class="running-bal ok">PKR 0</div></td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="table-footer">
+              <div class="showing-text">SHOWING 1–6 OF 24 TRANSACTIONS</div>
+              <div class="pagination">
+                <button class="page-btn">‹</button>
+                <button class="page-btn active">1</button>
+                <button class="page-btn">2</button>
+                <button class="page-btn">3</button>
+                <button class="page-btn">4</button>
+                <button class="page-btn">›</button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- SADIA LEDGER (hidden) -->
+        <div id="ledger-sadia" style="display:none;">
+          <div class="ledger-header">
+            <div class="ledger-header-top">
+              <div>
+                <div class="ledger-agent-name">Sadia Pervaiz</div>
+                <div class="ledger-agent-meta">+92 312 9876543 · 2 vendors · 11 active orders</div>
+              </div>
+              <div class="ledger-actions">
+                <button class="btn-gold" onclick="togglePayForm('sadia')">＋ Record Payment</button>
+              </div>
+            </div>
+            <div class="ledger-stats">
+              <div class="ls-cell"><div class="ls-label">Total Order Value</div><div class="ls-value gold">PKR 3,20,000</div></div>
+              <div class="ls-cell"><div class="ls-label">Total Received</div><div class="ls-value green">PKR 2,60,000</div></div>
+              <div class="ls-cell"><div class="ls-label">Outstanding</div><div class="ls-value red">PKR 60,000</div></div>
+              <div class="ls-cell"><div class="ls-label">Last Payment</div><div class="ls-value" style="font-size:13px;">08 Oct 2025</div></div>
+            </div>
+          </div>
+          <div class="add-payment-form" id="payform-sadia">
+            <div class="apf-title">Record Payment — Sadia Pervaiz</div>
+            <div class="apf-grid">
+              <div><div class="apf-label">Amount (PKR)</div><input class="apf-input" type="number" placeholder="0" id="samt"></div>
+              <div><div class="apf-label">From Vendor</div><select class="apf-input" id="svendor"><option value="">— General —</option><option>Noor Fabrics</option><option>Hira Threads</option></select></div>
+              <div><div class="apf-label">Method</div><select class="apf-input" id="smethod"><option>Cash</option><option>Bank Transfer</option><option>Cheque</option></select></div>
+            </div>
+            <div class="apf-full"><div class="apf-label">Note</div><input class="apf-input" placeholder="e.g. Batch payment..." id="snote"></div>
+            <div class="apf-actions">
+              <button class="btn-save" onclick="recordPayment('sadia')">Record</button>
+              <button class="btn-cancel" onclick="togglePayForm('sadia')">Cancel</button>
+            </div>
+          </div>
+          <div class="filters-row">
+            <select class="filter-select"><option>All Vendors</option><option>Noor Fabrics</option><option>Hira Threads</option></select>
+            <input type="date" class="filter-date">
+            <span class="filter-sep">→</span>
+            <input type="date" class="filter-date">
+            <span class="filter-clear">Clear</span>
+          </div>
+          <div class="ledger-table-wrap">
+            <table class="ledger-table">
+              <thead><tr><th>Date</th><th>Vendor</th><th>Amount Received</th><th>Method</th><th>Note</th><th class="right">Running Balance</th></tr></thead>
+              <tbody id="stbody">
+                <tr class="ledger-row"><td><div class="date-mono">08 Oct 2025</div></td><td><span class="vendor-chip-small">Noor Fabrics</span></td><td><div class="amount-in">+ PKR 40,000</div></td><td><span class="method-chip">Bank</span></td><td><div class="note-text">Oct batch</div></td><td class="right"><div class="running-bal">PKR 60,000</div></td></tr>
+                <tr class="ledger-row"><td><div class="date-mono">22 Sep 2025</div></td><td><span class="vendor-chip-small">Hira Threads</span></td><td><div class="amount-in">+ PKR 35,000</div></td><td><span class="method-chip">Cash</span></td><td><div class="note-text">Advance payment</div></td><td class="right"><div class="running-bal">PKR 1,00,000</div></td></tr>
+                <tr class="ledger-row"><td><div class="date-mono">10 Sep 2025</div></td><td><span class="vendor-chip-small">Noor Fabrics</span></td><td><div class="amount-in">+ PKR 55,000</div></td><td><span class="method-chip">Bank</span></td><td><div class="note-text">Sep orders cleared</div></td><td class="right"><div class="running-bal ok">PKR 0</div></td></tr>
+              </tbody>
+            </table>
+            <div class="table-footer">
+              <div class="showing-text">SHOWING 1–3 OF 11 TRANSACTIONS</div>
+              <div class="pagination"><button class="page-btn active">1</button><button class="page-btn">2</button><button class="page-btn">›</button></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ALI LEDGER (hidden) -->
+        <div id="ledger-ali" style="display:none;">
+          <div class="ledger-header">
+            <div class="ledger-header-top">
+              <div>
+                <div class="ledger-agent-name">Ali Hassan</div>
+                <div class="ledger-agent-meta">+92 345 1112233 · 1 vendor + direct clients · 6 orders</div>
+              </div>
+              <div class="ledger-actions">
+                <button class="btn-gold" onclick="togglePayForm('ali')">＋ Record Payment</button>
+              </div>
+            </div>
+            <div class="ledger-stats">
+              <div class="ls-cell"><div class="ls-label">Total Order Value</div><div class="ls-value gold">PKR 1,80,000</div></div>
+              <div class="ls-cell"><div class="ls-label">Total Received</div><div class="ls-value green">PKR 1,80,000</div></div>
+              <div class="ls-cell"><div class="ls-label">Outstanding</div><div class="ls-value green">PKR 0</div></div>
+              <div class="ls-cell"><div class="ls-label">Last Payment</div><div class="ls-value" style="font-size:13px;">30 Sep 2025</div></div>
+            </div>
+          </div>
+          <div class="add-payment-form" id="payform-ali">
+            <div class="apf-title">Record Payment — Ali Hassan</div>
+            <div class="apf-grid">
+              <div><div class="apf-label">Amount (PKR)</div><input class="apf-input" type="number" placeholder="0" id="aamt"></div>
+              <div><div class="apf-label">From Vendor</div><select class="apf-input" id="avendor"><option value="">— General —</option><option>Zahra Garments</option></select></div>
+              <div><div class="apf-label">Method</div><select class="apf-input" id="amethod"><option>Cash</option><option>Bank Transfer</option><option>Cheque</option></select></div>
+            </div>
+            <div class="apf-full"><div class="apf-label">Note</div><input class="apf-input" placeholder="e.g. Final payment..." id="anote"></div>
+            <div class="apf-actions">
+              <button class="btn-save" onclick="recordPayment('ali')">Record</button>
+              <button class="btn-cancel" onclick="togglePayForm('ali')">Cancel</button>
+            </div>
+          </div>
+          <div class="filters-row">
+            <select class="filter-select"><option>All Vendors</option><option>Zahra Garments</option></select>
+            <input type="date" class="filter-date">
+            <span class="filter-sep">→</span>
+            <input type="date" class="filter-date">
+            <span class="filter-clear">Clear</span>
+          </div>
+          <div class="ledger-table-wrap">
+            <table class="ledger-table">
+              <thead><tr><th>Date</th><th>Vendor</th><th>Amount Received</th><th>Method</th><th>Note</th><th class="right">Running Balance</th></tr></thead>
+              <tbody id="atbody">
+                <tr class="ledger-row"><td><div class="date-mono">30 Sep 2025</div></td><td><span class="vendor-chip-small">Zahra Garments</span></td><td><div class="amount-in">+ PKR 90,000</div></td><td><span class="method-chip">Bank</span></td><td><div class="note-text">Final payment · Sep orders</div></td><td class="right"><div class="running-bal ok">PKR 0</div></td></tr>
+                <tr class="ledger-row"><td><div class="date-mono">15 Sep 2025</div></td><td><span class="vendor-chip-small">Zahra Garments</span></td><td><div class="amount-in">+ PKR 90,000</div></td><td><span class="method-chip">Cash</span></td><td><div class="note-text">Advance payment</div></td><td class="right"><div class="running-bal">PKR 90,000</div></td></tr>
+              </tbody>
+            </table>
+            <div class="table-footer">
+              <div class="showing-text">SHOWING 1–2 OF 6 TRANSACTIONS</div>
+              <div class="pagination"><button class="page-btn active">1</button></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const ledgers = { kamran:'ledger-kamran', sadia:'ledger-sadia', ali:'ledger-ali' };
+
+function selectAgent(id, el) {
+  document.querySelectorAll('.agent-list-item').forEach(i => i.classList.remove('active'));
+  el.classList.add('active');
+  Object.values(ledgers).forEach(lid => document.getElementById(lid).style.display = 'none');
+  document.getElementById(ledgers[id]).style.display = 'block';
+}
+
+function togglePayForm(agent) {
+  const form = document.getElementById('payform-'+agent);
+  form.classList.toggle('visible');
+}
+
+const prefixes = { kamran:'k', sadia:'s', ali:'a' };
+const tbodies = { kamran:'ktbody', sadia:'stbody', ali:'atbody' };
+
+function recordPayment(agent) {
+  const p = prefixes[agent];
+  const amount = document.getElementById(p+'amt').value;
+  const vendor = document.getElementById(p+'vendor').value;
+  const method = document.getElementById(p+'method').value;
+  const note = document.getElementById(p+'note').value;
+  if (!amount || isNaN(amount) || Number(amount) <= 0) { alert('Enter a valid amount.'); return; }
+  const tbody = document.getElementById(tbodies[agent]);
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+  const row = document.createElement('tr');
+  row.className = 'ledger-row';
+  row.innerHTML = `<td><div class="date-mono">${dateStr}</div></td><td>${vendor ? `<span class="vendor-chip-small">${vendor}</span>` : '<span style="color:var(--text-faint);font-size:11px;">—</span>'}</td><td><div class="amount-in">+ PKR ${Number(amount).toLocaleString()}</div></td><td><span class="method-chip">${method}</span></td><td><div class="note-text">${note||'—'}</div></td><td class="right"><div class="running-bal">Recalculating...</div></td>`;
+  tbody.insertBefore(row, tbody.firstChild);
+  document.getElementById(p+'amt').value = '';
+  document.getElementById(p+'note').value = '';
+  togglePayForm(agent);
+}
+
+function printLedger() {
+  window.print();
+}
+</script>
+</body>
+</html>

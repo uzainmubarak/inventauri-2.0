@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Golden Studio — Inventory</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:#FAFAF9; --bg2:#F3F1EE; --bg3:#EDEBE7;
+  --gold:#C9A961; --gold-dim:rgba(201,169,97,0.12); --gold-mid:rgba(201,169,97,0.25);
+  --error:#8B3A3A; --error-dim:rgba(139,58,58,0.10);
+  --green:#3A6B4A; --green-dim:rgba(58,107,74,0.10);
+  --text:#1C1C1C; --text-muted:#7A7671; --text-faint:#B0AAA2;
+  --border:#E4E1DB; --border-light:#EDEBE7;
+  --sidebar-bg:#1C1A18; --sidebar-text:#C8C3BB;
+  --white:#ffffff;
+  --shadow:0 1px 3px rgba(0,0,0,0.06),0 4px 12px rgba(0,0,0,0.04);
+}
+body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text); display:flex; height:100vh; overflow:hidden; }
+
+.sidebar { width:230px; min-width:230px; background:var(--sidebar-bg); display:flex; flex-direction:column; height:100vh; overflow-y:auto; flex-shrink:0; }
+.sidebar-brand { padding:28px 24px 24px; border-bottom:1px solid rgba(255,255,255,0.06); }
+.brand-name { font-family:'Playfair Display',serif; font-size:17px; font-weight:600; color:#fff; }
+.brand-sub { font-size:10px; color:var(--gold); letter-spacing:0.12em; text-transform:uppercase; margin-top:3px; font-weight:500; }
+.sidebar-section { padding:20px 0 8px; }
+.sidebar-label { font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:rgba(255,255,255,0.22); font-weight:500; padding:0 24px; margin-bottom:4px; }
+.nav-item { display:flex; align-items:center; gap:10px; padding:9px 24px; font-size:13px; color:var(--sidebar-text); cursor:pointer; transition:all 0.15s; border-left:2px solid transparent; }
+.nav-item:hover { background:rgba(255,255,255,0.04); color:#fff; }
+.nav-item.active { color:var(--gold); border-left-color:var(--gold); background:rgba(201,169,97,0.07); font-weight:500; }
+.nav-icon { width:15px; opacity:0.7; font-size:13px; }
+.nav-item.active .nav-icon { opacity:1; }
+.nav-badge { margin-left:auto; background:var(--error); color:#fff; font-size:9px; font-weight:600; padding:2px 6px; border-radius:10px; font-family:'JetBrains Mono',monospace; }
+.sidebar-bottom { margin-top:auto; padding:16px 20px; border-top:1px solid rgba(255,255,255,0.06); }
+.user-card { display:flex; align-items:center; gap:10px; }
+.user-avatar { width:30px; height:30px; border-radius:50%; background:var(--gold-mid); border:1px solid var(--gold); display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:600; color:var(--gold); }
+.user-name { font-size:12px; color:#fff; font-weight:500; }
+.user-role { font-size:10px; color:var(--sidebar-text); }
+
+.main { flex:1; display:flex; flex-direction:column; overflow:hidden; min-width:0; }
+.topbar { background:var(--bg); border-bottom:1px solid var(--border); padding:0 28px; height:56px; display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
+.breadcrumb span { color:var(--text); font-weight:500; font-size:12px; }
+.topbar-right { display:flex; align-items:center; gap:8px; }
+.btn-gold { display:flex; align-items:center; gap:6px; background:var(--gold); border:none; border-radius:8px; padding:7px 14px; font-size:12px; font-weight:500; color:#fff; cursor:pointer; font-family:'DM Sans',sans-serif; box-shadow:0 2px 8px rgba(201,169,97,0.3); transition:all 0.15s; }
+.btn-gold:hover { background:#b8953a; }
+
+.content-area { flex:1; overflow:hidden; }
+.scroll-area { height:100%; overflow-y:auto; padding:24px 28px; }
+
+.page-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:22px; }
+.page-title { font-family:'Playfair Display',serif; font-size:34px; font-weight:500; letter-spacing:-0.01em; line-height:1; }
+.page-meta { font-size:12px; color:var(--text-muted); margin-top:6px; }
+
+/* SUMMARY */
+.summary-row { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:22px; }
+.summary-card { background:var(--white); border:1px solid var(--border); border-radius:12px; padding:16px 18px; box-shadow:var(--shadow); }
+.sc-label { font-size:10px; color:var(--text-faint); font-weight:500; letter-spacing:0.08em; text-transform:uppercase; margin-bottom:6px; }
+.sc-value { font-family:'JetBrains Mono',monospace; font-size:22px; font-weight:500; }
+.sc-value.red { color:var(--error); }
+.sc-value.gold { color:#8B6914; }
+.sc-value.green { color:var(--green); }
+.sc-sub { font-size:11px; color:var(--text-faint); margin-top:3px; }
+
+/* CONTROLS */
+.controls-row { display:flex; align-items:center; gap:10px; margin-bottom:16px; flex-wrap:wrap; }
+.search-wrap { flex:1; max-width:300px; position:relative; }
+.search-input { width:100%; padding:8px 12px 8px 34px; background:var(--white); border:1px solid var(--border); border-radius:9px; font-size:13px; font-family:'DM Sans',sans-serif; color:var(--text); outline:none; transition:border-color 0.15s; }
+.search-input:focus { border-color:var(--gold); }
+.search-icon { position:absolute; left:11px; top:50%; transform:translateY(-50%); font-size:13px; color:var(--text-faint); pointer-events:none; }
+.filter-select { appearance:none; background:var(--white); border:1px solid var(--border); border-radius:8px; padding:8px 28px 8px 11px; font-size:12px; color:var(--text); font-family:'DM Sans',sans-serif; cursor:pointer; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23B0AAA2' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 9px center; outline:none; }
+.filter-select:focus { border-color:var(--gold); }
+
+/* TABLE */
+.inv-table-wrap { background:var(--white); border:1px solid var(--border); border-radius:12px; overflow:hidden; box-shadow:var(--shadow); }
+.inv-table { width:100%; border-collapse:collapse; }
+.inv-table thead tr { background:#F5F3F0; border-bottom:1px solid var(--border); }
+.inv-table th { padding:10px 16px; font-size:10px; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-faint); text-align:left; white-space:nowrap; }
+.inv-table th:first-child { padding-left:20px; }
+.inv-row { border-bottom:1px solid var(--border-light); cursor:pointer; transition:background 0.1s; }
+.inv-row:hover { background:#FAFAF6; }
+.inv-row.active-row { background:rgba(201,169,97,0.04); border-left:3px solid var(--gold); }
+.inv-row.low-stock { border-left:3px solid var(--error); }
+.inv-row.low-stock.active-row { border-left-color:var(--gold); }
+.inv-table td { padding:13px 16px; font-size:13px; vertical-align:middle; }
+.inv-table td:first-child { padding-left:20px; }
+
+.item-name { font-weight:500; font-size:13px; }
+.item-sku { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--text-faint); margin-top:2px; }
+.cat-badge { display:inline-block; font-size:10px; font-weight:500; padding:2px 8px; border-radius:10px; text-transform:uppercase; letter-spacing:0.04em; }
+.cat-badge.fabric { background:var(--gold-dim); color:#8B6914; border:1px solid var(--gold-mid); }
+.cat-badge.lining { background:var(--blue-dim,rgba(58,74,107,0.08)); color:#3A4A6B; border:1px solid rgba(58,74,107,0.2); }
+.cat-badge.thread { background:var(--green-dim); color:var(--green); border:1px solid rgba(58,107,74,0.18); }
+.cat-badge.accessory { background:#F0EFED; color:#6B6560; border:1px solid #DDD9D3; }
+.cat-badge.dye { background:var(--error-dim); color:var(--error); border:1px solid rgba(139,58,58,0.18); }
+
+.qty-cell { font-family:'JetBrains Mono',monospace; font-size:13px; font-weight:500; }
+.low-alert { display:inline-flex; align-items:center; gap:5px; background:var(--error-dim); border:1px solid rgba(139,58,58,0.18); color:var(--error); font-size:10px; font-weight:600; padding:2px 8px; border-radius:10px; text-transform:uppercase; letter-spacing:0.04em; }
+
+.expand-btn { background:none; border:none; cursor:pointer; font-size:11px; color:var(--text-faint); transition:transform 0.2s; padding:4px; }
+.inv-row.active-row .expand-btn { transform:rotate(90deg); color:var(--gold); }
+
+/* DETAIL PANEL */
+.inv-detail-panel { display:none; background:#FAFAF6; border-top:1px solid var(--border-light); padding:20px 24px; }
+.inv-detail-panel.open { display:block; animation:panelIn 0.15s ease; }
+@keyframes panelIn { from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)} }
+
+.detail-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+.detail-card { background:var(--white); border:1px solid var(--border-light); border-radius:10px; padding:14px 16px; }
+.detail-card-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+.detail-card-title { font-size:10px; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-faint); }
+
+/* ADJUST FORM */
+.adjust-form { display:none; margin-top:12px; background:var(--bg2); border:1px solid var(--border-light); border-radius:8px; padding:12px; }
+.adjust-form.visible { display:block; animation:panelIn 0.15s ease; }
+.af-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px; }
+.af-label { font-size:10px; color:var(--text-faint); font-weight:500; margin-bottom:3px; }
+.af-input { width:100%; padding:7px 9px; border:1px solid var(--border); border-radius:6px; font-size:12px; font-family:'DM Sans',sans-serif; background:var(--white); outline:none; color:var(--text); }
+.af-input:focus { border-color:var(--gold); }
+select.af-input { appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23B0AAA2' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 8px center; padding-right:24px; background-color:var(--white); }
+.af-full { margin-bottom:8px; }
+.af-actions { display:flex; gap:6px; }
+.btn-save-sm { background:var(--gold); border:none; border-radius:6px; padding:6px 12px; font-size:11px; font-weight:600; color:#fff; cursor:pointer; font-family:'DM Sans',sans-serif; }
+.btn-cancel-sm { background:transparent; border:1px solid var(--border); border-radius:6px; padding:6px 12px; font-size:11px; color:var(--text-muted); cursor:pointer; font-family:'DM Sans',sans-serif; }
+.btn-adjust { background:none; border:1px solid var(--border); border-radius:6px; padding:4px 10px; font-size:10px; color:var(--text-faint); cursor:pointer; font-family:'DM Sans',sans-serif; transition:all 0.12s; }
+.btn-adjust:hover { border-color:var(--gold); color:var(--gold); }
+
+/* ITEM INFO */
+.info-rows { display:flex; flex-direction:column; gap:8px; }
+.info-row { display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid var(--border-light); }
+.info-row:last-child { border-bottom:none; }
+.ir-label { font-size:11px; color:var(--text-muted); }
+.ir-value { font-size:12px; font-weight:500; color:var(--text); font-family:'JetBrains Mono',monospace; }
+
+/* HISTORY */
+.hist-list { display:flex; flex-direction:column; gap:6px; max-height:220px; overflow-y:auto; }
+.hist-item { display:flex; align-items:center; justify-content:space-between; padding:8px 10px; background:var(--bg2); border:1px solid var(--border-light); border-radius:7px; }
+.hi-left { display:flex; flex-direction:column; gap:2px; }
+.hi-change { font-size:12px; font-weight:600; }
+.hi-change.in { color:var(--green); }
+.hi-change.out { color:var(--error); }
+.hi-note { font-size:10px; color:var(--text-muted); }
+.hi-right { text-align:right; }
+.hi-date { font-size:10px; color:var(--text-faint); font-family:'JetBrains Mono',monospace; }
+.hi-by { font-size:10px; color:var(--text-faint); margin-top:1px; }
+
+/* TABLE FOOTER */
+.table-footer { display:flex; align-items:center; justify-content:space-between; padding:12px 20px; background:#FAFAF8; border-top:1px solid var(--border-light); }
+.showing-text { font-size:11px; color:var(--text-faint); font-family:'JetBrains Mono',monospace; }
+.pagination { display:flex; align-items:center; gap:4px; }
+.page-btn { width:28px; height:28px; border-radius:6px; border:1px solid var(--border); background:#fff; font-size:12px; color:var(--text-muted); cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.12s; }
+.page-btn:hover { border-color:var(--gold); color:var(--text); }
+.page-btn.active { background:var(--gold); border-color:var(--gold); color:#fff; font-weight:600; }
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="brand-name">Golden Studio</div>
+    <div class="brand-sub">Production Suite</div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">Production</div>
+    <div class="nav-item"><span class="nav-icon">◈</span> Orders <span class="nav-badge">3</span></div>
+    <div class="nav-item"><span class="nav-icon">◉</span> Karigar Dashboard</div>
+    <div class="nav-item"><span class="nav-icon">⬡</span> Design Library</div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">People</div>
+    <div class="nav-item"><span class="nav-icon">◎</span> Contacts</div>
+    <div class="nav-item"><span class="nav-icon">⬢</span> Agent Ledger</div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">Stock</div>
+    <div class="nav-item active"><span class="nav-icon">▦</span> Inventory</div>
+  </div>
+  <div class="sidebar-bottom">
+    <div class="user-card">
+      <div class="user-avatar">U</div>
+      <div><div class="user-name">Uzain</div><div class="user-role">Operations Manager</div></div>
+    </div>
+  </div>
+</aside>
+
+<div class="main">
+  <div class="topbar">
+    <div class="breadcrumb"><span>Inventory</span></div>
+    <div class="topbar-right">
+      <button class="btn-gold">＋ Add Item</button>
+    </div>
+  </div>
+
+  <div class="content-area">
+    <div class="scroll-area">
+
+      <div class="page-header">
+        <div>
+          <div class="page-title">Inventory</div>
+          <div class="page-meta">34 items · 4 low stock alerts</div>
+        </div>
+      </div>
+
+      <!-- SUMMARY -->
+      <div class="summary-row">
+        <div class="summary-card">
+          <div class="sc-label">Total Items</div>
+          <div class="sc-value">34</div>
+          <div class="sc-sub">Across all categories</div>
+        </div>
+        <div class="summary-card">
+          <div class="sc-label">Low Stock</div>
+          <div class="sc-value red">4</div>
+          <div class="sc-sub">Below threshold</div>
+        </div>
+        <div class="summary-card">
+          <div class="sc-label">Out of Stock</div>
+          <div class="sc-value red">1</div>
+          <div class="sc-sub">Needs reorder</div>
+        </div>
+        <div class="summary-card">
+          <div class="sc-label">Healthy Stock</div>
+          <div class="sc-value green">29</div>
+          <div class="sc-sub">Above threshold</div>
+        </div>
+      </div>
+
+      <!-- CONTROLS -->
+      <div class="controls-row">
+        <div class="search-wrap">
+          <span class="search-icon">⌕</span>
+          <input class="search-input" placeholder="Search by name or SKU...">
+        </div>
+        <select class="filter-select">
+          <option>All Categories</option>
+          <option>Fabric</option>
+          <option>Lining</option>
+          <option>Thread</option>
+          <option>Dye</option>
+          <option>Accessory</option>
+        </select>
+        <select class="filter-select">
+          <option>All Stock Levels</option>
+          <option>Low Stock</option>
+          <option>Out of Stock</option>
+          <option>Healthy</option>
+        </select>
+      </div>
+
+      <!-- TABLE -->
+      <div class="inv-table-wrap">
+        <table class="inv-table">
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Category</th>
+              <th>Quantity</th>
+              <th>Unit</th>
+              <th>Low Stock Threshold</th>
+              <th>Status</th>
+              <th>Last Updated</th>
+              <th style="width:36px;"></th>
+            </tr>
+          </thead>
+          <tbody>
+
+            <!-- ITEM 1 — LOW STOCK -->
+            <tr class="inv-row low-stock" onclick="toggleItem('i1',this)">
+              <td><div class="item-name">Maroon Silk</div><div class="item-sku">SKU-FAB-001</div></td>
+              <td><span class="cat-badge fabric">Fabric</span></td>
+              <td><div class="qty-cell">2</div></td>
+              <td><div style="font-size:12px;color:var(--text-muted);">metres</div></td>
+              <td><div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-muted);">5</div></td>
+              <td><span class="low-alert">⚠ Low Stock</span></td>
+              <td><div style="font-size:11px;color:var(--text-muted);">18 Oct 2025</div></td>
+              <td><button class="expand-btn">›</button></td>
+            </tr>
+            <tr><td colspan="8" style="padding:0;">
+              <div class="inv-detail-panel" id="i1">
+                <div class="detail-grid">
+                  <div class="detail-card">
+                    <div class="detail-card-header">
+                      <div class="detail-card-title">📦 Item Details</div>
+                      <button class="btn-adjust" onclick="toggleAdjust('adj1',event)">± Adjust Stock</button>
+                    </div>
+                    <div class="info-rows">
+                      <div class="info-row"><span class="ir-label">SKU</span><span class="ir-value">SKU-FAB-001</span></div>
+                      <div class="info-row"><span class="ir-label">Category</span><span class="ir-value">Fabric</span></div>
+                      <div class="info-row"><span class="ir-label">Current Qty</span><span class="ir-value" style="color:var(--error);">2 metres</span></div>
+                      <div class="info-row"><span class="ir-label">Threshold</span><span class="ir-value">5 metres</span></div>
+                      <div class="info-row"><span class="ir-label">Supplier</span><span class="ir-value">Faisalabad Market</span></div>
+                    </div>
+                    <div class="adjust-form" id="adj1">
+                      <div style="font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-faint);margin-bottom:10px;">Adjust Stock</div>
+                      <div class="af-grid">
+                        <div>
+                          <div class="af-label">Type</div>
+                          <select class="af-input">
+                            <option>Add Stock</option>
+                            <option>Remove Stock</option>
+                            <option>Set Exact Quantity</option>
+                          </select>
+                        </div>
+                        <div>
+                          <div class="af-label">Quantity</div>
+                          <input class="af-input" type="number" placeholder="0">
+                        </div>
+                      </div>
+                      <div class="af-full">
+                        <div class="af-label">Note</div>
+                        <input class="af-input" placeholder="e.g. Restocked from market, Used for order #GS-1041...">
+                      </div>
+                      <div class="af-actions">
+                        <button class="btn-save-sm">Save</button>
+                        <button class="btn-cancel-sm" onclick="toggleAdjust('adj1',null)">Cancel</button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="detail-card">
+                    <div class="detail-card-header"><div class="detail-card-title">📋 Adjustment History</div></div>
+                    <div class="hist-list">
+                      <div class="hist-item"><div class="hi-left"><div class="hi-change out">− 3 metres</div><div class="hi-note">Used for order #GS-1041 · Farah's Lehenga</div></div><div class="hi-right"><div class="hi-date">18 Oct 2025</div><div class="hi-by">Uzain</div></div></div>
+                      <div class="hist-item"><div class="hi-left"><div class="hi-change in">+ 10 metres</div><div class="hi-note">Restocked from Faisalabad market</div></div><div class="hi-right"><div class="hi-date">10 Oct 2025</div><div class="hi-by">Uzain</div></div></div>
+                      <div class="hist-item"><div class="hi-left"><div class="hi-change out">− 5 metres</div><div class="hi-note">Used for order #GS-1033</div></div><div class="hi-right"><div class="hi-date">01 Oct 2025</div><div class="hi-by">Bilal</div></div></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </td></tr>
+
+            <!-- ITEM 2 — HEALTHY -->
+            <tr class="inv-row" onclick="toggleItem('i2',this)">
+              <td><div class="item-name">Ivory Net</div><div class="item-sku">SKU-FAB-002</div></td>
+              <td><span class="cat-badge fabric">Fabric</span></td>
+              <td><div class="qty-cell">18</div></td>
+              <td><div style="font-size:12px;color:var(--text-muted);">metres</div></td>
+              <td><div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-muted);">8</div></td>
+              <td><span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;background:var(--green-dim);color:var(--green);border:1px solid rgba(58,107,74,0.18);text-transform:uppercase;letter-spacing:0.04em;">Healthy</span></td>
+              <td><div style="font-size:11px;color:var(--text-muted);">14 Oct 2025</div></td>
+              <td><button class="expand-btn">›</button></td>
+            </tr>
+            <tr><td colspan="8" style="padding:0;">
+              <div class="inv-detail-panel" id="i2">
+                <div class="detail-grid">
+                  <div class="detail-card">
+                    <div class="detail-card-header">
+                      <div class="detail-card-title">📦 Item Details</div>
+                      <button class="btn-adjust" onclick="toggleAdjust('adj2',event)">± Adjust Stock</button>
+                    </div>
+                    <div class="info-rows">
+                      <div class="info-row"><span class="ir-label">SKU</span><span class="ir-value">SKU-FAB-002</span></div>
+                      <div class="info-row"><span class="ir-label">Category</span><span class="ir-value">Fabric</span></div>
+                      <div class="info-row"><span class="ir-label">Current Qty</span><span class="ir-value">18 metres</span></div>
+                      <div class="info-row"><span class="ir-label">Threshold</span><span class="ir-value">8 metres</span></div>
+                      <div class="info-row"><span class="ir-label">Supplier</span><span class="ir-value">Lahore Wholesale</span></div>
+                    </div>
+                    <div class="adjust-form" id="adj2">
+                      <div style="font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-faint);margin-bottom:10px;">Adjust Stock</div>
+                      <div class="af-grid">
+                        <div><div class="af-label">Type</div><select class="af-input"><option>Add Stock</option><option>Remove Stock</option><option>Set Exact Quantity</option></select></div>
+                        <div><div class="af-label">Quantity</div><input class="af-input" type="number" placeholder="0"></div>
+                      </div>
+                      <div class="af-full"><div class="af-label">Note</div><input class="af-input" placeholder="e.g. Restocked, Used for order..."></div>
+                      <div class="af-actions">
+                        <button class="btn-save-sm">Save</button>
+                        <button class="btn-cancel-sm" onclick="toggleAdjust('adj2',null)">Cancel</button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="detail-card">
+                    <div class="detail-card-header"><div class="detail-card-title">📋 Adjustment History</div></div>
+                    <div class="hist-list">
+                      <div class="hist-item"><div class="hi-left"><div class="hi-change out">− 2 metres</div><div class="hi-note">Used for order #GS-1038 · Hina Baig</div></div><div class="hi-right"><div class="hi-date">14 Oct 2025</div><div class="hi-by">Bilal</div></div></div>
+                      <div class="hist-item"><div class="hi-left"><div class="hi-change in">+ 20 metres</div><div class="hi-note">Bulk restock from Lahore</div></div><div class="hi-right"><div class="hi-date">05 Oct 2025</div><div class="hi-by">Uzain</div></div></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </td></tr>
+
+            <!-- ITEM 3 — OUT OF STOCK -->
+            <tr class="inv-row low-stock" onclick="toggleItem('i3',this)">
+              <td><div class="item-name">Gold Zari Thread</div><div class="item-sku">SKU-THR-001</div></td>
+              <td><span class="cat-badge thread">Thread</span></td>
+              <td><div class="qty-cell" style="color:var(--error);">0</div></td>
+              <td><div style="font-size:12px;color:var(--text-muted);">spools</div></td>
+              <td><div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-muted);">3</div></td>
+              <td><span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;background:var(--error-dim);color:var(--error);border:1px solid rgba(139,58,58,0.18);text-transform:uppercase;letter-spacing:0.04em;">Out of Stock</span></td>
+              <td><div style="font-size:11px;color:var(--text-muted);">12 Oct 2025</div></td>
+              <td><button class="expand-btn">›</button></td>
+            </tr>
+            <tr><td colspan="8" style="padding:0;">
+              <div class="inv-detail-panel" id="i3">
+                <div class="detail-grid">
+                  <div class="detail-card">
+                    <div class="detail-card-header">
+                      <div class="detail-card-title">📦 Item Details</div>
+                      <button class="btn-adjust" onclick="toggleAdjust('adj3',event)">± Adjust Stock</button>
+                    </div>
+                    <div class="info-rows">
+                      <div class="info-row"><span class="ir-label">SKU</span><span class="ir-value">SKU-THR-001</span></div>
+                      <div class="info-row"><span class="ir-label">Category</span><span class="ir-value">Thread</span></div>
+                      <div class="info-row"><span class="ir-label">Current Qty</span><span class="ir-value" style="color:var(--error);">0 spools</span></div>
+                      <div class="info-row"><span class="ir-label">Threshold</span><span class="ir-value">3 spools</span></div>
+                      <div class="info-row"><span class="ir-label">Supplier</span><span class="ir-value">Local Market</span></div>
+                    </div>
+                    <div class="adjust-form" id="adj3">
+                      <div style="font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-faint);margin-bottom:10px;">Adjust Stock</div>
+                      <div class="af-grid">
+                        <div><div class="af-label">Type</div><select class="af-input"><option>Add Stock</option><option>Remove Stock</option><option>Set Exact Quantity</option></select></div>
+                        <div><div class="af-label">Quantity</div><input class="af-input" type="number" placeholder="0"></div>
+                      </div>
+                      <div class="af-full"><div class="af-label">Note</div><input class="af-input" placeholder="e.g. Restocked from market..."></div>
+                      <div class="af-actions">
+                        <button class="btn-save-sm">Save</button>
+                        <button class="btn-cancel-sm" onclick="toggleAdjust('adj3',null)">Cancel</button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="detail-card">
+                    <div class="detail-card-header"><div class="detail-card-title">📋 Adjustment History</div></div>
+                    <div class="hist-list">
+                      <div class="hist-item"><div class="hi-left"><div class="hi-change out">− 3 spools</div><div class="hi-note">Used for handwork · order #GS-1041</div></div><div class="hi-right"><div class="hi-date">12 Oct 2025</div><div class="hi-by">Uzain</div></div></div>
+                      <div class="hist-item"><div class="hi-left"><div class="hi-change in">+ 6 spools</div><div class="hi-note">Purchased from local market</div></div><div class="hi-right"><div class="hi-date">28 Sep 2025</div><div class="hi-by">Uzain</div></div></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </td></tr>
+
+            <!-- ITEM 4 — HEALTHY -->
+            <tr class="inv-row" onclick="toggleItem('i4',this)">
+              <td><div class="item-name">White Cotton Lining</div><div class="item-sku">SKU-LIN-001</div></td>
+              <td><span class="cat-badge lining">Lining</span></td>
+              <td><div class="qty-cell">25</div></td>
+              <td><div style="font-size:12px;color:var(--text-muted);">metres</div></td>
+              <td><div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-muted);">10</div></td>
+              <td><span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;background:var(--green-dim);color:var(--green);border:1px solid rgba(58,107,74,0.18);text-transform:uppercase;letter-spacing:0.04em;">Healthy</span></td>
+              <td><div style="font-size:11px;color:var(--text-muted);">10 Oct 2025</div></td>
+              <td><button class="expand-btn">›</button></td>
+            </tr>
+            <tr><td colspan="8" style="padding:0;">
+              <div class="inv-detail-panel" id="i4">
+                <div class="detail-grid">
+                  <div class="detail-card">
+                    <div class="detail-card-header">
+                      <div class="detail-card-title">📦 Item Details</div>
+                      <button class="btn-adjust" onclick="toggleAdjust('adj4',event)">± Adjust Stock</button>
+                    </div>
+                    <div class="info-rows">
+                      <div class="info-row"><span class="ir-label">SKU</span><span class="ir-value">SKU-LIN-001</span></div>
+                      <div class="info-row"><span class="ir-label">Category</span><span class="ir-value">Lining</span></div>
+                      <div class="info-row"><span class="ir-label">Current Qty</span><span class="ir-value">25 metres</span></div>
+                      <div class="info-row"><span class="ir-label">Threshold</span><span class="ir-value">10 metres</span></div>
+                      <div class="info-row"><span class="ir-label">Supplier</span><span class="ir-value">Faisalabad Market</span></div>
+                    </div>
+                    <div class="adjust-form" id="adj4">
+                      <div style="font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-faint);margin-bottom:10px;">Adjust Stock</div>
+                      <div class="af-grid">
+                        <div><div class="af-label">Type</div><select class="af-input"><option>Add Stock</option><option>Remove Stock</option><option>Set Exact Quantity</option></select></div>
+                        <div><div class="af-label">Quantity</div><input class="af-input" type="number" placeholder="0"></div>
+                      </div>
+                      <div class="af-full"><div class="af-label">Note</div><input class="af-input" placeholder="e.g. Restocked, Used for order..."></div>
+                      <div class="af-actions">
+                        <button class="btn-save-sm">Save</button>
+                        <button class="btn-cancel-sm" onclick="toggleAdjust('adj4',null)">Cancel</button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="detail-card">
+                    <div class="detail-card-header"><div class="detail-card-title">📋 Adjustment History</div></div>
+                    <div class="hist-list">
+                      <div class="hist-item"><div class="hi-left"><div class="hi-change out">− 5 metres</div><div class="hi-note">Used for orders #GS-1038, #GS-1039</div></div><div class="hi-right"><div class="hi-date">10 Oct 2025</div><div class="hi-by">Bilal</div></div></div>
+                      <div class="hist-item"><div class="hi-left"><div class="hi-change in">+ 30 metres</div><div class="hi-note">Bulk restock</div></div><div class="hi-right"><div class="hi-date">01 Oct 2025</div><div class="hi-by">Uzain</div></div></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </td></tr>
+
+            <!-- ITEM 5 — LOW STOCK -->
+            <tr class="inv-row low-stock" onclick="toggleItem('i5',this)">
+              <td><div class="item-name">Red Dye Powder</div><div class="item-sku">SKU-DYE-003</div></td>
+              <td><span class="cat-badge dye">Dye</span></td>
+              <td><div class="qty-cell">1</div></td>
+              <td><div style="font-size:12px;color:var(--text-muted);">packets</div></td>
+              <td><div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-muted);">4</div></td>
+              <td><span class="low-alert">⚠ Low Stock</span></td>
+              <td><div style="font-size:11px;color:var(--text-muted);">16 Oct 2025</div></td>
+              <td><button class="expand-btn">›</button></td>
+            </tr>
+            <tr><td colspan="8" style="padding:0;">
+              <div class="inv-detail-panel" id="i5">
+                <div class="detail-grid">
+                  <div class="detail-card">
+                    <div class="detail-card-header">
+                      <div class="detail-card-title">📦 Item Details</div>
+                      <button class="btn-adjust" onclick="toggleAdjust('adj5',event)">± Adjust Stock</button>
+                    </div>
+                    <div class="info-rows">
+                      <div class="info-row"><span class="ir-label">SKU</span><span class="ir-value">SKU-DYE-003</span></div>
+                      <div class="info-row"><span class="ir-label">Category</span><span class="ir-value">Dye</span></div>
+                      <div class="info-row"><span class="ir-label">Current Qty</span><span class="ir-value" style="color:var(--error);">1 packet</span></div>
+                      <div class="info-row"><span class="ir-label">Threshold</span><span class="ir-value">4 packets</span></div>
+                      <div class="info-row"><span class="ir-label">Supplier</span><span class="ir-value">Dye Market, Faisalabad</span></div>
+                    </div>
+                    <div class="adjust-form" id="adj5">
+                      <div style="font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-faint);margin-bottom:10px;">Adjust Stock</div>
+                      <div class="af-grid">
+                        <div><div class="af-label">Type</div><select class="af-input"><option>Add Stock</option><option>Remove Stock</option><option>Set Exact Quantity</option></select></div>
+                        <div><div class="af-label">Quantity</div><input class="af-input" type="number" placeholder="0"></div>
+                      </div>
+                      <div class="af-full"><div class="af-label">Note</div><input class="af-input" placeholder="e.g. Restocked from market..."></div>
+                      <div class="af-actions">
+                        <button class="btn-save-sm">Save</button>
+                        <button class="btn-cancel-sm" onclick="toggleAdjust('adj5',null)">Cancel</button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="detail-card">
+                    <div class="detail-card-header"><div class="detail-card-title">📋 Adjustment History</div></div>
+                    <div class="hist-list">
+                      <div class="hist-item"><div class="hi-left"><div class="hi-change out">− 3 packets</div><div class="hi-note">Sent to dye house for order #GS-1041</div></div><div class="hi-right"><div class="hi-date">16 Oct 2025</div><div class="hi-by">Uzain</div></div></div>
+                      <div class="hist-item"><div class="hi-left"><div class="hi-change in">+ 5 packets</div><div class="hi-note">Purchased from dye market</div></div><div class="hi-right"><div class="hi-date">02 Oct 2025</div><div class="hi-by">Uzain</div></div></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </td></tr>
+
+          </tbody>
+        </table>
+        <div class="table-footer">
+          <div class="showing-text">SHOWING 1–5 OF 34 ITEMS</div>
+          <div class="pagination">
+            <button class="page-btn">‹</button>
+            <button class="page-btn active">1</button>
+            <button class="page-btn">2</button>
+            <button class="page-btn">3</button>
+            <button class="page-btn">›</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+function toggleItem(id, row) {
+  const panel = document.getElementById(id);
+  const isOpen = panel.classList.contains('open');
+  document.querySelectorAll('.inv-row').forEach(r => r.classList.remove('active-row'));
+  document.querySelectorAll('.inv-detail-panel').forEach(p => p.classList.remove('open'));
+  if (!isOpen) { panel.classList.add('open'); row.classList.add('active-row'); }
+}
+
+function toggleAdjust(id, e) {
+  if (e) e.stopPropagation();
+  const form = document.getElementById(id);
+  if (form) form.classList.toggle('visible');
+}
+</script>
+</body>
+</html>

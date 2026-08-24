@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Golden Studio — Karigar Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:#FAFAF9; --bg2:#F3F1EE; --bg3:#EDEBE7;
+  --gold:#C9A961; --gold-dim:rgba(201,169,97,0.12); --gold-mid:rgba(201,169,97,0.25);
+  --error:#8B3A3A; --error-dim:rgba(139,58,58,0.10);
+  --green:#3A6B4A; --green-dim:rgba(58,107,74,0.10);
+  --text:#1C1C1C; --text-muted:#7A7671; --text-faint:#B0AAA2;
+  --border:#E4E1DB; --border-light:#EDEBE7;
+  --sidebar-bg:#1C1A18; --sidebar-text:#C8C3BB;
+  --white:#ffffff;
+  --shadow:0 1px 3px rgba(0,0,0,0.06),0 4px 12px rgba(0,0,0,0.04);
+  --shadow-lg:0 8px 32px rgba(0,0,0,0.12);
+}
+body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text); display:flex; height:100vh; overflow:hidden; }
+
+.sidebar { width:230px; min-width:230px; background:var(--sidebar-bg); display:flex; flex-direction:column; height:100vh; overflow-y:auto; flex-shrink:0; }
+.sidebar-brand { padding:28px 24px 24px; border-bottom:1px solid rgba(255,255,255,0.06); }
+.brand-name { font-family:'Playfair Display',serif; font-size:17px; font-weight:600; color:#fff; }
+.brand-sub { font-size:10px; color:var(--gold); letter-spacing:0.12em; text-transform:uppercase; margin-top:3px; font-weight:500; }
+.sidebar-section { padding:20px 0 8px; }
+.sidebar-label { font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:rgba(255,255,255,0.22); font-weight:500; padding:0 24px; margin-bottom:4px; }
+.nav-item { display:flex; align-items:center; gap:10px; padding:9px 24px; font-size:13px; color:var(--sidebar-text); cursor:pointer; transition:all 0.15s; border-left:2px solid transparent; }
+.nav-item:hover { background:rgba(255,255,255,0.04); color:#fff; }
+.nav-item.active { color:var(--gold); border-left-color:var(--gold); background:rgba(201,169,97,0.07); font-weight:500; }
+.nav-icon { width:15px; opacity:0.7; font-size:13px; }
+.nav-item.active .nav-icon { opacity:1; }
+.nav-badge { margin-left:auto; background:var(--error); color:#fff; font-size:9px; font-weight:600; padding:2px 6px; border-radius:10px; font-family:'JetBrains Mono',monospace; }
+.sidebar-bottom { margin-top:auto; padding:16px 20px; border-top:1px solid rgba(255,255,255,0.06); }
+.user-card { display:flex; align-items:center; gap:10px; }
+.user-avatar { width:30px; height:30px; border-radius:50%; background:var(--gold-mid); border:1px solid var(--gold); display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:600; color:var(--gold); }
+.user-name { font-size:12px; color:#fff; font-weight:500; }
+.user-role { font-size:10px; color:var(--sidebar-text); }
+
+.main { flex:1; display:flex; flex-direction:column; overflow:hidden; min-width:0; }
+.topbar { background:var(--bg); border-bottom:1px solid var(--border); padding:0 28px; height:56px; display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
+.breadcrumb span { color:var(--text); font-weight:500; font-size:12px; }
+.btn-gold { display:flex; align-items:center; gap:6px; background:var(--gold); border:none; border-radius:8px; padding:7px 14px; font-size:12px; font-weight:500; color:#fff; cursor:pointer; font-family:'DM Sans',sans-serif; box-shadow:0 2px 8px rgba(201,169,97,0.3); transition:all 0.15s; }
+.btn-gold:hover { background:#b8953a; }
+
+.content-area { flex:1; overflow:hidden; }
+.scroll-area { height:100%; overflow-y:auto; padding:24px 28px; }
+
+.page-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:22px; }
+.page-title { font-family:'Playfair Display',serif; font-size:34px; font-weight:500; letter-spacing:-0.01em; line-height:1; }
+.page-meta { font-size:12px; color:var(--text-muted); margin-top:6px; }
+
+/* SUMMARY CARDS */
+.summary-row { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:22px; }
+.summary-card { background:var(--white); border:1px solid var(--border); border-radius:12px; padding:16px 18px; box-shadow:var(--shadow); }
+.sc-label { font-size:10px; color:var(--text-faint); font-weight:500; letter-spacing:0.08em; text-transform:uppercase; margin-bottom:6px; }
+.sc-value { font-family:'JetBrains Mono',monospace; font-size:22px; font-weight:500; color:var(--text); }
+.sc-value.green { color:var(--green); }
+.sc-value.gold { color:#8B6914; }
+.sc-value.red { color:var(--error); }
+.sc-sub { font-size:11px; color:var(--text-faint); margin-top:3px; }
+
+/* KARIGAR TABLE */
+.karigar-table-wrap { background:var(--white); border:1px solid var(--border); border-radius:12px; overflow:hidden; box-shadow:var(--shadow); }
+.karigar-table { width:100%; border-collapse:collapse; }
+.karigar-table thead tr { background:#F5F3F0; border-bottom:1px solid var(--border); }
+.karigar-table th { padding:10px 16px; font-size:10px; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-faint); text-align:left; white-space:nowrap; }
+.karigar-table th:first-child { padding-left:20px; }
+
+.karigar-row { border-bottom:1px solid var(--border-light); cursor:pointer; transition:background 0.1s; }
+.karigar-row:hover { background:#FAFAF6; }
+.karigar-row.active-row { background:rgba(201,169,97,0.04); border-left:3px solid var(--gold); }
+.karigar-table td { padding:14px 16px; font-size:13px; vertical-align:middle; }
+.karigar-table td:first-child { padding-left:20px; }
+
+.karigar-name { font-weight:500; font-size:14px; }
+.karigar-sub { font-size:11px; color:var(--text-muted); margin-top:2px; }
+
+
+
+.expand-btn { background:none; border:none; cursor:pointer; font-size:11px; color:var(--text-faint); transition:transform 0.2s; padding:4px; }
+.karigar-row.active-row .expand-btn { transform:rotate(90deg); color:var(--gold); }
+
+/* DETAIL PANEL */
+.karigar-detail-panel { display:none; background:#FAFAF6; border-top:1px solid var(--border-light); padding:20px 24px; }
+.karigar-detail-panel.open { display:block; animation:panelIn 0.15s ease; }
+@keyframes panelIn { from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)} }
+
+.detail-cols { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+
+/* DETAIL CARD */
+.detail-card { background:var(--white); border:1px solid var(--border-light); border-radius:10px; padding:14px 16px; }
+.detail-card-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+.detail-card-title { font-size:10px; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-faint); }
+
+/* ASSIGNMENT LIST */
+.assignment-list { display:flex; flex-direction:column; gap:8px; }
+.assignment-item { background:var(--bg2); border:1px solid var(--border-light); border-radius:8px; padding:11px 13px; }
+.ai-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:5px; }
+.ai-dress { font-size:12px; font-weight:600; color:var(--text); }
+.ai-order { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--text-faint); }
+.ai-client { font-size:11px; color:var(--text-muted); margin-bottom:4px; }
+.ai-dates { display:flex; gap:14px; }
+.ai-date-item { display:flex; flex-direction:column; }
+.ai-date-label { font-size:9px; color:var(--text-faint); text-transform:uppercase; letter-spacing:0.06em; font-weight:500; }
+.ai-date-val { font-size:11px; font-family:'JetBrains Mono',monospace; font-weight:500; color:var(--text); }
+.ai-date-val.overdue { color:var(--error); }
+.no-assignments { font-size:12px; color:var(--text-faint); text-align:center; padding:16px 0; }
+
+.btn-save-sm { background:var(--gold); border:none; border-radius:6px; padding:6px 12px; font-size:11px; font-weight:600; color:#fff; cursor:pointer; font-family:'DM Sans',sans-serif; }
+.btn-cancel-sm { background:transparent; border:1px solid var(--border); border-radius:6px; padding:6px 12px; font-size:11px; color:var(--text-muted); cursor:pointer; font-family:'DM Sans',sans-serif; }
+
+/* HISTORY LIST */
+.history-list { display:flex; flex-direction:column; gap:7px; max-height:280px; overflow-y:auto; }
+.history-item { display:flex; align-items:center; justify-content:space-between; padding:9px 11px; background:var(--bg2); border:1px solid var(--border-light); border-radius:8px; }
+.hi-left { display:flex; flex-direction:column; gap:2px; }
+.hi-dress { font-size:12px; font-weight:500; color:var(--text); }
+.hi-order { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--text-faint); }
+.hi-right { display:flex; align-items:center; gap:8px; }
+.hi-date { font-size:10px; color:var(--text-faint); font-family:'JetBrains Mono',monospace; }
+.hi-done { font-size:9px; font-weight:600; padding:2px 7px; border-radius:10px; background:var(--green-dim); color:var(--green); text-transform:uppercase; }
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="brand-name">Golden Studio</div>
+    <div class="brand-sub">Production Suite</div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">Production</div>
+    <div class="nav-item"><span class="nav-icon">◈</span> Orders <span class="nav-badge">3</span></div>
+    <div class="nav-item active"><span class="nav-icon">◉</span> Karigar Dashboard</div>
+    <div class="nav-item"><span class="nav-icon">⬡</span> Design Library</div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">People</div>
+    <div class="nav-item"><span class="nav-icon">◎</span> Contacts</div>
+    <div class="nav-item"><span class="nav-icon">⬢</span> Agent Ledger</div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">Stock</div>
+    <div class="nav-item"><span class="nav-icon">▦</span> Inventory</div>
+  </div>
+  <div class="sidebar-bottom">
+    <div class="user-card">
+      <div class="user-avatar">U</div>
+      <div><div class="user-name">Uzain</div><div class="user-role">Operations Manager</div></div>
+    </div>
+  </div>
+</aside>
+
+<div class="main">
+  <div class="topbar">
+    <div class="breadcrumb"><span>Karigar Dashboard</span></div>
+    <button class="btn-gold">＋ Add Karigar</button>
+  </div>
+
+  <div class="content-area">
+    <div class="scroll-area">
+
+      <div class="page-header">
+        <div>
+          <div class="page-title">Karigar Dashboard</div>
+          <div class="page-meta">9 karigars · 8 active assignments</div>
+        </div>
+      </div>
+
+      <!-- SUMMARY -->
+      <div class="summary-row">
+        <div class="summary-card">
+          <div class="sc-label">Total Karigars</div>
+          <div class="sc-value">9</div>
+          <div class="sc-sub">Across all teams</div>
+        </div>
+        <div class="summary-card">
+          <div class="sc-label">Available Now</div>
+          <div class="sc-value green">2</div>
+          <div class="sc-sub">Ready for assignment</div>
+        </div>
+        <div class="summary-card">
+          <div class="sc-label">Active Assignments</div>
+          <div class="sc-value gold">8</div>
+          <div class="sc-sub">Dresses in handwork</div>
+        </div>
+      </div>
+
+      <!-- KARIGAR TABLE -->
+      <div class="karigar-table-wrap">
+        <table class="karigar-table">
+          <thead>
+            <tr>
+              <th>Karigar</th>
+              <th>Team Size</th>
+              <th>Active Load</th>
+              <th>Total Designs</th>
+              <th style="width:36px;"></th>
+            </tr>
+          </thead>
+          <tbody>
+
+            <!-- HAMID -->
+            <tr class="karigar-row active-row" onclick="toggleKarigar('k1',this)">
+              <td><div class="karigar-name">Ustad Hamid</div><div class="karigar-sub">+92 311 9876543</div></td>
+              <td><div style="font-size:13px;font-weight:500;">4 workers</div></td>
+              <td><div style="font-size:13px;font-weight:500;">2 dresses</div></td>
+              <td><div style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:500;">34</div></td>
+              <td><button class="expand-btn">›</button></td>
+            </tr>
+            <tr><td colspan="5" style="padding:0;">
+              <div class="karigar-detail-panel open" id="k1">
+                <div class="detail-cols">
+                  <div class="detail-card">
+                    <div class="detail-card-header"><div class="detail-card-title">🪡 Current Assignments</div></div>
+                    <div class="assignment-list">
+                      <div class="assignment-item">
+                        <div class="ai-top"><span class="ai-dress">Farshi Lehenga + Long Shirt</span><span class="ai-order">#GS-1041 · D-047</span></div>
+                        <div class="ai-client">Farah · Azra Collection</div>
+                        <div class="ai-dates">
+                          <div class="ai-date-item"><div class="ai-date-label">Sent</div><div class="ai-date-val">18 Oct</div></div>
+                          <div class="ai-date-item"><div class="ai-date-label">Expected</div><div class="ai-date-val overdue">28 Oct</div></div>
+                          <div class="ai-date-item"><div class="ai-date-label">Returned</div><div class="ai-date-val" style="color:var(--text-faint)">—</div></div>
+                        </div>
+                      </div>
+                      <div class="assignment-item">
+                        <div class="ai-top"><span class="ai-dress">Sharara Set</span><span class="ai-order">#GS-1039 · D-052</span></div>
+                        <div class="ai-client">Nadia (Size M) · Noor Fabrics</div>
+                        <div class="ai-dates">
+                          <div class="ai-date-item"><div class="ai-date-label">Sent</div><div class="ai-date-val">15 Oct</div></div>
+                          <div class="ai-date-item"><div class="ai-date-label">Expected</div><div class="ai-date-val">25 Oct</div></div>
+                          <div class="ai-date-item"><div class="ai-date-label">Returned</div><div class="ai-date-val" style="color:var(--text-faint)">—</div></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="detail-card">
+                    <div class="detail-card-header"><div class="detail-card-title">📋 Assignment History</div></div>
+                    <div class="history-list">
+                      <div class="history-item"><div class="hi-left"><div class="hi-dress">Tail Lehenga · Hina Baig</div><div class="hi-order">#GS-1033 · D-031</div></div><div class="hi-right"><div class="hi-date">05 Oct 2025</div><span class="hi-done">Done</span></div></div>
+                      <div class="history-item"><div class="hi-left"><div class="hi-dress">Bridal Maxi · Sana Tariq</div><div class="hi-order">#GS-1028 · D-028</div></div><div class="hi-right"><div class="hi-date">18 Sep 2025</div><span class="hi-done">Done</span></div></div>
+                      <div class="history-item"><div class="hi-left"><div class="hi-dress">Sharara Set · Mariam</div><div class="hi-order">#GS-1021 · D-019</div></div><div class="hi-right"><div class="hi-date">02 Aug 2025</div><span class="hi-done">Done</span></div></div>
+                      <div class="history-item"><div class="hi-left"><div class="hi-dress">Farshi Lehenga · Rabia</div><div class="hi-order">#GS-1015 · D-014</div></div><div class="hi-right"><div class="hi-date">10 Jul 2025</div><span class="hi-done">Done</span></div></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </td></tr>
+
+            <!-- RAFIQ -->
+            <tr class="karigar-row" onclick="toggleKarigar('k2',this)">
+              <td><div class="karigar-name">Ustad Rafiq</div><div class="karigar-sub">+92 300 5551234</div></td>
+              <td><div style="font-size:13px;font-weight:500;">6 workers</div></td>
+              <td><div style="font-size:13px;font-weight:500;">1 dress</div></td>
+              <td><div style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:500;">28</div></td>
+              <td><button class="expand-btn">›</button></td>
+            </tr>
+            <tr><td colspan="5" style="padding:0;">
+              <div class="karigar-detail-panel" id="k2">
+                <div class="detail-cols">
+                  <div class="detail-card">
+                    <div class="detail-card-header"><div class="detail-card-title">🪡 Current Assignments</div></div>
+                    <div class="assignment-list">
+                      <div class="assignment-item">
+                        <div class="ai-top"><span class="ai-dress">Tail Lehenga + Kurti</span><span class="ai-order">#GS-1038 · D-031</span></div>
+                        <div class="ai-client">Hina Baig · Direct Retail</div>
+                        <div class="ai-dates">
+                          <div class="ai-date-item"><div class="ai-date-label">Sent</div><div class="ai-date-val">05 Oct</div></div>
+                          <div class="ai-date-item"><div class="ai-date-label">Expected</div><div class="ai-date-val">12 Oct</div></div>
+                          <div class="ai-date-item"><div class="ai-date-label">Returned</div><div class="ai-date-val">13 Oct</div></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="detail-card">
+                    <div class="detail-card-header"><div class="detail-card-title">📋 Assignment History</div></div>
+                    <div class="history-list">
+                      <div class="history-item"><div class="hi-left"><div class="hi-dress">Farshi Lehenga · Mariam</div><div class="hi-order">#GS-1025 · D-022</div></div><div class="hi-right"><div class="hi-date">28 Sep 2025</div><span class="hi-done">Done</span></div></div>
+                      <div class="history-item"><div class="hi-left"><div class="hi-dress">Simple Maxi · Sana</div><div class="hi-order">#GS-1018 · D-015</div></div><div class="hi-right"><div class="hi-date">14 Aug 2025</div><span class="hi-done">Done</span></div></div>
+                      <div class="history-item"><div class="hi-left"><div class="hi-dress">Bridal Lehenga · Fatima</div><div class="hi-order">#GS-1011 · D-010</div></div><div class="hi-right"><div class="hi-date">30 Jun 2025</div><span class="hi-done">Done</span></div></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </td></tr>
+
+            <!-- BASHIR -->
+            <tr class="karigar-row" onclick="toggleKarigar('k3',this)">
+              <td><div class="karigar-name">Ustad Bashir</div><div class="karigar-sub">+92 322 4443300</div></td>
+              <td><div style="font-size:13px;font-weight:500;">3 workers</div></td>
+              <td><div style="font-size:13px;font-weight:500;">3 dresses</div></td>
+              <td><div style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:500;">19</div></td>
+              <td><button class="expand-btn">›</button></td>
+            </tr>
+            <tr><td colspan="5" style="padding:0;">
+              <div class="karigar-detail-panel" id="k3">
+                <div class="detail-cols">
+                  <div class="detail-card">
+                    <div class="detail-card-header"><div class="detail-card-title">🪡 Current Assignments</div></div>
+                    <div class="assignment-list">
+                      <div class="assignment-item">
+                        <div class="ai-top"><span class="ai-dress">Kurti Lehenga</span><span class="ai-order">#GS-1041 · D-053</span></div>
+                        <div class="ai-client">Sana · Azra Collection</div>
+                        <div class="ai-dates">
+                          <div class="ai-date-item"><div class="ai-date-label">Sent</div><div class="ai-date-val">16 Oct</div></div>
+                          <div class="ai-date-item"><div class="ai-date-label">Expected</div><div class="ai-date-val">26 Oct</div></div>
+                          <div class="ai-date-item"><div class="ai-date-label">Returned</div><div class="ai-date-val" style="color:var(--text-faint)">—</div></div>
+                        </div>
+                      </div>
+                      <div class="assignment-item">
+                        <div class="ai-top"><span class="ai-dress">Farshi Lehenga</span><span class="ai-order">#GS-1040 · D-048</span></div>
+                        <div class="ai-client">Fatima Malik · Direct Retail</div>
+                        <div class="ai-dates">
+                          <div class="ai-date-item"><div class="ai-date-label">Sent</div><div class="ai-date-val">12 Oct</div></div>
+                          <div class="ai-date-item"><div class="ai-date-label">Expected</div><div class="ai-date-val overdue">20 Oct</div></div>
+                          <div class="ai-date-item"><div class="ai-date-label">Returned</div><div class="ai-date-val" style="color:var(--text-faint)">—</div></div>
+                        </div>
+                      </div>
+                      <div class="assignment-item">
+                        <div class="ai-top"><span class="ai-dress">Tail Maxi</span><span class="ai-order">#GS-1039 · D-051</span></div>
+                        <div class="ai-client">Size L · Noor Fabrics</div>
+                        <div class="ai-dates">
+                          <div class="ai-date-item"><div class="ai-date-label">Sent</div><div class="ai-date-val">14 Oct</div></div>
+                          <div class="ai-date-item"><div class="ai-date-label">Expected</div><div class="ai-date-val">24 Oct</div></div>
+                          <div class="ai-date-item"><div class="ai-date-label">Returned</div><div class="ai-date-val" style="color:var(--text-faint)">—</div></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="detail-card">
+                    <div class="detail-card-header"><div class="detail-card-title">📋 Assignment History</div></div>
+                    <div class="history-list">
+                      <div class="history-item"><div class="hi-left"><div class="hi-dress">Garara Set · Hina</div><div class="hi-order">#GS-1030 · D-026</div></div><div class="hi-right"><div class="hi-date">01 Oct 2025</div><span class="hi-done">Done</span></div></div>
+                      <div class="history-item"><div class="hi-left"><div class="hi-dress">Kurti Lehenga · Sana</div><div class="hi-order">#GS-1022 · D-020</div></div><div class="hi-right"><div class="hi-date">20 Aug 2025</div><span class="hi-done">Done</span></div></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </td></tr>
+
+            <!-- SHAKEEL -->
+            <tr class="karigar-row" onclick="toggleKarigar('k4',this)">
+              <td><div class="karigar-name">Ustad Shakeel</div><div class="karigar-sub">+92 300 7778899</div></td>
+              <td><div style="font-size:13px;font-weight:500;">5 workers</div></td>
+              <td><div style="font-size:13px;font-weight:500;">0 dresses</div></td>
+              <td><div style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:500;">11</div></td>
+              <td><button class="expand-btn">›</button></td>
+            </tr>
+            <tr><td colspan="5" style="padding:0;">
+              <div class="karigar-detail-panel" id="k4">
+                <div class="detail-cols">
+                  <div class="detail-card">
+                    <div class="detail-card-header"><div class="detail-card-title">🪡 Current Assignments</div></div>
+                    <div class="assignment-list">
+                      <div class="no-assignments">No active assignments</div>
+                    </div>
+                  </div>
+                  <div class="detail-card">
+                    <div class="detail-card-header"><div class="detail-card-title">📋 Assignment History</div></div>
+                    <div class="history-list">
+                      <div class="history-item"><div class="hi-left"><div class="hi-dress">Simple Lehenga · Mariam</div><div class="hi-order">#GS-1026 · D-023</div></div><div class="hi-right"><div class="hi-date">25 Sep 2025</div><span class="hi-done">Done</span></div></div>
+                      <div class="history-item"><div class="hi-left"><div class="hi-dress">Dupatta Set · Rabia</div><div class="hi-order">#GS-1017 · D-013</div></div><div class="hi-right"><div class="hi-date">05 Aug 2025</div><span class="hi-done">Done</span></div></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </td></tr>
+
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+function toggleKarigar(id, row) {
+  const panel = document.getElementById(id);
+  const isOpen = panel.classList.contains('open');
+  document.querySelectorAll('.karigar-row').forEach(r => r.classList.remove('active-row'));
+  document.querySelectorAll('.karigar-detail-panel').forEach(p => p.classList.remove('open'));
+  if (!isOpen) { panel.classList.add('open'); row.classList.add('active-row'); }
+}
+</script>
+</body>
+</html>

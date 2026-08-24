@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Golden Studio — Contacts</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:#FAFAF9; --bg2:#F3F1EE; --bg3:#EDEBE7;
+  --gold:#C9A961; --gold-dim:rgba(201,169,97,0.12); --gold-mid:rgba(201,169,97,0.25);
+  --error:#8B3A3A; --error-dim:rgba(139,58,58,0.10);
+  --green:#3A6B4A; --green-dim:rgba(58,107,74,0.10);
+  --blue-dim:rgba(58,74,107,0.08); --blue:#3A4A6B;
+  --text:#1C1C1C; --text-muted:#7A7671; --text-faint:#B0AAA2;
+  --border:#E4E1DB; --border-light:#EDEBE7;
+  --sidebar-bg:#1C1A18; --sidebar-text:#C8C3BB;
+  --white:#ffffff;
+  --shadow:0 1px 3px rgba(0,0,0,0.06),0 4px 12px rgba(0,0,0,0.04);
+  --shadow-lg:0 8px 32px rgba(0,0,0,0.12);
+}
+body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text); display:flex; height:100vh; overflow:hidden; }
+
+/* SIDEBAR */
+.sidebar { width:230px; min-width:230px; background:var(--sidebar-bg); display:flex; flex-direction:column; height:100vh; overflow-y:auto; flex-shrink:0; }
+.sidebar-brand { padding:28px 24px 24px; border-bottom:1px solid rgba(255,255,255,0.06); }
+.brand-name { font-family:'Playfair Display',serif; font-size:17px; font-weight:600; color:#fff; }
+.brand-sub { font-size:10px; color:var(--gold); letter-spacing:0.12em; text-transform:uppercase; margin-top:3px; font-weight:500; }
+.sidebar-section { padding:20px 0 8px; }
+.sidebar-label { font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:rgba(255,255,255,0.22); font-weight:500; padding:0 24px; margin-bottom:4px; }
+.nav-item { display:flex; align-items:center; gap:10px; padding:9px 24px; font-size:13px; color:var(--sidebar-text); cursor:pointer; transition:all 0.15s; border-left:2px solid transparent; }
+.nav-item:hover { background:rgba(255,255,255,0.04); color:#fff; }
+.nav-item.active { color:var(--gold); border-left-color:var(--gold); background:rgba(201,169,97,0.07); font-weight:500; }
+.nav-icon { width:15px; opacity:0.7; font-size:13px; }
+.nav-item.active .nav-icon { opacity:1; }
+.nav-badge { margin-left:auto; background:var(--error); color:#fff; font-size:9px; font-weight:600; padding:2px 6px; border-radius:10px; font-family:'JetBrains Mono',monospace; }
+.sidebar-bottom { margin-top:auto; padding:16px 20px; border-top:1px solid rgba(255,255,255,0.06); }
+.user-card { display:flex; align-items:center; gap:10px; }
+.user-avatar { width:30px; height:30px; border-radius:50%; background:var(--gold-mid); border:1px solid var(--gold); display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:600; color:var(--gold); }
+.user-name { font-size:12px; color:#fff; font-weight:500; }
+.user-role { font-size:10px; color:var(--sidebar-text); }
+
+/* MAIN */
+.main { flex:1; display:flex; flex-direction:column; overflow:hidden; min-width:0; }
+.topbar { background:var(--bg); border-bottom:1px solid var(--border); padding:0 28px; height:56px; display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
+.breadcrumb { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-muted); }
+.breadcrumb span { color:var(--text); font-weight:500; }
+.topbar-right { display:flex; align-items:center; gap:8px; }
+.btn-gold { display:flex; align-items:center; gap:6px; background:var(--gold); border:none; border-radius:8px; padding:7px 14px; font-size:12px; font-weight:500; color:#fff; cursor:pointer; font-family:'DM Sans',sans-serif; box-shadow:0 2px 8px rgba(201,169,97,0.3); transition:all 0.15s; }
+.btn-gold:hover { background:#b8953a; }
+
+/* SCROLL */
+.content-area { flex:1; overflow:hidden; }
+.scroll-area { height:100%; overflow-y:auto; padding:24px 28px; }
+
+/* PAGE HEADER */
+.page-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:22px; }
+.page-title { font-family:'Playfair Display',serif; font-size:34px; font-weight:500; letter-spacing:-0.01em; line-height:1; }
+.page-meta { font-size:12px; color:var(--text-muted); margin-top:6px; }
+
+/* SEARCH + TABS ROW */
+.controls-row { display:flex; align-items:center; gap:12px; margin-bottom:18px; }
+.search-wrap { flex:1; max-width:320px; position:relative; }
+.search-input { width:100%; padding:8px 12px 8px 34px; background:var(--white); border:1px solid var(--border); border-radius:9px; font-size:13px; font-family:'DM Sans',sans-serif; color:var(--text); outline:none; transition:border-color 0.15s; }
+.search-input:focus { border-color:var(--gold); }
+.search-icon { position:absolute; left:11px; top:50%; transform:translateY(-50%); font-size:13px; color:var(--text-faint); pointer-events:none; }
+
+/* TABS */
+.tab-row { display:flex; border-bottom:1px solid var(--border); margin-bottom:20px; }
+.tab { padding:9px 18px 11px; font-size:13px; font-weight:400; color:var(--text-muted); cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; transition:all 0.15s; display:flex; align-items:center; gap:7px; white-space:nowrap; }
+.tab:hover { color:var(--text); }
+.tab.active { color:var(--text); font-weight:500; border-bottom-color:var(--gold); }
+.tab-count { font-size:10px; font-family:'JetBrains Mono',monospace; background:var(--bg2); border:1px solid var(--border); color:var(--text-muted); padding:1px 6px; border-radius:10px; }
+.tab.active .tab-count { background:var(--gold-dim); border-color:var(--gold-mid); color:#8B6914; }
+
+/* CONTACT TABLE */
+.contact-table-wrap { background:var(--white); border:1px solid var(--border); border-radius:12px; overflow:hidden; box-shadow:var(--shadow); }
+.contact-table { width:100%; border-collapse:collapse; }
+.contact-table thead tr { background:#F5F3F0; border-bottom:1px solid var(--border); }
+.contact-table th { padding:10px 16px; font-size:10px; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-faint); text-align:left; white-space:nowrap; }
+.contact-table th:first-child { padding-left:20px; }
+.contact-row { border-bottom:1px solid var(--border-light); cursor:pointer; transition:background 0.1s; }
+.contact-row:last-child { border-bottom:none; }
+.contact-row:hover { background:#FAFAF6; }
+.contact-row.selected { background:rgba(201,169,97,0.05); border-left:3px solid var(--gold); }
+.contact-table td { padding:13px 16px; font-size:13px; vertical-align:middle; }
+.contact-table td:first-child { padding-left:20px; }
+
+/* CONTACT AVATAR */
+.contact-avatar { width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:600; font-family:'Playfair Display',serif; flex-shrink:0; }
+.avatar-retail { background:var(--green-dim); color:var(--green); border:1px solid rgba(58,107,74,0.2); }
+.avatar-agent { background:var(--gold-dim); color:#8B6914; border:1px solid var(--gold-mid); }
+.avatar-vendor { background:var(--blue-dim); color:var(--blue); border:1px solid rgba(58,74,107,0.2); }
+.avatar-karigar { background:var(--error-dim); color:var(--error); border:1px solid rgba(139,58,58,0.2); }
+
+.contact-name-cell { display:flex; align-items:center; gap:10px; }
+.contact-name { font-weight:500; font-size:13px; }
+.contact-sub { font-size:11px; color:var(--text-muted); margin-top:2px; }
+
+.order-count-badge { font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:500; background:var(--bg2); border:1px solid var(--border); padding:3px 9px; border-radius:20px; display:inline-block; color:var(--text); }
+
+.balance-cell { font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:500; }
+.balance-cell.owed { color:var(--error); }
+.balance-cell.clear { color:var(--green); }
+.balance-cell.na { color:var(--text-faint); }
+
+.type-badge { display:inline-flex; align-items:center; padding:3px 9px; border-radius:20px; font-size:10px; font-weight:600; letter-spacing:0.05em; text-transform:uppercase; }
+.type-badge.retail { background:var(--green-dim); color:var(--green); border:1px solid rgba(58,107,74,0.18); }
+.type-badge.agent { background:var(--gold-dim); color:#8B6914; border:1px solid var(--gold-mid); }
+.type-badge.vendor { background:var(--blue-dim); color:var(--blue); border:1px solid rgba(58,74,107,0.2); }
+.type-badge.karigar { background:var(--error-dim); color:var(--error); border:1px solid rgba(139,58,58,0.18); }
+
+.avail-dot { width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:5px; }
+.avail-dot.free { background:var(--green); }
+.avail-dot.busy { background:var(--gold); }
+.avail-dot.full { background:var(--error); }
+
+/* TABLE FOOTER */
+.table-footer { display:flex; align-items:center; justify-content:space-between; padding:12px 20px; background:#FAFAF8; border-top:1px solid var(--border-light); }
+.showing-text { font-size:11px; color:var(--text-faint); font-family:'JetBrains Mono',monospace; }
+.pagination { display:flex; align-items:center; gap:4px; }
+.page-btn { width:28px; height:28px; border-radius:6px; border:1px solid var(--border); background:#fff; font-size:12px; color:var(--text-muted); cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.12s; font-family:'DM Sans',sans-serif; }
+.page-btn:hover { border-color:var(--gold); color:var(--text); }
+.page-btn.active { background:var(--gold); border-color:var(--gold); color:#fff; font-weight:600; }
+
+/* DETAIL DRAWER */
+.drawer-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.15); z-index:200; backdrop-filter:blur(2px); }
+.drawer-overlay.open { display:block; }
+.detail-drawer { position:fixed; top:0; right:-480px; width:480px; height:100vh; background:var(--white); border-left:1px solid var(--border); box-shadow:var(--shadow-lg); z-index:201; display:flex; flex-direction:column; transition:right 0.25s cubic-bezier(0.4,0,0.2,1); }
+.detail-drawer.open { right:0; }
+.drawer-header { padding:20px 24px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
+.drawer-header-left { display:flex; align-items:center; gap:12px; }
+.drawer-avatar { width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:600; font-family:'Playfair Display',serif; flex-shrink:0; }
+.drawer-name { font-family:'Playfair Display',serif; font-size:18px; font-weight:500; }
+.drawer-type { font-size:11px; color:var(--text-muted); margin-top:2px; }
+.drawer-close { width:28px; height:28px; border-radius:8px; border:1px solid var(--border); background:transparent; cursor:pointer; font-size:16px; color:var(--text-muted); display:flex; align-items:center; justify-content:center; }
+.drawer-close:hover { background:var(--bg2); }
+.drawer-body { flex:1; overflow-y:auto; padding:20px 24px; }
+
+/* DRAWER CONTENT */
+.drawer-info-grid { display:grid; grid-template-columns:1fr 1fr; gap:0; border:1px solid var(--border-light); border-radius:10px; overflow:hidden; margin-bottom:20px; }
+.drawer-info-cell { padding:12px 16px; border-right:1px solid var(--border-light); border-bottom:1px solid var(--border-light); }
+.drawer-info-cell:nth-child(even) { border-right:none; }
+.drawer-info-cell:nth-last-child(-n+2) { border-bottom:none; }
+.di-label { font-size:10px; color:var(--text-faint); font-weight:500; letter-spacing:0.08em; text-transform:uppercase; margin-bottom:4px; }
+.di-value { font-size:13px; color:var(--text); font-weight:500; }
+.di-value.link { color:var(--gold); cursor:pointer; }
+.di-value.link:hover { text-decoration:underline; }
+
+.drawer-section-title { font-size:11px; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-faint); margin-bottom:10px; margin-top:20px; }
+
+/* STATS ROW */
+.stats-row { display:flex; gap:10px; margin-bottom:20px; }
+.stat-box { flex:1; background:var(--bg2); border:1px solid var(--border-light); border-radius:9px; padding:12px 14px; }
+.stat-label { font-size:10px; color:var(--text-faint); font-weight:500; letter-spacing:0.08em; text-transform:uppercase; margin-bottom:4px; }
+.stat-value { font-family:'JetBrains Mono',monospace; font-size:16px; font-weight:500; color:var(--text); }
+.stat-value.red { color:var(--error); }
+.stat-value.green { color:var(--green); }
+.stat-value.gold { color:#8B6914; }
+
+/* ORDER HISTORY IN DRAWER */
+.order-history { display:flex; flex-direction:column; gap:7px; }
+.order-history-item { display:flex; align-items:center; justify-content:space-between; padding:10px 12px; background:var(--bg2); border:1px solid var(--border-light); border-radius:8px; cursor:pointer; transition:background 0.1s; }
+.order-history-item:hover { background:var(--bg3); }
+.ohi-left { display:flex; flex-direction:column; gap:2px; }
+.ohi-id { font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:500; color:var(--text); }
+.ohi-desc { font-size:11px; color:var(--text-muted); }
+.ohi-right { display:flex; align-items:center; gap:8px; }
+.ohi-date { font-size:10px; color:var(--text-faint); font-family:'JetBrains Mono',monospace; }
+.ohi-status { font-size:9px; font-weight:600; padding:2px 7px; border-radius:10px; text-transform:uppercase; letter-spacing:0.05em; }
+.ohi-status.on-track { background:var(--green-dim); color:var(--green); }
+.ohi-status.completed { background:#F0EFED; color:#6B6560; }
+.ohi-status.delayed { background:var(--error-dim); color:var(--error); }
+.ohi-status.pending { background:var(--gold-dim); color:#8B6914; }
+
+/* KARIGAR ASSIGNMENT LIST */
+.assignment-list { display:flex; flex-direction:column; gap:7px; }
+.assignment-item { padding:10px 12px; background:var(--bg2); border:1px solid var(--border-light); border-radius:8px; }
+.ai-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:4px; }
+.ai-dress { font-size:12px; font-weight:500; }
+.ai-order { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--text-faint); }
+.ai-dates { font-size:10px; color:var(--text-muted); }
+
+/* VENDOR UNDER AGENT */
+.vendor-list { display:flex; flex-direction:column; gap:6px; }
+.vendor-chip { display:flex; align-items:center; justify-content:space-between; padding:9px 12px; background:var(--bg2); border:1px solid var(--border-light); border-radius:8px; }
+.vc-name { font-size:12px; font-weight:500; }
+.vc-orders { font-size:11px; color:var(--text-muted); }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="brand-name">Golden Studio</div>
+    <div class="brand-sub">Production Suite</div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">Production</div>
+    <div class="nav-item"><span class="nav-icon">◈</span> Orders <span class="nav-badge">3</span></div>
+    <div class="nav-item"><span class="nav-icon">◉</span> Karigar Dashboard</div>
+    <div class="nav-item"><span class="nav-icon">⬡</span> Design Library</div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">People</div>
+    <div class="nav-item active"><span class="nav-icon">◎</span> Contacts</div>
+    <div class="nav-item"><span class="nav-icon">⬢</span> Agent Ledger</div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">Stock</div>
+    <div class="nav-item"><span class="nav-icon">▦</span> Inventory</div>
+  </div>
+  <div class="sidebar-bottom">
+    <div class="user-card">
+      <div class="user-avatar">U</div>
+      <div><div class="user-name">Uzain</div><div class="user-role">Operations Manager</div></div>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="topbar">
+    <div class="breadcrumb"><span>Contacts</span></div>
+    <div class="topbar-right">
+      <button class="btn-gold">＋ Add Contact</button>
+    </div>
+  </div>
+
+  <div class="content-area">
+    <div class="scroll-area">
+
+      <div class="page-header">
+        <div>
+          <div class="page-title">Contacts</div>
+          <div class="page-meta">47 total contacts across all types</div>
+        </div>
+      </div>
+
+      <!-- SEARCH + TABS -->
+      <div class="controls-row">
+        <div class="search-wrap">
+          <span class="search-icon">⌕</span>
+          <input class="search-input" placeholder="Search by name, phone, city...">
+        </div>
+      </div>
+
+      <div class="tab-row">
+        <div class="tab active" onclick="switchTab('retail',this)">Retail Clients <span class="tab-count">28</span></div>
+        <div class="tab" onclick="switchTab('agents',this)">Agents <span class="tab-count">3</span></div>
+        <div class="tab" onclick="switchTab('vendors',this)">Vendors <span class="tab-count">7</span></div>
+        <div class="tab" onclick="switchTab('karigars',this)">Karigars <span class="tab-count">9</span></div>
+      </div>
+
+      <!-- RETAIL CLIENTS TAB -->
+      <div id="tab-retail">
+        <div class="contact-table-wrap">
+          <table class="contact-table">
+            <thead>
+              <tr>
+                <th>Client</th>
+                <th>Phone</th>
+                <th>City</th>
+                <th>Orders</th>
+                <th>Last Order</th>
+                <th>Balance</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="contact-row" onclick="openDrawer('retail','Fatima Malik','FM')">
+                <td><div class="contact-name-cell"><div class="contact-avatar avatar-retail">F</div><div><div class="contact-name">Fatima Malik</div><div class="contact-sub">Walk-in client</div></div></div></td>
+                <td><div class="contact-sub">+92 321 5550001</div></td>
+                <td><div class="contact-sub">Faisalabad</div></td>
+                <td><span class="order-count-badge">4</span></td>
+                <td><div class="contact-sub">08 Oct 2025</div></td>
+                <td><div class="balance-cell owed">PKR 120,000</div></td>
+              </tr>
+              <tr class="contact-row" onclick="openDrawer('retail','Hina Baig','HB')">
+                <td><div class="contact-name-cell"><div class="contact-avatar avatar-retail">H</div><div><div class="contact-name">Hina Baig</div><div class="contact-sub">Walk-in client</div></div></div></td>
+                <td><div class="contact-sub">+92 321 5556789</div></td>
+                <td><div class="contact-sub">Faisalabad</div></td>
+                <td><span class="order-count-badge">3</span></td>
+                <td><div class="contact-sub">28 Sep 2025</div></td>
+                <td><div class="balance-cell owed">PKR 50,000</div></td>
+              </tr>
+              <tr class="contact-row" onclick="openDrawer('retail','Sana Tariq','ST')">
+                <td><div class="contact-name-cell"><div class="contact-avatar avatar-retail">S</div><div><div class="contact-name">Sana Tariq</div><div class="contact-sub">Referral</div></div></div></td>
+                <td><div class="contact-sub">+92 300 5552233</div></td>
+                <td><div class="contact-sub">Lahore</div></td>
+                <td><span class="order-count-badge">2</span></td>
+                <td><div class="contact-sub">15 Sep 2025</div></td>
+                <td><div class="balance-cell clear">Cleared</div></td>
+              </tr>
+              <tr class="contact-row" onclick="openDrawer('retail','Rabia Hussain','RH')">
+                <td><div class="contact-name-cell"><div class="contact-avatar avatar-retail">R</div><div><div class="contact-name">Rabia Hussain</div><div class="contact-sub">Walk-in client</div></div></div></td>
+                <td><div class="contact-sub">+92 333 5559900</div></td>
+                <td><div class="contact-sub">Faisalabad</div></td>
+                <td><span class="order-count-badge">1</span></td>
+                <td><div class="contact-sub">15 Sep 2025</div></td>
+                <td><div class="balance-cell owed">PKR 15,000</div></td>
+              </tr>
+              <tr class="contact-row" onclick="openDrawer('retail','Mariam Aslam','MA')">
+                <td><div class="contact-name-cell"><div class="contact-avatar avatar-retail">M</div><div><div class="contact-name">Mariam Aslam</div><div class="contact-sub">Referral</div></div></div></td>
+                <td><div class="contact-sub">+92 311 5554400</div></td>
+                <td><div class="contact-sub">Sargodha</div></td>
+                <td><span class="order-count-badge">6</span></td>
+                <td><div class="contact-sub">01 Oct 2025</div></td>
+                <td><div class="balance-cell clear">Cleared</div></td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="table-footer">
+            <div class="showing-text">SHOWING 1–5 OF 28</div>
+            <div class="pagination">
+              <button class="page-btn">‹</button>
+              <button class="page-btn active">1</button>
+              <button class="page-btn">2</button>
+              <button class="page-btn">3</button>
+              <button class="page-btn">›</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- AGENTS TAB -->
+      <div id="tab-agents" style="display:none;">
+        <div class="contact-table-wrap">
+          <table class="contact-table">
+            <thead>
+              <tr>
+                <th>Agent</th>
+                <th>Phone</th>
+                <th>Vendors</th>
+                <th>Total Orders</th>
+                <th>Outstanding Balance</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="contact-row" onclick="openDrawer('agent','Kamran Riaz','KR')">
+                <td><div class="contact-name-cell"><div class="contact-avatar avatar-agent">K</div><div><div class="contact-name">Kamran Riaz</div><div class="contact-sub">3 vendors under management</div></div></div></td>
+                <td><div class="contact-sub">+92 300 1234567</div></td>
+                <td><div class="contact-sub">Azra Collection, Noor Fabrics, Zara Boutique</div></td>
+                <td><span class="order-count-badge">18</span></td>
+                <td><div class="balance-cell owed">PKR 135,000</div></td>
+              </tr>
+              <tr class="contact-row" onclick="openDrawer('agent','Sadia Pervaiz','SP')">
+                <td><div class="contact-name-cell"><div class="contact-avatar avatar-agent">S</div><div><div class="contact-name">Sadia Pervaiz</div><div class="contact-sub">2 vendors under management</div></div></div></td>
+                <td><div class="contact-sub">+92 312 9876543</div></td>
+                <td><div class="contact-sub">Noor Fabrics, Hira Threads</div></td>
+                <td><span class="order-count-badge">11</span></td>
+                <td><div class="balance-cell owed">PKR 60,000</div></td>
+              </tr>
+              <tr class="contact-row" onclick="openDrawer('agent','Ali Hassan','AH')">
+                <td><div class="contact-name-cell"><div class="contact-avatar avatar-agent">A</div><div><div class="contact-name">Ali Hassan</div><div class="contact-sub">1 vendor + direct clients</div></div></div></td>
+                <td><div class="contact-sub">+92 345 1112233</div></td>
+                <td><div class="contact-sub">Zahra Garments</div></td>
+                <td><span class="order-count-badge">6</span></td>
+                <td><div class="balance-cell clear">Cleared</div></td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="table-footer">
+            <div class="showing-text">SHOWING 1–3 OF 3</div>
+            <div class="pagination">
+              <button class="page-btn active">1</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- VENDORS TAB -->
+      <div id="tab-vendors" style="display:none;">
+        <div class="contact-table-wrap">
+          <table class="contact-table">
+            <thead>
+              <tr>
+                <th>Vendor</th>
+                <th>City</th>
+                <th>Agent</th>
+                <th>Type</th>
+                <th>Total Orders</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="contact-row" onclick="openDrawer('vendor','Azra Collection','AC')">
+                <td><div class="contact-name-cell"><div class="contact-avatar avatar-vendor">A</div><div><div class="contact-name">Azra Collection</div><div class="contact-sub">Make-to-order</div></div></div></td>
+                <td><div class="contact-sub">Karachi → Abroad</div></td>
+                <td><div class="contact-sub">Kamran Riaz</div></td>
+                <td><span class="type-badge vendor">Wholesale</span></td>
+                <td><span class="order-count-badge">12</span></td>
+              </tr>
+              <tr class="contact-row" onclick="openDrawer('vendor','Noor Fabrics','NF')">
+                <td><div class="contact-name-cell"><div class="contact-avatar avatar-vendor">N</div><div><div class="contact-name">Noor Fabrics</div><div class="contact-sub">Make-to-order + stock</div></div></div></td>
+                <td><div class="contact-sub">Lahore → Abroad</div></td>
+                <td><div class="contact-sub">Kamran Riaz / Sadia Pervaiz</div></td>
+                <td><span class="type-badge vendor">Wholesale</span></td>
+                <td><span class="order-count-badge">9</span></td>
+              </tr>
+              <tr class="contact-row" onclick="openDrawer('vendor','Zara Boutique','ZB')">
+                <td><div class="contact-name-cell"><div class="contact-avatar avatar-vendor">Z</div><div><div class="contact-name">Zara Boutique</div><div class="contact-sub">Direct vendor</div></div></div></td>
+                <td><div class="contact-sub">Faisalabad</div></td>
+                <td><div class="contact-sub">—</div></td>
+                <td><span class="type-badge retail">Direct</span></td>
+                <td><span class="order-count-badge">7</span></td>
+              </tr>
+              <tr class="contact-row" onclick="openDrawer('vendor','Hira Threads','HT')">
+                <td><div class="contact-name-cell"><div class="contact-avatar avatar-vendor">H</div><div><div class="contact-name">Hira Threads</div><div class="contact-sub">Stock orders only</div></div></div></td>
+                <td><div class="contact-sub">Islamabad → Abroad</div></td>
+                <td><div class="contact-sub">Sadia Pervaiz</div></td>
+                <td><span class="type-badge vendor">Wholesale</span></td>
+                <td><span class="order-count-badge">5</span></td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="table-footer">
+            <div class="showing-text">SHOWING 1–4 OF 7</div>
+            <div class="pagination">
+              <button class="page-btn active">1</button>
+              <button class="page-btn">2</button>
+              <button class="page-btn">›</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- KARIGARS TAB -->
+      <div id="tab-karigars" style="display:none;">
+        <div class="contact-table-wrap">
+          <table class="contact-table">
+            <thead>
+              <tr>
+                <th>Karigar</th>
+                <th>Phone</th>
+                <th>Team Size</th>
+                <th>Active Assignments</th>
+                <th>Availability</th>
+                <th>Total Designs Done</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="contact-row" onclick="openDrawer('karigar','Ustad Hamid','UH')">
+                <td><div class="contact-name-cell"><div class="contact-avatar avatar-karigar">H</div><div><div class="contact-name">Ustad Hamid</div><div class="contact-sub">Lead karigar</div></div></div></td>
+                <td><div class="contact-sub">+92 311 9876543</div></td>
+                <td><div class="contact-sub">4 workers</div></td>
+                <td><span class="order-count-badge">2</span></td>
+                <td><span style="font-size:12px;"><span class="avail-dot busy"></span>Moderate</span></td>
+                <td><span class="order-count-badge">34</span></td>
+              </tr>
+              <tr class="contact-row" onclick="openDrawer('karigar','Ustad Rafiq','UR')">
+                <td><div class="contact-name-cell"><div class="contact-avatar avatar-karigar">R</div><div><div class="contact-name">Ustad Rafiq</div><div class="contact-sub">Senior karigar</div></div></div></td>
+                <td><div class="contact-sub">+92 300 5551234</div></td>
+                <td><div class="contact-sub">6 workers</div></td>
+                <td><span class="order-count-badge">1</span></td>
+                <td><span style="font-size:12px;"><span class="avail-dot free"></span>Available</span></td>
+                <td><span class="order-count-badge">28</span></td>
+              </tr>
+              <tr class="contact-row" onclick="openDrawer('karigar','Ustad Bashir','UB')">
+                <td><div class="contact-name-cell"><div class="contact-avatar avatar-karigar">B</div><div><div class="contact-name">Ustad Bashir</div><div class="contact-sub">Karigar</div></div></div></td>
+                <td><div class="contact-sub">+92 322 4443300</div></td>
+                <td><div class="contact-sub">3 workers</div></td>
+                <td><span class="order-count-badge">3</span></td>
+                <td><span style="font-size:12px;"><span class="avail-dot full"></span>At capacity</span></td>
+                <td><span class="order-count-badge">19</span></td>
+              </tr>
+              <tr class="contact-row" onclick="openDrawer('karigar','Ustad Shakeel','US')">
+                <td><div class="contact-name-cell"><div class="contact-avatar avatar-karigar">S</div><div><div class="contact-name">Ustad Shakeel</div><div class="contact-sub">Karigar</div></div></div></td>
+                <td><div class="contact-sub">+92 300 7778899</div></td>
+                <td><div class="contact-sub">5 workers</div></td>
+                <td><span class="order-count-badge">0</span></td>
+                <td><span style="font-size:12px;"><span class="avail-dot free"></span>Available</span></td>
+                <td><span class="order-count-badge">11</span></td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="table-footer">
+            <div class="showing-text">SHOWING 1–4 OF 9</div>
+            <div class="pagination">
+              <button class="page-btn active">1</button>
+              <button class="page-btn">2</button>
+              <button class="page-btn">›</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- DRAWER OVERLAY -->
+<div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
+
+<!-- DETAIL DRAWER -->
+<div class="detail-drawer" id="detailDrawer">
+  <div class="drawer-header">
+    <div class="drawer-header-left">
+      <div class="drawer-avatar" id="drawerAvatar"></div>
+      <div>
+        <div class="drawer-name" id="drawerName"></div>
+        <div class="drawer-type" id="drawerType"></div>
+      </div>
+    </div>
+    <button class="drawer-close" onclick="closeDrawer()">×</button>
+  </div>
+  <div class="drawer-body" id="drawerBody"></div>
+</div>
+
+<script>
+function switchTab(tab, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  ['retail','agents','vendors','karigars'].forEach(t => {
+    document.getElementById('tab-'+t).style.display = t === tab ? 'block' : 'none';
+  });
+}
+
+function closeDrawer() {
+  document.getElementById('detailDrawer').classList.remove('open');
+  document.getElementById('drawerOverlay').classList.remove('open');
+  document.querySelectorAll('.contact-row.selected').forEach(r => r.classList.remove('selected'));
+}
+
+function openDrawer(type, name, initials) {
+  document.querySelectorAll('.contact-row.selected').forEach(r => r.classList.remove('selected'));
+  event.currentTarget.classList.add('selected');
+
+  const avatarEl = document.getElementById('drawerAvatar');
+  const nameEl = document.getElementById('drawerName');
+  const typeEl = document.getElementById('drawerType');
+  const bodyEl = document.getElementById('drawerBody');
+
+  nameEl.textContent = name;
+  avatarEl.textContent = initials.slice(0,1);
+
+  const avatarClasses = { retail:'avatar-retail', agent:'avatar-agent', vendor:'avatar-vendor', karigar:'avatar-karigar' };
+  avatarEl.className = 'drawer-avatar ' + (avatarClasses[type] || 'avatar-retail');
+
+  const typeLabels = { retail:'Direct Retail Client', agent:'Freelance Agent', vendor:'Wholesale Vendor', karigar:'Hand Embellishment Worker' };
+  typeEl.textContent = typeLabels[type] || '';
+
+  bodyEl.innerHTML = getDrawerContent(type, name);
+
+  document.getElementById('detailDrawer').classList.add('open');
+  document.getElementById('drawerOverlay').classList.add('open');
+}
+
+function getDrawerContent(type, name) {
+  if (type === 'retail') return `
+    <div class="drawer-info-grid">
+      <div class="drawer-info-cell"><div class="di-label">Phone</div><div class="di-value">+92 321 5550001</div></div>
+      <div class="drawer-info-cell"><div class="di-label">City</div><div class="di-value">Faisalabad</div></div>
+      <div class="drawer-info-cell"><div class="di-label">First Order</div><div class="di-value">12 Jan 2024</div></div>
+      <div class="drawer-info-cell"><div class="di-label">Source</div><div class="di-value">Walk-in</div></div>
+    </div>
+    <div class="stats-row">
+      <div class="stat-box"><div class="stat-label">Total Orders</div><div class="stat-value">4</div></div>
+      <div class="stat-box"><div class="stat-label">Total Value</div><div class="stat-value gold">PKR 3.2L</div></div>
+      <div class="stat-box"><div class="stat-label">Balance Due</div><div class="stat-value red">PKR 1.2L</div></div>
+    </div>
+    <div class="drawer-section-title">Last Measurements</div>
+    <div style="background:var(--bg2);border:1px solid var(--border-light);border-radius:9px;padding:12px 14px;margin-bottom:20px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+        <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border-light);"><span style="font-size:11px;color:var(--text-muted);">Bust</span><span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500;">38"</span></div>
+        <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border-light);"><span style="font-size:11px;color:var(--text-muted);">Waist</span><span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500;">32"</span></div>
+        <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border-light);"><span style="font-size:11px;color:var(--text-muted);">Hips</span><span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500;">40"</span></div>
+        <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border-light);"><span style="font-size:11px;color:var(--text-muted);">Shoulder</span><span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500;">14"</span></div>
+        <div style="display:flex;justify-content:space-between;padding:3px 0;"><span style="font-size:11px;color:var(--text-muted);">Shirt Length</span><span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500;">42"</span></div>
+        <div style="display:flex;justify-content:space-between;padding:3px 0;"><span style="font-size:11px;color:var(--text-muted);">Sleeve</span><span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500;">24"</span></div>
+      </div>
+      <div style="margin-top:8px;font-size:10px;color:var(--text-faint);">From Order #GS-1040 · Standard Fit</div>
+    </div>
+    <div class="drawer-section-title">Order History</div>
+    <div class="order-history">
+      <div class="order-history-item"><div class="ohi-left"><div class="ohi-id">#GS-1040</div><div class="ohi-desc">Bridal · 3 dresses</div></div><div class="ohi-right"><div class="ohi-date">08 Oct 2025</div><span class="ohi-status delayed">Delayed</span></div></div>
+      <div class="order-history-item"><div class="ohi-left"><div class="ohi-id">#GS-1028</div><div class="ohi-desc">Party wear · 2 dresses</div></div><div class="ohi-right"><div class="ohi-date">12 Jul 2025</div><span class="ohi-status completed">Completed</span></div></div>
+      <div class="order-history-item"><div class="ohi-left"><div class="ohi-id">#GS-1015</div><div class="ohi-desc">Nikkah wear · 1 dress</div></div><div class="ohi-right"><div class="ohi-date">03 Mar 2025</div><span class="ohi-status completed">Completed</span></div></div>
+      <div class="order-history-item"><div class="ohi-left"><div class="ohi-id">#GS-0998</div><div class="ohi-desc">Formal · 2 dresses</div></div><div class="ohi-right"><div class="ohi-date">20 Jan 2024</div><span class="ohi-status completed">Completed</span></div></div>
+    </div>`;
+
+  if (type === 'agent') return `
+    <div class="drawer-info-grid">
+      <div class="drawer-info-cell"><div class="di-label">Phone</div><div class="di-value">+92 300 1234567</div></div>
+      <div class="drawer-info-cell"><div class="di-label">Active Since</div><div class="di-value">Jan 2024</div></div>
+      <div class="drawer-info-cell"><div class="di-label">Vendors</div><div class="di-value">3 active</div></div>
+      <div class="drawer-info-cell"><div class="di-label">Direct Clients</div><div class="di-value">2 active</div></div>
+    </div>
+    <div class="stats-row">
+      <div class="stat-box"><div class="stat-label">Total Orders</div><div class="stat-value">18</div></div>
+      <div class="stat-box"><div class="stat-label">Total Value</div><div class="stat-value gold">PKR 8.1L</div></div>
+      <div class="stat-box"><div class="stat-label">Outstanding</div><div class="stat-value red">PKR 1.35L</div></div>
+    </div>
+    <div class="drawer-section-title">Vendors Under This Agent</div>
+    <div class="vendor-list" style="margin-bottom:20px;">
+      <div class="vendor-chip"><span class="vc-name">Azra Collection</span><span class="vc-orders">12 orders</span></div>
+      <div class="vendor-chip"><span class="vc-name">Noor Fabrics</span><span class="vc-orders">4 orders</span></div>
+      <div class="vendor-chip"><span class="vc-name">Zara Boutique</span><span class="vc-orders">2 orders</span></div>
+    </div>
+    <div class="drawer-section-title">Recent Orders</div>
+    <div class="order-history">
+      <div class="order-history-item"><div class="ohi-left"><div class="ohi-id">#GS-1041</div><div class="ohi-desc">Azra Collection · 6 dresses</div></div><div class="ohi-right"><div class="ohi-date">12 Oct 2025</div><span class="ohi-status on-track">On Track</span></div></div>
+      <div class="order-history-item"><div class="ohi-left"><div class="ohi-id">#GS-1039</div><div class="ohi-desc">Noor Fabrics · 12 dresses</div></div><div class="ohi-right"><div class="ohi-date">01 Oct 2025</div><span class="ohi-status pending">Pending</span></div></div>
+      <div class="order-history-item"><div class="ohi-left"><div class="ohi-id">#GS-1031</div><div class="ohi-desc">Azra Collection · 4 dresses</div></div><div class="ohi-right"><div class="ohi-date">10 Sep 2025</div><span class="ohi-status completed">Completed</span></div></div>
+    </div>`;
+
+  if (type === 'vendor') return `
+    <div class="drawer-info-grid">
+      <div class="drawer-info-cell"><div class="di-label">City</div><div class="di-value">Karachi → Abroad</div></div>
+      <div class="drawer-info-cell"><div class="di-label">Agent</div><div class="di-value link">Kamran Riaz</div></div>
+      <div class="drawer-info-cell"><div class="di-label">Order Type</div><div class="di-value">Make-to-order</div></div>
+      <div class="drawer-info-cell"><div class="di-label">Active Since</div><div class="di-value">Mar 2024</div></div>
+    </div>
+    <div class="stats-row">
+      <div class="stat-box"><div class="stat-label">Total Orders</div><div class="stat-value">12</div></div>
+      <div class="stat-box"><div class="stat-label">Total Value</div><div class="stat-value gold">PKR 5.4L</div></div>
+      <div class="stat-box"><div class="stat-label">Avg. Order</div><div class="stat-value">PKR 45K</div></div>
+    </div>
+    <div style="padding:10px 14px;background:var(--bg2);border:1px solid var(--border-light);border-radius:9px;margin-bottom:20px;font-size:12px;color:var(--text-muted);">
+      💡 Payments tracked in Agent Ledger under <strong style="color:var(--gold);">Kamran Riaz</strong>
+    </div>
+    <div class="drawer-section-title">Order History</div>
+    <div class="order-history">
+      <div class="order-history-item"><div class="ohi-left"><div class="ohi-id">#GS-1041</div><div class="ohi-desc">6 dresses · Bridal + Party</div></div><div class="ohi-right"><div class="ohi-date">12 Oct 2025</div><span class="ohi-status on-track">On Track</span></div></div>
+      <div class="order-history-item"><div class="ohi-left"><div class="ohi-id">#GS-1031</div><div class="ohi-desc">4 dresses · Bridal</div></div><div class="ohi-right"><div class="ohi-date">10 Sep 2025</div><span class="ohi-status completed">Completed</span></div></div>
+      <div class="order-history-item"><div class="ohi-left"><div class="ohi-id">#GS-1019</div><div class="ohi-desc">3 dresses · Formal</div></div><div class="ohi-right"><div class="ohi-date">15 Jul 2025</div><span class="ohi-status completed">Completed</span></div></div>
+    </div>`;
+
+  if (type === 'karigar') return `
+    <div class="drawer-info-grid">
+      <div class="drawer-info-cell"><div class="di-label">Phone</div><div class="di-value">+92 311 9876543</div></div>
+      <div class="drawer-info-cell"><div class="di-label">Team Size</div><div class="di-value">4 workers</div></div>
+      <div class="drawer-info-cell"><div class="di-label">Active Assignments</div><div class="di-value">2 dresses</div></div>
+      <div class="drawer-info-cell"><div class="di-label">Availability</div><div class="di-value"><span class="avail-dot busy" style="display:inline-block;"></span> Moderate</div></div>
+    </div>
+    <div class="stats-row">
+      <div class="stat-box"><div class="stat-label">Total Designs</div><div class="stat-value">34</div></div>
+      <div class="stat-box"><div class="stat-label">This Month</div><div class="stat-value gold">3</div></div>
+      <div class="stat-box"><div class="stat-label">Active Since</div><div class="stat-value" style="font-size:13px;">Jan 2024</div></div>
+    </div>
+    <div class="drawer-section-title">Current Assignments</div>
+    <div class="assignment-list" style="margin-bottom:20px;">
+      <div class="assignment-item"><div class="ai-top"><span class="ai-dress">Farah · Farshi Lehenga</span><span class="ai-order">#GS-1041</span></div><div class="ai-dates">Sent 18 Oct · Expected back 28 Oct</div></div>
+      <div class="assignment-item"><div class="ai-top"><span class="ai-dress">Nadia · Sharara Set</span><span class="ai-order">#GS-1039</span></div><div class="ai-dates">Sent 15 Oct · Expected back 25 Oct</div></div>
+    </div>
+    <div class="drawer-section-title">Recent Completed Work</div>
+    <div class="order-history">
+      <div class="order-history-item"><div class="ohi-left"><div class="ohi-id">#GS-1033 · D-031</div><div class="ohi-desc">Tail Lehenga · Hina Baig</div></div><div class="ohi-right"><div class="ohi-date">05 Oct 2025</div><span class="ohi-status completed">Done</span></div></div>
+      <div class="order-history-item"><div class="ohi-left"><div class="ohi-id">#GS-1028 · D-028</div><div class="ohi-desc">Bridal Maxi · Sana Tariq</div></div><div class="ohi-right"><div class="ohi-date">18 Sep 2025</div><span class="ohi-status completed">Done</span></div></div>
+      <div class="order-history-item"><div class="ohi-left"><div class="ohi-id">#GS-1021 · D-019</div><div class="ohi-desc">Sharara Set · Mariam Aslam</div></div><div class="ohi-right"><div class="ohi-date">02 Aug 2025</div><span class="ohi-status completed">Done</span></div></div>
+    </div>`;
+
+  return '';
+}
+</script>
+</body>
+</html>

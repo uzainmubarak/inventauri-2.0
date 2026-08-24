@@ -1,0 +1,43 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  --bg:#FAFAF9; --bg2:#F3F1EE; --bg3:#EDEBE7;
+  --gold:#C9A961; --gold-dim:rgba(201,169,97,0.12); --gold-mid:rgba(201,169,97,0.25);
+  --error:#8B3A3A; --error-dim:rgba(139,58,58,0.10);
+  --green:#3A6B4A; --green-dim:rgba(58,107,74,0.10);
+  --blue-dim:rgba(58,74,107,0.08); --blue:#3A4A6B;
+  --text:#1C1C1C; --text-muted:#7A7671; --text-faint:#B0AAA2;
+  --border:#E4E1DB; --border-light:#EDEBE7;
+  --sidebar-bg:#1C1A18; --sidebar-text:#C8C3BB;
+  --white:#ffffff;
+  --shadow:0 1px 3px rgba(0,0,0,0.06),0 4px 12px rgba(0,0,0,0.04);
+  --shadow-lg:0 8px 32px rgba(0,0,0,0.12);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  height: 100vh;
+  margin: 0;
+}
+
+
+/*@media (prefers-color-scheme: dark) {
+    :root {
+        --bg-dark: oklch(0 0 0);
+        --bg: oklch(0.05 0 0);
+        --bg-light: oklch(0.1 0 0);
+
+        --text: oklch(0.95 0 0);
+        --text-muted: oklch(0.7 0 0);
+
+        background-color: oklch(0 0 0);
+    }
+}*/

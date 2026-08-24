@@ -1,0 +1,1008 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Golden Studio — Order #GS-1041</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:#FAFAF9; --bg2:#F3F1EE; --bg3:#EDEBE7;
+  --gold:#C9A961; --gold-dim:rgba(201,169,97,0.12); --gold-mid:rgba(201,169,97,0.25);
+  --error:#8B3A3A; --error-dim:rgba(139,58,58,0.10);
+  --green:#3A6B4A; --green-dim:rgba(58,107,74,0.10);
+  --text:#1C1C1C; --text-muted:#7A7671; --text-faint:#B0AAA2;
+  --border:#E4E1DB; --border-light:#EDEBE7;
+  --sidebar-bg:#1C1A18; --sidebar-text:#C8C3BB;
+  --white:#ffffff;
+  --shadow:0 1px 3px rgba(0,0,0,0.06),0 4px 12px rgba(0,0,0,0.04);
+  --shadow-lg:0 8px 32px rgba(0,0,0,0.12);
+}
+body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text); display:flex; height:100vh; overflow:hidden; }
+
+/* SIDEBAR */
+.sidebar { width:230px; min-width:230px; background:var(--sidebar-bg); display:flex; flex-direction:column; height:100vh; overflow-y:auto; flex-shrink:0; }
+.sidebar-brand { padding:28px 24px 24px; border-bottom:1px solid rgba(255,255,255,0.06); }
+.brand-name { font-family:'Playfair Display',serif; font-size:17px; font-weight:600; color:#fff; }
+.brand-sub { font-size:10px; color:var(--gold); letter-spacing:0.12em; text-transform:uppercase; margin-top:3px; font-weight:500; }
+.sidebar-section { padding:20px 0 8px; }
+.sidebar-label { font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:rgba(255,255,255,0.22); font-weight:500; padding:0 24px; margin-bottom:4px; }
+.nav-item { display:flex; align-items:center; gap:10px; padding:9px 24px; font-size:13px; color:var(--sidebar-text); cursor:pointer; transition:all 0.15s; border-left:2px solid transparent; }
+.nav-item:hover { background:rgba(255,255,255,0.04); color:#fff; }
+.nav-item.active { color:var(--gold); border-left-color:var(--gold); background:rgba(201,169,97,0.07); font-weight:500; }
+.nav-icon { width:15px; opacity:0.7; font-size:13px; }
+.nav-item.active .nav-icon { opacity:1; }
+.nav-badge { margin-left:auto; background:var(--error); color:#fff; font-size:9px; font-weight:600; padding:2px 6px; border-radius:10px; font-family:'JetBrains Mono',monospace; }
+.sidebar-bottom { margin-top:auto; padding:16px 20px; border-top:1px solid rgba(255,255,255,0.06); }
+.user-card { display:flex; align-items:center; gap:10px; }
+.user-avatar { width:30px; height:30px; border-radius:50%; background:var(--gold-mid); border:1px solid var(--gold); display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:600; color:var(--gold); }
+.user-name { font-size:12px; color:#fff; font-weight:500; }
+.user-role { font-size:10px; color:var(--sidebar-text); }
+
+.main { flex:1; display:flex; flex-direction:column; overflow:hidden; min-width:0; }
+.topbar { background:var(--bg); border-bottom:1px solid var(--border); padding:0 28px; height:56px; display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
+.breadcrumb { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-muted); }
+.breadcrumb a { color:var(--text-muted); text-decoration:none; cursor:pointer; }
+.breadcrumb a:hover { color:var(--text); }
+.breadcrumb span { color:var(--text); font-weight:500; }
+.bc-sep { color:var(--text-faint); }
+.topbar-right { display:flex; align-items:center; gap:8px; }
+.btn-ghost { display:flex; align-items:center; gap:6px; background:transparent; border:1px solid var(--border); border-radius:8px; padding:7px 13px; font-size:12px; font-weight:500; color:var(--text-muted); cursor:pointer; font-family:'DM Sans',sans-serif; transition:all 0.15s; }
+.btn-ghost:hover { border-color:var(--text-muted); color:var(--text); }
+.btn-gold { display:flex; align-items:center; gap:6px; background:var(--gold); border:none; border-radius:8px; padding:7px 14px; font-size:12px; font-weight:500; color:#fff; cursor:pointer; font-family:'DM Sans',sans-serif; transition:all 0.15s; box-shadow:0 2px 8px rgba(201,169,97,0.3); }
+.btn-gold:hover { background:#b8953a; }
+.icon-btn { width:32px; height:32px; border-radius:8px; border:1px solid var(--border); background:transparent; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:13px; color:var(--text-muted); transition:all 0.15s; }
+.icon-btn:hover { background:var(--bg2); color:var(--text); }
+
+.content-area { flex:1; overflow:hidden; }
+.scroll-area { height:100%; overflow-y:auto; padding:24px 28px; }
+
+/* BADGES */
+.badge { display:inline-flex; align-items:center; gap:4px; padding:4px 10px; border-radius:20px; font-size:10px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; white-space:nowrap; }
+.badge-dot { width:5px; height:5px; border-radius:50%; }
+.badge.on-track { background:var(--green-dim); color:var(--green); border:1px solid rgba(58,107,74,0.18); }
+.badge.on-track .badge-dot { background:var(--green); }
+.badge.delayed { background:var(--error-dim); color:var(--error); border:1px solid rgba(139,58,58,0.18); }
+.badge.pending { background:var(--gold-dim); color:#8B6914; border:1px solid var(--gold-mid); }
+.badge.completed { background:#F0EFED; color:#6B6560; border:1px solid #DDD9D3; }
+.badge.vendor-tag { background:var(--gold-dim); color:#8B6914; border:1px solid var(--gold-mid); font-size:9px; }
+.badge.custom-deadline { background:var(--error-dim); color:var(--error); border:1px solid rgba(139,58,58,0.18); font-size:9px; }
+.badge.attention { background:#FFF3E0; color:#E65100; border:1px solid rgba(230,81,0,0.2); font-size:9px; }
+
+/* ORDER HEADER */
+.order-header-card { background:var(--white); border:1px solid var(--border); border-radius:14px; padding:22px 26px; margin-bottom:18px; box-shadow:var(--shadow); }
+.order-header-top { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:18px; }
+.order-id-row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.order-id-big { font-family:'JetBrains Mono',monospace; font-size:22px; font-weight:500; }
+
+.order-info-grid { display:grid; grid-template-columns:repeat(5,1fr); border:1px solid var(--border-light); border-radius:10px; overflow:hidden; margin-bottom:16px; }
+.info-cell { padding:13px 16px; border-right:1px solid var(--border-light); }
+.info-cell:last-child { border-right:none; }
+.info-label { font-size:10px; color:var(--text-faint); font-weight:500; letter-spacing:0.08em; text-transform:uppercase; margin-bottom:4px; }
+.info-value { font-size:13px; color:var(--text); font-weight:500; }
+.info-value.link { color:var(--gold); cursor:pointer; }
+.info-value.link:hover { text-decoration:underline; }
+.info-sub { font-size:11px; color:var(--text-faint); margin-top:2px; }
+
+/* VENDOR VALUE ROW */
+.vendor-value-row { display:flex; align-items:center; gap:14px; padding:13px 18px; background:var(--bg2); border:1px solid var(--border-light); border-radius:10px; }
+.vendor-value-label { font-size:10px; color:var(--text-faint); font-weight:500; letter-spacing:0.08em; text-transform:uppercase; }
+.vendor-value-amount { font-family:'JetBrains Mono',monospace; font-size:15px; font-weight:500; }
+.vendor-ledger-link { font-size:11px; color:var(--gold); cursor:pointer; margin-left:auto; }
+.vendor-ledger-link:hover { text-decoration:underline; }
+
+/* SECTION HEADER */
+.section-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+.section-title { font-family:'Playfair Display',serif; font-size:18px; font-weight:500; }
+.section-meta { font-size:12px; color:var(--text-muted); margin-left:8px; }
+.btn-add-dress { display:flex; align-items:center; gap:5px; background:transparent; border:1px dashed var(--border); border-radius:8px; padding:6px 12px; font-size:12px; color:var(--text-muted); cursor:pointer; font-family:'DM Sans',sans-serif; transition:all 0.15s; }
+.btn-add-dress:hover { border-color:var(--gold); color:var(--gold); }
+
+/* DRESS TABLE */
+.dress-table-wrap { background:var(--white); border:1px solid var(--border); border-radius:12px; overflow:hidden; box-shadow:var(--shadow); }
+.dress-table { width:100%; border-collapse:collapse; }
+.dress-table thead tr { background:#F5F3F0; border-bottom:1px solid var(--border); }
+.dress-table th { padding:10px 14px; font-size:10px; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-faint); text-align:left; white-space:nowrap; }
+.dress-table th:first-child { padding-left:18px; }
+.dress-row { border-bottom:1px solid var(--border-light); cursor:pointer; transition:background 0.1s; }
+.dress-row:hover { background:#FAFAF6; }
+.dress-row.active-row { background:rgba(201,169,97,0.04); border-left:3px solid var(--gold); }
+.dress-row.attention-row { border-left:3px solid #E65100; }
+.dress-table td { padding:13px 14px; font-size:13px; vertical-align:middle; }
+.dress-table td:first-child { padding-left:18px; }
+.dress-num { font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:500; color:var(--text-faint); }
+.dress-client { font-weight:500; font-size:13px; }
+.dress-sub { font-size:11px; color:var(--text-muted); margin-top:2px; }
+
+.stage-pill { display:inline-flex; align-items:center; gap:5px; background:var(--gold-dim); border:1px solid var(--gold-mid); color:#8B6914; font-size:10px; font-weight:600; padding:3px 9px; border-radius:20px; letter-spacing:0.03em; }
+.stage-pill-dot { width:5px; height:5px; border-radius:50%; background:var(--gold); }
+
+.expand-btn { background:none; border:none; cursor:pointer; font-size:11px; color:var(--text-faint); transition:transform 0.2s; padding:4px; }
+.dress-row.active-row .expand-btn { transform:rotate(90deg); color:var(--gold); }
+
+/* ACTION MENU */
+.action-cell { position:relative; text-align:right; }
+.action-btn { width:26px; height:26px; border-radius:6px; border:1px solid transparent; background:transparent; cursor:pointer; font-size:14px; color:var(--text-faint); display:inline-flex; align-items:center; justify-content:center; transition:all 0.12s; letter-spacing:1px; }
+.dress-row:hover .action-btn { border-color:var(--border); color:var(--text-muted); background:#fff; }
+.action-menu { position:absolute; right:0; top:32px; z-index:100; background:#fff; border:1px solid var(--border); border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,0.10); min-width:210px; overflow:hidden; display:none; }
+.action-menu.open { display:block; animation:fadeIn 0.1s ease; }
+@keyframes fadeIn { from{opacity:0;transform:scale(0.97)}to{opacity:1;transform:scale(1)} }
+.action-menu-item { display:flex; align-items:center; gap:8px; padding:9px 14px; font-size:12px; color:var(--text); cursor:pointer; transition:background 0.1s; }
+.action-menu-item:hover { background:var(--bg2); }
+.action-menu-item .mi { font-size:11px; color:var(--text-faint); width:14px; }
+.action-menu-item.danger { color:var(--error); }
+.action-menu-item.danger .mi { color:var(--error); }
+.action-menu-item.warn { color:#E65100; }
+.action-menu-item.warn .mi { color:#E65100; }
+.action-menu-divider { height:1px; background:var(--border-light); margin:3px 0; }
+
+/* WORKFLOW */
+.workflow-mini { display:flex; align-items:flex-start; }
+.wf-step { display:flex; flex-direction:column; align-items:center; gap:3px; flex:1; position:relative; }
+.wf-step:not(:last-child)::after { content:''; position:absolute; top:7px; left:calc(50% + 7px); width:calc(100% - 14px); height:2px; background:var(--border); }
+.wf-step.done:not(:last-child)::after { background:var(--gold); }
+.wf-dot { width:14px; height:14px; border-radius:50%; background:var(--border); border:2px solid var(--border); position:relative; z-index:1; }
+.wf-step.done .wf-dot { background:var(--gold); border-color:var(--gold); }
+.wf-step.active .wf-dot { background:var(--white); border-color:var(--gold); box-shadow:0 0 0 3px var(--gold-dim); }
+.wf-label { font-size:9px; color:var(--text-faint); font-weight:500; white-space:nowrap; }
+.wf-step.done .wf-label { color:#8B6914; }
+.wf-step.active .wf-label { color:var(--text-muted); font-weight:600; }
+
+/* DETAIL PANEL */
+.dress-detail-panel { display:none; background:#FAFAF6; border-top:1px solid var(--border-light); padding:20px 24px; }
+.dress-detail-panel.open { display:block; animation:panelIn 0.15s ease; }
+@keyframes panelIn { from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)} }
+
+/* STAGE CONTROLS */
+.stage-controls { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:16px; padding:12px 16px; background:var(--white); border:1px solid var(--border-light); border-radius:10px; }
+.stage-label { font-size:11px; color:var(--text-muted); font-weight:500; }
+.btn-next-stage { display:flex; align-items:center; gap:6px; background:var(--gold); border:none; border-radius:8px; padding:7px 14px; font-size:12px; font-weight:600; color:#fff; cursor:pointer; font-family:'DM Sans',sans-serif; transition:all 0.15s; }
+.btn-next-stage:hover { background:#b8953a; }
+.btn-back-stage { background:none; border:none; font-size:11px; color:var(--text-faint); cursor:pointer; font-family:'DM Sans',sans-serif; padding:4px 8px; border-radius:6px; transition:all 0.15s; }
+.btn-back-stage:hover { color:var(--text-muted); background:var(--bg2); }
+.stage-note-toggle { margin-left:auto; font-size:11px; color:var(--text-faint); cursor:pointer; }
+.stage-note-toggle:hover { color:var(--text-muted); }
+.stage-note-input { width:100%; margin-top:8px; padding:8px 12px; background:var(--bg2); border:1px solid var(--border); border-radius:7px; font-size:12px; font-family:'DM Sans',sans-serif; color:var(--text); resize:none; outline:none; display:none; }
+.stage-note-input:focus { border-color:var(--gold); }
+.stage-note-input.visible { display:block; }
+
+.detail-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; }
+
+/* DETAIL CARD */
+.detail-card { background:var(--white); border:1px solid var(--border-light); border-radius:10px; padding:14px 16px; }
+.detail-card-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+.detail-card-title { font-size:10px; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-faint); display:flex; align-items:center; gap:5px; }
+.edit-section-btn { background:none; border:1px solid var(--border); border-radius:6px; padding:3px 8px; font-size:10px; color:var(--text-faint); cursor:pointer; font-family:'DM Sans',sans-serif; transition:all 0.15s; }
+.edit-section-btn:hover { border-color:var(--gold); color:var(--gold); }
+.edit-section-btn.editing { background:var(--gold); border-color:var(--gold); color:#fff; }
+.save-cancel-row { display:flex; gap:6px; margin-top:10px; }
+.btn-save-inline { background:var(--gold); border:none; border-radius:6px; padding:5px 12px; font-size:11px; font-weight:600; color:#fff; cursor:pointer; font-family:'DM Sans',sans-serif; }
+.btn-cancel-inline { background:transparent; border:1px solid var(--border); border-radius:6px; padding:5px 12px; font-size:11px; color:var(--text-muted); cursor:pointer; font-family:'DM Sans',sans-serif; }
+
+/* MEASUREMENTS */
+.fit-tag { display:inline-block; background:var(--gold-dim); color:#8B6914; border:1px solid var(--gold-mid); font-size:10px; font-weight:600; padding:2px 8px; border-radius:10px; margin-bottom:10px; text-transform:uppercase; }
+.meas-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+.meas-row { display:flex; justify-content:space-between; align-items:center; padding:4px 0; border-bottom:1px solid var(--border-light); }
+.meas-key { font-size:11px; color:var(--text-muted); }
+.meas-val { font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:500; }
+.meas-input { font-family:'JetBrains Mono',monospace; font-size:12px; width:58px; padding:2px 6px; border:1px solid var(--border); border-radius:5px; outline:none; text-align:right; background:var(--bg2); }
+.meas-input:focus { border-color:var(--gold); }
+.clipboard-btn { display:flex; align-items:center; gap:5px; background:transparent; border:1px solid var(--border); border-radius:6px; padding:5px 10px; font-size:10px; color:var(--text-muted); cursor:pointer; font-family:'DM Sans',sans-serif; margin-top:10px; width:100%; justify-content:center; transition:all 0.15s; }
+.clipboard-btn:hover { border-color:var(--gold); color:var(--gold); }
+.clipboard-btn.copied { border-color:var(--green); color:var(--green); }
+
+/* KARIGAR */
+.karigar-box { background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:11px 13px; }
+.karigar-name-text { font-size:14px; font-weight:600; margin-bottom:1px; }
+.karigar-meta-text { font-size:11px; color:var(--text-muted); margin-bottom:8px; }
+.karigar-dates { display:flex; flex-direction:column; gap:5px; }
+.kd-row { display:flex; justify-content:space-between; }
+.kd-label { font-size:10px; color:var(--text-faint); }
+.kd-val { font-size:11px; font-weight:500; font-family:'JetBrains Mono',monospace; }
+.karigar-select { width:100%; padding:7px 10px; border:1px solid var(--border); border-radius:7px; font-size:12px; font-family:'DM Sans',sans-serif; background:var(--white); outline:none; margin-bottom:8px; }
+.karigar-select:focus { border-color:var(--gold); }
+.btn-assign { display:flex; align-items:center; gap:5px; justify-content:center; width:100%; background:transparent; border:1px dashed var(--border); border-radius:7px; padding:8px; font-size:12px; color:var(--text-muted); cursor:pointer; font-family:'DM Sans',sans-serif; transition:all 0.15s; }
+.btn-assign:hover { border-color:var(--gold); color:var(--gold); }
+
+/* FABRIC */
+.fabric-list { display:flex; flex-direction:column; gap:7px; }
+.fabric-item { background:var(--bg2); border:1px solid var(--border-light); border-radius:8px; padding:10px 12px; }
+.fabric-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+.fabric-name { font-size:12px; font-weight:600; }
+.fabric-status { font-size:10px; font-weight:600; padding:2px 8px; border-radius:10px; }
+.fabric-status.with-us { background:var(--green-dim); color:var(--green); }
+.fabric-status.at-dye { background:var(--gold-dim); color:#8B6914; }
+.fabric-status.at-karigar { background:rgba(58,74,107,0.08); color:#3A4A6B; }
+.fabric-status.ready { background:var(--green-dim); color:var(--green); }
+.fabric-details { display:grid; grid-template-columns:1fr 1fr; gap:3px; }
+.fd-row { display:flex; justify-content:space-between; }
+.fd-label { font-size:10px; color:var(--text-faint); }
+.fd-val { font-size:10px; font-weight:500; font-family:'JetBrains Mono',monospace; }
+.fd-val.faint { color:var(--text-faint); }
+
+/* DESIGN REFS */
+.design-id-badge { display:inline-flex; align-items:center; gap:4px; background:var(--sidebar-bg); color:var(--gold); font-size:10px; font-family:'JetBrains Mono',monospace; padding:3px 8px; border-radius:6px; margin-bottom:8px; }
+.design-refs { display:flex; gap:8px; flex-wrap:wrap; }
+.design-ref-img { width:56px; height:66px; border-radius:6px; background:var(--bg2); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; font-size:18px; cursor:pointer; transition:all 0.15s; }
+.design-ref-img:hover { border-color:var(--gold); }
+.design-ref-add { border-style:dashed; font-size:13px; color:var(--text-faint); }
+
+/* ALTERATION */
+.alteration-timeline { display:flex; flex-direction:column; gap:10px; }
+.alt-item { display:flex; gap:10px; }
+.alt-dot-col { display:flex; flex-direction:column; align-items:center; }
+.alt-dot { width:8px; height:8px; border-radius:50%; background:var(--error); margin-top:3px; flex-shrink:0; }
+.alt-line { width:1px; flex:1; background:var(--border); margin-top:3px; min-height:16px; }
+.alt-content { flex:1; }
+.alt-date { font-size:10px; color:var(--text-faint); font-family:'JetBrains Mono',monospace; margin-bottom:2px; }
+.alt-note { font-size:12px; }
+.alt-reason { font-size:10px; color:var(--error); font-weight:500; margin-top:1px; }
+.no-alt { font-size:12px; color:var(--text-faint); text-align:center; padding:12px 0; }
+
+/* DRAWER */
+.drawer-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.2); z-index:200; backdrop-filter:blur(2px); }
+.drawer-overlay.open { display:block; }
+.activity-drawer { position:fixed; top:0; right:-440px; width:440px; height:100vh; background:var(--white); border-left:1px solid var(--border); box-shadow:var(--shadow-lg); z-index:201; display:flex; flex-direction:column; transition:right 0.25s cubic-bezier(0.4,0,0.2,1); }
+.activity-drawer.open { right:0; }
+.drawer-header { padding:18px 22px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
+.drawer-title { font-family:'Playfair Display',serif; font-size:18px; font-weight:500; }
+.drawer-close { width:28px; height:28px; border-radius:8px; border:1px solid var(--border); background:transparent; cursor:pointer; font-size:16px; color:var(--text-muted); display:flex; align-items:center; justify-content:center; }
+.drawer-tabs { display:flex; border-bottom:1px solid var(--border); flex-shrink:0; }
+.drawer-tab { flex:1; padding:10px; font-size:12px; font-weight:500; color:var(--text-muted); cursor:pointer; text-align:center; border-bottom:2px solid transparent; transition:all 0.15s; }
+.drawer-tab.active { color:var(--text); border-bottom-color:var(--gold); }
+.drawer-body { flex:1; overflow-y:auto; padding:18px 22px; }
+.activity-list { display:flex; flex-direction:column; }
+.activity-item { display:flex; gap:10px; padding:11px 0; border-bottom:1px solid var(--border-light); }
+.activity-item:last-child { border-bottom:none; }
+.act-avatar { width:26px; height:26px; border-radius:50%; background:var(--bg2); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:600; color:var(--text-muted); flex-shrink:0; }
+.act-text { font-size:12px; line-height:1.5; }
+.act-text strong { font-weight:600; }
+.act-time { font-size:10px; color:var(--text-faint); font-family:'JetBrains Mono',monospace; margin-top:2px; }
+
+.fab-field-label { font-size:10px; color:var(--text-faint); font-weight:500; margin-bottom:3px; }
+.fab-input { width:100%; padding:6px 9px; border:1px solid var(--border); border-radius:6px; font-size:12px; font-family:'DM Sans',sans-serif; background:var(--white); outline:none; color:var(--text); }
+.fab-input:focus { border-color:var(--gold); }
+select.fab-input { appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23B0AAA2' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 8px center; padding-right:24px; }
+textarea.fab-input { resize:none; }
+
+.fab-row-edit-btn { background:none; border:1px solid var(--border); border-radius:5px; padding:2px 7px; font-size:10px; color:var(--text-faint); cursor:pointer; transition:all 0.12s; flex-shrink:0; }
+.fab-row-edit-btn:hover { border-color:var(--gold); color:var(--gold); }
+
+/* DRAWER TOGGLE */
+.drawer-toggle-btn { position:fixed; right:24px; bottom:24px; z-index:199; background:var(--sidebar-bg); color:var(--gold); border:1px solid rgba(201,169,97,0.3); border-radius:12px; padding:9px 15px; font-size:12px; font-weight:500; font-family:'DM Sans',sans-serif; cursor:pointer; display:flex; align-items:center; gap:7px; box-shadow:var(--shadow-lg); }
+.drawer-toggle-btn:hover { background:#2C2A28; }
+.drawer-dot { width:6px; height:6px; border-radius:50%; background:var(--gold); }
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="brand-name">Golden Studio</div>
+    <div class="brand-sub">Production Suite</div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">Production</div>
+    <div class="nav-item active"><span class="nav-icon">◈</span> Orders <span class="nav-badge">3</span></div>
+    <div class="nav-item"><span class="nav-icon">◉</span> Karigar Dashboard</div>
+    <div class="nav-item"><span class="nav-icon">⬡</span> Design Library</div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">People</div>
+    <div class="nav-item"><span class="nav-icon">◎</span> Contacts</div>
+    <div class="nav-item"><span class="nav-icon">⬢</span> Agent Ledger</div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">Stock</div>
+    <div class="nav-item"><span class="nav-icon">▦</span> Inventory</div>
+  </div>
+  <div class="sidebar-bottom">
+    <div class="user-card">
+      <div class="user-avatar">U</div>
+      <div><div class="user-name">Uzain</div><div class="user-role">Operations Manager</div></div>
+    </div>
+  </div>
+</aside>
+
+<div class="main">
+  <div class="topbar">
+    <div class="breadcrumb">
+      <a>Orders</a><span class="bc-sep">/</span><span>#GS-1041</span>
+    </div>
+    <div class="topbar-right">
+      <button class="btn-ghost">✎ Edit Order</button>
+      <button class="btn-gold">✓ Mark Completed</button>
+      <button class="icon-btn" onclick="openDrawer('activity')">☰</button>
+    </div>
+  </div>
+
+  <div class="content-area">
+    <div class="scroll-area">
+
+      <!-- ORDER HEADER -->
+      <div class="order-header-card">
+        <div class="order-header-top">
+          <div class="order-id-row">
+            <div class="order-id-big">#GS-1041</div>
+            <span class="badge on-track"><span class="badge-dot"></span>On Track</span>
+            <span class="badge vendor-tag">Vendor Order</span>
+          </div>
+          <button class="btn-ghost" onclick="openDrawer('activity')">📋 Activity Log</button>
+        </div>
+
+        <div class="order-info-grid">
+          <div class="info-cell">
+            <div class="info-label">Vendor</div>
+            <div class="info-value link">Azra Collection</div>
+            <div class="info-sub">Direct Vendor</div>
+          </div>
+          <div class="info-cell">
+            <div class="info-label">Agent</div>
+            <div class="info-value link">Kamran Riaz</div>
+            <div class="info-sub">+92 300 1234567</div>
+          </div>
+          <div class="info-cell">
+            <div class="info-label">Sales Rep</div>
+            <div class="info-value">Uzain</div>
+          </div>
+          <div class="info-cell">
+            <div class="info-label">Start Date</div>
+            <div class="info-value">12 Oct 2025</div>
+          </div>
+          <div class="info-cell">
+            <div class="info-label">Expected</div>
+            <div class="info-value">05 Nov 2025</div>
+            <div class="info-sub">Actual: —</div>
+          </div>
+        </div>
+
+        <div class="vendor-value-row">
+          <div>
+            <div class="vendor-value-label">Order Value</div>
+            <div class="vendor-value-amount">PKR 90,000</div>
+          </div>
+          <div style="font-size:11px;color:var(--text-faint);border-left:1px solid var(--border-light);padding-left:14px;">
+            Payments tracked in Agent Ledger
+          </div>
+          <span class="vendor-ledger-link">→ View Agent Ledger</span>
+        </div>
+      </div>
+
+      <!-- DRESSES -->
+      <div class="section-header">
+        <div style="display:flex;align-items:center;">
+          <div class="section-title">Dresses</div>
+          <span class="section-meta">6 garments</span>
+        </div>
+        <button class="btn-add-dress">＋ Add Dress</button>
+      </div>
+
+      <div class="dress-table-wrap">
+        <table class="dress-table">
+          <thead>
+            <tr>
+              <th style="width:36px">#</th>
+              <th>Client / Size</th>
+              <th>Garment</th>
+              <th style="min-width:210px;">Workflow</th>
+              <th>Stage</th>
+              <th>Karigar</th>
+              <th>Deadline</th>
+              <th style="width:36px"></th>
+              <th style="width:36px"></th>
+            </tr>
+          </thead>
+          <tbody>
+
+            <!-- DRESS 1 EXPANDED -->
+            <tr class="dress-row active-row" onclick="toggleDress('d1',this)">
+              <td><div class="dress-num">01</div></td>
+              <td><div class="dress-client">Farah</div><div class="dress-sub">Named client</div></td>
+              <td>
+                <div class="dress-client" style="font-size:12px;">Farshi Lehenga + Long Shirt</div>
+                <span class="badge vendor-tag" style="margin-top:3px;">Bridal</span>
+              </td>
+              <td>
+                <div class="workflow-mini">
+                  <div class="wf-step done"><div class="wf-dot"></div><div class="wf-label">Fabric</div></div>
+                  <div class="wf-step done"><div class="wf-dot"></div><div class="wf-label">Sketch</div></div>
+                  <div class="wf-step done"><div class="wf-dot"></div><div class="wf-label">Dye</div></div>
+                  <div class="wf-step active"><div class="wf-dot"></div><div class="wf-label">Handwork</div></div>
+                  <div class="wf-step"><div class="wf-dot"></div><div class="wf-label">Stitch</div></div>
+                  <div class="wf-step"><div class="wf-dot"></div><div class="wf-label">Ready</div></div>
+                  <div class="wf-step"><div class="wf-dot"></div><div class="wf-label">Alter</div></div>
+                </div>
+              </td>
+              <td><span class="stage-pill"><span class="stage-pill-dot"></span>Handwork</span></td>
+              <td><div class="dress-sub">Ustad Hamid</div></td>
+              <td><div class="dress-sub">01 Nov</div></td>
+              <td class="action-cell" onclick="event.stopPropagation()">
+                <button class="action-btn" onclick="toggleMenu(this)">···</button>
+                <div class="action-menu">
+                  <div class="action-menu-item"><span class="mi">⧉</span> Duplicate</div>
+                  <div class="action-menu-item"><span class="mi">⊞</span> Duplicate (measurements only)</div>
+                  <div class="action-menu-divider"></div>
+                  <div class="action-menu-item warn"><span class="mi">⚑</span> Flag: Needs Attention</div>
+                  <div class="action-menu-divider"></div>
+                  <div class="action-menu-item danger"><span class="mi">✕</span> Remove Dress</div>
+                </div>
+              </td>
+              <td><button class="expand-btn">›</button></td>
+            </tr>
+            <tr><td colspan="9" style="padding:0;">
+              <div class="dress-detail-panel open" id="d1">
+                <div class="stage-controls">
+                  <span class="stage-label">Current: <strong>Handwork</strong></span>
+                  <button class="btn-next-stage">→ Move to Stitching</button>
+                  <button class="btn-back-stage">← Back to Dye</button>
+                  <span class="stage-note-toggle" onclick="toggleNote(this)">+ Add note</span>
+                  <textarea class="stage-note-input" placeholder="Optional note..." rows="1"></textarea>
+                </div>
+                <div class="detail-grid">
+                  <!-- MEASUREMENTS -->
+                  <div class="detail-card">
+                    <div class="detail-card-header">
+                      <div class="detail-card-title">📐 Measurements</div>
+                      <button class="edit-section-btn" onclick="toggleMeasEdit('m1',this)">✎ Edit</button>
+                    </div>
+                    <div class="fit-tag">Standard Fit</div>
+                    <div class="meas-grid" id="m1">
+                      <div class="meas-row"><span class="meas-key">Bust</span><span class="meas-val vv">38"</span><input class="meas-input ef" value='38"' style="display:none"></div>
+                      <div class="meas-row"><span class="meas-key">Waist</span><span class="meas-val vv">32"</span><input class="meas-input ef" value='32"' style="display:none"></div>
+                      <div class="meas-row"><span class="meas-key">Hips</span><span class="meas-val vv">40"</span><input class="meas-input ef" value='40"' style="display:none"></div>
+                      <div class="meas-row"><span class="meas-key">Shoulder</span><span class="meas-val vv">14"</span><input class="meas-input ef" value='14"' style="display:none"></div>
+                      <div class="meas-row"><span class="meas-key">Shirt Length</span><span class="meas-val vv">42"</span><input class="meas-input ef" value='42"' style="display:none"></div>
+                      <div class="meas-row"><span class="meas-key">Sleeve</span><span class="meas-val vv">24"</span><input class="meas-input ef" value='24"' style="display:none"></div>
+                      <div class="meas-row"><span class="meas-key">Lehenga L.</span><span class="meas-val vv">44"</span><input class="meas-input ef" value='44"' style="display:none"></div>
+                      <div class="meas-row"><span class="meas-key">Arm Circ.</span><span class="meas-val vv">12"</span><input class="meas-input ef" value='12"' style="display:none"></div>
+                    </div>
+                    <div id="m1-actions" style="display:none;">
+                      <div class="save-cancel-row">
+                        <button class="btn-save-inline" onclick="saveMeas('m1')">Save</button>
+                        <button class="btn-cancel-inline" onclick="cancelMeas('m1')">Cancel</button>
+                      </div>
+                    </div>
+                    <button class="clipboard-btn" id="clip-d1" onclick="copyClip('d1')">📋 Copy to clipboard</button>
+                  </div>
+
+                  <!-- KARIGAR + FABRIC -->
+                  <div style="display:flex;flex-direction:column;gap:12px;">
+                    <div class="detail-card">
+                      <div class="detail-card-header">
+                        <div class="detail-card-title">🪡 Karigar</div>
+                        <button class="edit-section-btn" onclick="toggleKarigar('k1',this)">✎ Edit</button>
+                      </div>
+                      <div id="k1-view">
+                        <div class="karigar-box">
+                          <div class="karigar-name-text">Ustad Hamid</div>
+                          <div class="karigar-meta-text">Team of 4 · +92 311 9876543</div>
+                          <div class="karigar-dates">
+                            <div class="kd-row"><span class="kd-label">Sent</span><span class="kd-val">18 Oct 2025</span></div>
+                            <div class="kd-row"><span class="kd-label">Expected</span><span class="kd-val">28 Oct 2025</span></div>
+                            <div class="kd-row"><span class="kd-label">Returned</span><span class="kd-val" style="color:var(--text-faint)">—</span></div>
+                          </div>
+                        </div>
+                      </div>
+                      <div id="k1-edit" style="display:none;">
+                        <select class="karigar-select">
+                          <option>Ustad Hamid (4 workers · 2 active)</option>
+                          <option>Ustad Rafiq (6 workers · 1 active)</option>
+                          <option>Ustad Bashir (3 workers · available)</option>
+                        </select>
+                        <div class="save-cancel-row">
+                          <button class="btn-save-inline" onclick="saveKarigar('k1')">Save</button>
+                          <button class="btn-cancel-inline" onclick="saveKarigar('k1')">Cancel</button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="detail-card">
+                      <div class="detail-card-header">
+                        <div class="detail-card-title">🧵 Fabric Parts</div>
+                        <button class="edit-section-btn" onclick="toggleFabricAdd('fabadd1')">＋ Add</button>
+                      </div>
+                      <div class="fabric-list" id="fab1-list">
+
+                        <!-- FABRIC ITEM 1 -->
+                        <div class="fabric-item" id="fabi-1">
+                          <div class="fabric-item-view" id="fabi-1-view">
+                            <div class="fabric-top">
+                              <span class="fabric-name">Top Fabric · Maroon Silk</span>
+                              <div style="display:flex;align-items:center;gap:6px;">
+                                <span class="fabric-status at-karigar">At Karigar</span>
+                                <button class="fab-row-edit-btn" onclick="toggleFabItemEdit('fabi-1')">✎</button>
+                              </div>
+                            </div>
+                            <div class="fabric-details">
+                              <div class="fd-row"><span class="fd-label">Sent</span><span class="fd-val">18 Oct</span></div>
+                              <div class="fd-row"><span class="fd-label">Expected</span><span class="fd-val">28 Oct</span></div>
+                              <div class="fd-row"><span class="fd-label">Returned</span><span class="fd-val faint">—</span></div>
+                            </div>
+                          </div>
+                          <div class="fabric-item-edit" id="fabi-1-edit" style="display:none;">
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px;">
+                              <div><div class="fab-field-label">Name / Color</div><input class="fab-input" value="Maroon Silk"></div>
+                              <div><div class="fab-field-label">Location</div><select class="fab-input"><option>With Us</option><option>At Dye</option><option selected>At Karigar</option><option>Ready</option></select></div>
+                              <div><div class="fab-field-label">Date Sent</div><input class="fab-input" value="18 Oct 2025"></div>
+                              <div><div class="fab-field-label">Date Returned</div><input class="fab-input" placeholder="—"></div>
+                            </div>
+                            <div class="save-cancel-row">
+                              <button class="btn-save-inline" onclick="saveFabItem('fabi-1')">Save</button>
+                              <button class="btn-cancel-inline" onclick="toggleFabItemEdit('fabi-1')">Cancel</button>
+                            </div>
+                          </div>
+                        </div>
+
+                        <!-- FABRIC ITEM 2 -->
+                        <div class="fabric-item" id="fabi-2">
+                          <div class="fabric-item-view" id="fabi-2-view">
+                            <div class="fabric-top">
+                              <span class="fabric-name">Base Fabric · Ivory Net</span>
+                              <div style="display:flex;align-items:center;gap:6px;">
+                                <span class="fabric-status ready">Ready</span>
+                                <button class="fab-row-edit-btn" onclick="toggleFabItemEdit('fabi-2')">✎</button>
+                              </div>
+                            </div>
+                            <div class="fabric-details">
+                              <div class="fd-row"><span class="fd-label">Sent</span><span class="fd-val">14 Oct</span></div>
+                              <div class="fd-row"><span class="fd-label">Returned</span><span class="fd-val">17 Oct</span></div>
+                            </div>
+                          </div>
+                          <div class="fabric-item-edit" id="fabi-2-edit" style="display:none;">
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px;">
+                              <div><div class="fab-field-label">Name / Color</div><input class="fab-input" value="Ivory Net"></div>
+                              <div><div class="fab-field-label">Location</div><select class="fab-input"><option>With Us</option><option>At Dye</option><option>At Karigar</option><option selected>Ready</option></select></div>
+                              <div><div class="fab-field-label">Date Sent</div><input class="fab-input" value="14 Oct 2025"></div>
+                              <div><div class="fab-field-label">Date Returned</div><input class="fab-input" value="17 Oct 2025"></div>
+                            </div>
+                            <div class="save-cancel-row">
+                              <button class="btn-save-inline" onclick="saveFabItem('fabi-2')">Save</button>
+                              <button class="btn-cancel-inline" onclick="toggleFabItemEdit('fabi-2')">Cancel</button>
+                            </div>
+                          </div>
+                        </div>
+
+                        <!-- FABRIC ITEM 3 -->
+                        <div class="fabric-item" id="fabi-3">
+                          <div class="fabric-item-view" id="fabi-3-view">
+                            <div class="fabric-top">
+                              <span class="fabric-name">Lining · White Cotton</span>
+                              <div style="display:flex;align-items:center;gap:6px;">
+                                <span class="fabric-status with-us">With Us</span>
+                                <button class="fab-row-edit-btn" onclick="toggleFabItemEdit('fabi-3')">✎</button>
+                              </div>
+                            </div>
+                            <div class="fabric-details">
+                              <div class="fd-row"><span class="fd-label">Not yet sent</span><span class="fd-val faint">—</span></div>
+                            </div>
+                          </div>
+                          <div class="fabric-item-edit" id="fabi-3-edit" style="display:none;">
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px;">
+                              <div><div class="fab-field-label">Name / Color</div><input class="fab-input" value="White Cotton"></div>
+                              <div><div class="fab-field-label">Location</div><select class="fab-input"><option selected>With Us</option><option>At Dye</option><option>At Karigar</option><option>Ready</option></select></div>
+                              <div><div class="fab-field-label">Date Sent</div><input class="fab-input" placeholder="—"></div>
+                              <div><div class="fab-field-label">Date Returned</div><input class="fab-input" placeholder="—"></div>
+                            </div>
+                            <div class="save-cancel-row">
+                              <button class="btn-save-inline" onclick="saveFabItem('fabi-3')">Save</button>
+                              <button class="btn-cancel-inline" onclick="toggleFabItemEdit('fabi-3')">Cancel</button>
+                            </div>
+                          </div>
+                        </div>
+
+                      </div>
+
+                      <!-- ADD FABRIC INLINE FORM -->
+                      <div id="fabadd1" style="display:none;margin-top:10px;background:var(--bg2);border:1px solid var(--border-light);border-radius:8px;padding:12px;">
+                        <div style="font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-faint);margin-bottom:10px;">Add Fabric Part</div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px;">
+                          <div><div class="fab-field-label">Type / Name</div><input class="fab-input" id="fabadd1-name" placeholder="e.g. Top Fabric · Gold Silk"></div>
+                          <div><div class="fab-field-label">Location</div><select class="fab-input" id="fabadd1-loc"><option selected>With Us</option><option>At Dye</option><option>At Karigar</option><option>Ready</option></select></div>
+                          <div><div class="fab-field-label">Date Sent</div><input class="fab-input" id="fabadd1-sent" placeholder="—"></div>
+                          <div><div class="fab-field-label">Date Returned</div><input class="fab-input" id="fabadd1-returned" placeholder="—"></div>
+                        </div>
+                        <div class="save-cancel-row">
+                          <button class="btn-save-inline" onclick="addFabricItem('fab1-list','fabadd1')">Add</button>
+                          <button class="btn-cancel-inline" onclick="toggleFabricAdd('fabadd1')">Cancel</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- DESIGN + ALTERATION -->
+                  <div style="display:flex;flex-direction:column;gap:12px;">
+                    <div class="detail-card">
+                      <div class="detail-card-header">
+                        <div class="detail-card-title">🖼 Design Refs</div>
+                        <button class="edit-section-btn">＋ Add</button>
+                      </div>
+                      <div class="design-id-badge">⬡ D-047 · Repeat design</div>
+                      <div class="design-refs">
+                        <div class="design-ref-img">👗</div>
+                        <div class="design-ref-img">✂️</div>
+                        <div class="design-ref-img design-ref-add">＋</div>
+                      </div>
+                    </div>
+                    <div class="detail-card">
+                      <div class="detail-card-header">
+                        <div class="detail-card-title">🔄 Alterations</div>
+                        <button class="edit-section-btn" onclick="toggleAltForm('alt1')">＋ Add</button>
+                      </div>
+                      <div class="alteration-timeline" id="alt1-timeline">
+                        <div class="alt-item">
+                          <div class="alt-dot-col"><div class="alt-dot"></div><div class="alt-line"></div></div>
+                          <div class="alt-content">
+                            <div class="alt-date">05 Sep 2025 · 14:32</div>
+                            <div class="alt-note">Waist taken in 1 inch</div>
+                            <div class="alt-reason">Wrong measurement</div>
+                          </div>
+                        </div>
+                        <div class="alt-item">
+                          <div class="alt-dot-col"><div class="alt-dot" style="background:var(--gold)"></div></div>
+                          <div class="alt-content">
+                            <div class="alt-date">12 Sep 2025 · 10:15</div>
+                            <div class="alt-note">Dupatta hemming redone</div>
+                            <div class="alt-reason">Missing work</div>
+                          </div>
+                        </div>
+                      </div>
+                      <div id="alt1-form" style="display:none;margin-top:12px;background:var(--bg2);border:1px solid var(--border-light);border-radius:8px;padding:12px;">
+                        <div style="font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-faint);margin-bottom:10px;">New Alteration</div>
+                        <div style="margin-bottom:8px;">
+                          <div class="fab-field-label">Reason</div>
+                          <select class="fab-input" id="alt1-reason">
+                            <option value="">Select reason...</option>
+                            <option>Wrong measurement</option>
+                            <option>Missing work</option>
+                            <option>Client request</option>
+                            <option>Stitching error</option>
+                            <option>Fabric issue</option>
+                            <option>Other</option>
+                          </select>
+                        </div>
+                        <div style="margin-bottom:10px;">
+                          <div class="fab-field-label">Note</div>
+                          <textarea class="fab-input" id="alt1-note" rows="2" placeholder="Describe what needs to be done..." style="resize:none;"></textarea>
+                        </div>
+                        <div class="save-cancel-row">
+                          <button class="btn-save-inline" onclick="saveAlt('alt1')">Add Alteration</button>
+                          <button class="btn-cancel-inline" onclick="toggleAltForm('alt1')">Cancel</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </td></tr>
+
+            <!-- DRESS 2 -->
+            <tr class="dress-row" onclick="toggleDress('d2',this)">
+              <td><div class="dress-num">02</div></td>
+              <td><div class="dress-client">Farah</div><div class="dress-sub">Named client</div></td>
+              <td><div class="dress-client" style="font-size:12px;">Tail Maxi</div><span class="badge vendor-tag" style="margin-top:3px;">Bridal</span></td>
+              <td>
+                <div class="workflow-mini">
+                  <div class="wf-step done"><div class="wf-dot"></div><div class="wf-label">Fabric</div></div>
+                  <div class="wf-step done"><div class="wf-dot"></div><div class="wf-label">Sketch</div></div>
+                  <div class="wf-step active"><div class="wf-dot"></div><div class="wf-label">Dye</div></div>
+                  <div class="wf-step"><div class="wf-dot"></div><div class="wf-label">Handwork</div></div>
+                  <div class="wf-step"><div class="wf-dot"></div><div class="wf-label">Stitch</div></div>
+                  <div class="wf-step"><div class="wf-dot"></div><div class="wf-label">Ready</div></div>
+                  <div class="wf-step"><div class="wf-dot"></div><div class="wf-label">Alter</div></div>
+                </div>
+              </td>
+              <td><span class="stage-pill" style="background:rgba(58,74,107,0.08);border-color:rgba(58,74,107,0.2);color:#3A4A6B;"><span class="stage-pill-dot" style="background:#3A4A6B;"></span>Dye</span></td>
+              <td><div class="dress-sub" style="color:var(--text-faint)">—</div></td>
+              <td><div class="dress-sub">01 Nov</div></td>
+              <td class="action-cell" onclick="event.stopPropagation()">
+                <button class="action-btn" onclick="toggleMenu(this)">···</button>
+                <div class="action-menu">
+                  <div class="action-menu-item"><span class="mi">⧉</span> Duplicate</div>
+                  <div class="action-menu-item"><span class="mi">⊞</span> Duplicate (measurements only)</div>
+                  <div class="action-menu-divider"></div>
+                  <div class="action-menu-item warn"><span class="mi">⚑</span> Flag: Needs Attention</div>
+                  <div class="action-menu-divider"></div>
+                  <div class="action-menu-item danger"><span class="mi">✕</span> Remove Dress</div>
+                </div>
+              </td>
+              <td><button class="expand-btn">›</button></td>
+            </tr>
+            <tr><td colspan="9" style="padding:0;"><div class="dress-detail-panel" id="d2"></div></td></tr>
+
+            <!-- DRESS 3 — ATTENTION -->
+            <tr class="dress-row attention-row" onclick="toggleDress('d3',this)">
+              <td><div class="dress-num">03</div></td>
+              <td><div class="dress-client">Sana</div><div class="dress-sub">Named client</div></td>
+              <td>
+                <div class="dress-client" style="font-size:12px;">Kurti Lehenga</div>
+                <div style="display:flex;gap:4px;margin-top:3px;flex-wrap:wrap;">
+                  <span class="badge pending" style="font-size:9px;">Party</span>
+                  <span class="badge custom-deadline">Custom Deadline</span>
+                  <span class="badge attention">⚑ Attention</span>
+                </div>
+              </td>
+              <td>
+                <div class="workflow-mini">
+                  <div class="wf-step done"><div class="wf-dot"></div><div class="wf-label">Fabric</div></div>
+                  <div class="wf-step active"><div class="wf-dot"></div><div class="wf-label">Sketch</div></div>
+                  <div class="wf-step"><div class="wf-dot"></div><div class="wf-label">Dye</div></div>
+                  <div class="wf-step"><div class="wf-dot"></div><div class="wf-label">Handwork</div></div>
+                  <div class="wf-step"><div class="wf-dot"></div><div class="wf-label">Stitch</div></div>
+                  <div class="wf-step"><div class="wf-dot"></div><div class="wf-label">Ready</div></div>
+                  <div class="wf-step"><div class="wf-dot"></div><div class="wf-label">Alter</div></div>
+                </div>
+              </td>
+              <td><span class="stage-pill" style="background:var(--bg2);border-color:var(--border);color:var(--text-muted);"><span class="stage-pill-dot" style="background:var(--text-faint);"></span>Sketch</span></td>
+              <td><div class="dress-sub" style="color:var(--text-faint)">—</div></td>
+              <td><div class="dress-sub" style="color:var(--error);">25 Oct !</div></td>
+              <td class="action-cell" onclick="event.stopPropagation()">
+                <button class="action-btn" onclick="toggleMenu(this)">···</button>
+                <div class="action-menu">
+                  <div class="action-menu-item"><span class="mi">⧉</span> Duplicate</div>
+                  <div class="action-menu-item"><span class="mi">⊞</span> Duplicate (measurements only)</div>
+                  <div class="action-menu-divider"></div>
+                  <div class="action-menu-item"><span class="mi">⚑</span> Remove Attention Flag</div>
+                  <div class="action-menu-divider"></div>
+                  <div class="action-menu-item danger"><span class="mi">✕</span> Remove Dress</div>
+                </div>
+              </td>
+              <td><button class="expand-btn">›</button></td>
+            </tr>
+            <tr><td colspan="9" style="padding:0;"><div class="dress-detail-panel" id="d3"></div></td></tr>
+
+            <!-- DRESS 4 — STOCK SIZE -->
+            <tr class="dress-row" onclick="toggleDress('d4',this)">
+              <td><div class="dress-num">04</div></td>
+              <td><div class="dress-client">Size — M</div><div class="dress-sub">Stock order</div></td>
+              <td><div class="dress-client" style="font-size:12px;">Sharara Set</div><span class="badge completed" style="font-size:9px;margin-top:3px;">Formal</span></td>
+              <td>
+                <div class="workflow-mini">
+                  <div class="wf-step done"><div class="wf-dot"></div><div class="wf-label">Fabric</div></div>
+                  <div class="wf-step done"><div class="wf-dot"></div><div class="wf-label">Sketch</div></div>
+                  <div class="wf-step done"><div class="wf-dot"></div><div class="wf-label">Dye</div></div>
+                  <div class="wf-step done"><div class="wf-dot"></div><div class="wf-label">Handwork</div></div>
+                  <div class="wf-step done"><div class="wf-dot"></div><div class="wf-label">Stitch</div></div>
+                  <div class="wf-step active"><div class="wf-dot"></div><div class="wf-label">Ready</div></div>
+                  <div class="wf-step"><div class="wf-dot"></div><div class="wf-label">Alter</div></div>
+                </div>
+              </td>
+              <td><span class="stage-pill" style="background:var(--green-dim);border-color:rgba(58,107,74,0.2);color:var(--green);"><span class="stage-pill-dot" style="background:var(--green);"></span>Ready</span></td>
+              <td><div class="dress-sub">Ustad Hamid</div></td>
+              <td><div class="dress-sub">28 Oct</div></td>
+              <td class="action-cell" onclick="event.stopPropagation()">
+                <button class="action-btn" onclick="toggleMenu(this)">···</button>
+                <div class="action-menu">
+                  <div class="action-menu-item"><span class="mi">⧉</span> Duplicate</div>
+                  <div class="action-menu-item"><span class="mi">⊞</span> Duplicate (measurements only)</div>
+                  <div class="action-menu-divider"></div>
+                  <div class="action-menu-item warn"><span class="mi">⚑</span> Flag: Needs Attention</div>
+                  <div class="action-menu-divider"></div>
+                  <div class="action-menu-item danger"><span class="mi">✕</span> Remove Dress</div>
+                </div>
+              </td>
+              <td><button class="expand-btn">›</button></td>
+            </tr>
+            <tr><td colspan="9" style="padding:0;"><div class="dress-detail-panel" id="d4"></div></td></tr>
+
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
+
+<div class="activity-drawer" id="activityDrawer">
+  <div class="drawer-header">
+    <div class="drawer-title">Order Log</div>
+    <button class="drawer-close" onclick="closeDrawer()">×</button>
+  </div>
+  <div class="drawer-tabs">
+    <div class="drawer-tab active" onclick="switchTab('activity',this)">Activity</div>
+    <div class="drawer-tab" onclick="switchTab('payments',this)">Payments</div>
+  </div>
+  <div class="drawer-body">
+    <div id="tab-activity">
+      <div class="activity-list">
+        <div class="activity-item"><div class="act-avatar">U</div><div><div class="act-text"><strong>Uzain</strong> moved Farah's Farshi Lehenga to <strong>Handwork</strong></div><div class="act-time">18 Oct 2025 · 11:42 AM</div></div></div>
+        <div class="activity-item"><div class="act-avatar">U</div><div><div class="act-text"><strong>Uzain</strong> assigned <strong>Ustad Hamid</strong> to Dress #01</div><div class="act-time">18 Oct 2025 · 11:40 AM</div></div></div>
+        <div class="activity-item"><div class="act-avatar">U</div><div><div class="act-text">Dress #03 flagged as <strong>Needs Attention</strong></div><div class="act-time">16 Oct 2025 · 02:00 PM</div></div></div>
+        <div class="activity-item"><div class="act-avatar">B</div><div><div class="act-text"><strong>Bilal</strong> moved Farah's Tail Maxi to <strong>Dye</strong></div><div class="act-time">14 Oct 2025 · 10:20 AM</div></div></div>
+        <div class="activity-item"><div class="act-avatar">U</div><div><div class="act-text">Order <strong>#GS-1041</strong> created · 6 dresses</div><div class="act-time">12 Oct 2025 · 09:00 AM</div></div></div>
+      </div>
+    </div>
+    <div id="tab-payments" style="display:none;">
+      <div style="padding:24px 0;text-align:center;">
+        <div style="font-size:32px;margin-bottom:10px;">⬢</div>
+        <div style="font-size:13px;font-weight:500;color:var(--text-muted);margin-bottom:6px;">Vendor Order</div>
+        <div style="font-size:12px;color:var(--text-faint);line-height:1.6;margin-bottom:16px;">Payments are tracked in the Agent Ledger under <strong style="color:var(--gold);">Kamran Riaz</strong></div>
+        <div style="padding:12px 16px;background:var(--bg2);border:1px solid var(--border-light);border-radius:8px;text-align:left;">
+          <div style="font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.08em;font-weight:600;margin-bottom:5px;">Order Value</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:500;">PKR 90,000</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<button class="drawer-toggle-btn" onclick="openDrawer('activity')">
+  <span class="drawer-dot"></span> Activity & Log
+</button>
+
+<script>
+function toggleDress(id, row) {
+  const panel = document.getElementById(id);
+  const isOpen = panel.classList.contains('open');
+  document.querySelectorAll('.dress-row').forEach(r => r.classList.remove('active-row'));
+  document.querySelectorAll('.dress-detail-panel').forEach(p => p.classList.remove('open'));
+  if (!isOpen) { panel.classList.add('open'); row.classList.add('active-row'); }
+}
+
+function toggleMenu(btn) {
+  const menu = btn.nextElementSibling;
+  const isOpen = menu.classList.contains('open');
+  document.querySelectorAll('.action-menu.open').forEach(m => m.classList.remove('open'));
+  if (!isOpen) menu.classList.add('open');
+  event.stopPropagation();
+}
+document.addEventListener('click', () => document.querySelectorAll('.action-menu.open').forEach(m => m.classList.remove('open')));
+
+function openDrawer(tab) {
+  document.getElementById('activityDrawer').classList.add('open');
+  document.getElementById('drawerOverlay').classList.add('open');
+  const tabs = document.querySelectorAll('.drawer-tab');
+  tabs.forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-activity').style.display = 'none';
+  document.getElementById('tab-payments').style.display = 'none';
+  if (tab === 'payments') { tabs[1].classList.add('active'); document.getElementById('tab-payments').style.display = 'block'; }
+  else { tabs[0].classList.add('active'); document.getElementById('tab-activity').style.display = 'block'; }
+}
+function closeDrawer() {
+  document.getElementById('activityDrawer').classList.remove('open');
+  document.getElementById('drawerOverlay').classList.remove('open');
+}
+function switchTab(tab, el) {
+  document.querySelectorAll('.drawer-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tab-activity').style.display = tab === 'activity' ? 'block' : 'none';
+  document.getElementById('tab-payments').style.display = tab === 'payments' ? 'block' : 'none';
+}
+
+function toggleNote(el) {
+  const input = el.parentElement.querySelector('.stage-note-input');
+  input.classList.toggle('visible');
+  if (input.classList.contains('visible')) input.focus();
+}
+
+function toggleMeasEdit(id, btn) {
+  const grid = document.getElementById(id);
+  const actions = document.getElementById(id + '-actions');
+  const isEditing = btn.classList.contains('editing');
+  if (isEditing) { cancelMeas(id); return; }
+  btn.classList.add('editing'); btn.textContent = '× Cancel';
+  grid.querySelectorAll('.vv').forEach(v => v.style.display = 'none');
+  grid.querySelectorAll('.ef').forEach(f => f.style.display = 'block');
+  actions.style.display = 'block';
+}
+function saveMeas(id) {
+  const grid = document.getElementById(id);
+  const actions = document.getElementById(id + '-actions');
+  const btn = grid.closest('.detail-card').querySelector('.edit-section-btn');
+  grid.querySelectorAll('.meas-row').forEach(row => {
+    const v = row.querySelector('.vv'); const f = row.querySelector('.ef');
+    if (v && f) { v.textContent = f.value; v.style.display = ''; f.style.display = 'none'; }
+  });
+  actions.style.display = 'none';
+  btn.classList.remove('editing'); btn.textContent = '✎ Edit';
+}
+function cancelMeas(id) {
+  const grid = document.getElementById(id);
+  const actions = document.getElementById(id + '-actions');
+  const btn = grid.closest('.detail-card').querySelector('.edit-section-btn');
+  grid.querySelectorAll('.vv').forEach(v => v.style.display = '');
+  grid.querySelectorAll('.ef').forEach(f => f.style.display = 'none');
+  actions.style.display = 'none';
+  btn.classList.remove('editing'); btn.textContent = '✎ Edit';
+}
+
+function toggleKarigar(id, btn) {
+  const view = document.getElementById(id + '-view');
+  const edit = document.getElementById(id + '-edit');
+  const isEditing = btn.classList.contains('editing');
+  if (isEditing) { saveKarigar(id); return; }
+  view.style.display = 'none'; edit.style.display = 'block';
+  btn.classList.add('editing'); btn.textContent = '× Cancel';
+}
+function saveKarigar(id) {
+  const view = document.getElementById(id + '-view');
+  const edit = document.getElementById(id + '-edit');
+  const btn = view.closest('.detail-card').querySelector('.edit-section-btn');
+  view.style.display = 'block'; edit.style.display = 'none';
+  btn.classList.remove('editing'); btn.textContent = '✎ Edit';
+}
+
+function toggleFabricAdd(id) {
+  const form = document.getElementById(id);
+  form.style.display = form.style.display === 'none' ? 'block' : 'none';
+}
+function toggleFabItemEdit(id) {
+  const view = document.getElementById(id+'-view');
+  const edit = document.getElementById(id+'-edit');
+  const isEditing = edit.style.display !== 'none';
+  view.style.display = isEditing ? 'block' : 'none';
+  edit.style.display = isEditing ? 'none' : 'block';
+}
+function saveFabItem(id) {
+  const view = document.getElementById(id+'-view');
+  const edit = document.getElementById(id+'-edit');
+  view.style.display = 'block'; edit.style.display = 'none';
+}
+let fabCounter = 10;
+function addFabricItem(listId, formId) {
+  const name = document.getElementById(formId+'-name').value.trim();
+  const loc = document.getElementById(formId+'-loc').value;
+  const sent = document.getElementById(formId+'-sent').value || '—';
+  const returned = document.getElementById(formId+'-returned').value || '—';
+  if (!name) { alert('Enter fabric name.'); return; }
+  fabCounter++;
+  const itemId = 'fabi-'+fabCounter;
+  const locClass = {'With Us':'with-us','At Dye':'at-dye','At Karigar':'at-karigar','Ready':'ready'}[loc] || 'with-us';
+  const list = document.getElementById(listId);
+  const div = document.createElement('div');
+  div.className = 'fabric-item'; div.id = itemId;
+  div.innerHTML = `<div class="fabric-item-view" id="${itemId}-view"><div class="fabric-top"><span class="fabric-name">${name}</span><div style="display:flex;align-items:center;gap:6px;"><span class="fabric-status ${locClass}">${loc}</span><button class="fab-row-edit-btn" onclick="toggleFabItemEdit('${itemId}')">✎</button></div></div><div class="fabric-details"><div class="fd-row"><span class="fd-label">Sent</span><span class="fd-val">${sent}</span></div><div class="fd-row"><span class="fd-label">Returned</span><span class="fd-val ${returned==='—'?'faint':''}">${returned}</span></div></div></div><div class="fabric-item-edit" id="${itemId}-edit" style="display:none;"><div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px;"><div><div class="fab-field-label">Name / Color</div><input class="fab-input" value="${name}"></div><div><div class="fab-field-label">Location</div><select class="fab-input"><option${loc==='With Us'?' selected':''}>With Us</option><option${loc==='At Dye'?' selected':''}>At Dye</option><option${loc==='At Karigar'?' selected':''}>At Karigar</option><option${loc==='Ready'?' selected':''}>Ready</option></select></div><div><div class="fab-field-label">Date Sent</div><input class="fab-input" value="${sent==='—'?'':sent}"></div><div><div class="fab-field-label">Date Returned</div><input class="fab-input" value="${returned==='—'?'':returned}"></div></div><div class="save-cancel-row"><button class="btn-save-inline" onclick="saveFabItem('${itemId}')">Save</button><button class="btn-cancel-inline" onclick="toggleFabItemEdit('${itemId}')">Cancel</button></div></div>`;
+  list.insertBefore(div, document.getElementById(formId));
+  document.getElementById(formId+'-name').value = '';
+  document.getElementById(formId+'-sent').value = '';
+  document.getElementById(formId+'-returned').value = '';
+  toggleFabricAdd(formId);
+}
+
+function toggleFabricEdit(id, btn) {
+  const view = document.getElementById(id+'-view');
+  const edit = document.getElementById(id+'-edit');
+  const isEditing = btn.classList.contains('editing');
+  if (isEditing) { saveFabric(id); return; }
+  view.style.display = 'none'; edit.style.display = 'block';
+  btn.classList.add('editing'); btn.textContent = '× Cancel';
+}
+function saveFabric(id) {
+  const view = document.getElementById(id+'-view');
+  const edit = document.getElementById(id+'-edit');
+  const btn = view.closest('.detail-card').querySelector('.edit-section-btn');
+  view.style.display = 'block'; edit.style.display = 'none';
+  btn.classList.remove('editing'); btn.textContent = '✎ Edit';
+}
+
+function toggleAltForm(id) {
+  const form = document.getElementById(id+'-form');
+  form.style.display = form.style.display === 'none' ? 'block' : 'none';
+}
+function saveAlt(id) {
+  const reason = document.getElementById(id+'-reason').value;
+  const note = document.getElementById(id+'-note').value;
+  if (!reason || !note.trim()) { alert('Please fill in both reason and note.'); return; }
+  const timeline = document.getElementById(id+'-timeline');
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) + ' · ' + now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+  const item = document.createElement('div');
+  item.className = 'alt-item';
+  item.innerHTML = `<div class="alt-dot-col"><div class="alt-dot" style="background:var(--error)"></div></div><div class="alt-content"><div class="alt-date">${dateStr}</div><div class="alt-note">${note}</div><div class="alt-reason">${reason}</div></div>`;
+  timeline.appendChild(item);
+  document.getElementById(id+'-reason').value = '';
+  document.getElementById(id+'-note').value = '';
+  toggleAltForm(id);
+}
+
+function copyClip(id) {
+  const text = "Bust: 38\"\nWaist: 32\"\nHips: 40\"\nShoulder: 14\"\nShirt Length: 42\"\nSleeve: 24\"\nLehenga: 44\"\nArm: 12\"";
+  navigator.clipboard.writeText(text).catch(() => {});
+  const btn = document.getElementById('clip-' + id);
+  btn.textContent = '✓ Copied!'; btn.classList.add('copied');
+  setTimeout(() => { btn.textContent = '📋 Copy to clipboard'; btn.classList.remove('copied'); }, 2000);
+}
+</script>
+</body>
+</html>
