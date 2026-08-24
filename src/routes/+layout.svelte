@@ -1,5 +1,6 @@
 <script>
     import Sidebar from "../ui/sidebar/Sidebar.svelte";
+    import MobileTabBar from "../ui/sidebar/MobileTabBar.svelte";
     import "../app.css";
 
     let { children } = $props();
@@ -10,6 +11,7 @@
     <main class="main">
         {@render children()}
     </main>
+    <MobileTabBar />
 </div>
 
 <style>
@@ -25,6 +27,16 @@
         flex-direction: column;
         overflow: hidden;
         min-width: 0;
+    }
+
+    /* !important is needed here: Sidebar.svelte's own scoped `.sidebar {
+       display: flex }` rule compiles to a two-class selector
+       (.sidebar.s-xxxxx), which outranks this layout's unscoped
+       :global(.sidebar) on specificity regardless of source order. */
+    @media (max-width: 767px) {
+        :global(.sidebar) {
+            display: none !important;
+        }
     }
 </style>
 
