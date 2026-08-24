@@ -1,48 +1,35 @@
 <script>
-	import { createStockDressWithDetails, updateStockDress } from "$lib/services/stockDressesService";
-	import VariantList from "./VariantList.svelte";
+	import { updateStockDress } from "$lib/services/stockDressesService";
 
+	// Edit-only: creating a new stock dress has its own page (/stock/new)
+	// since that flow has more scope (images, variants, save-as-draft).
+	// This component only ever edits an existing dress's Basics section.
 	/**
 	 * @type {{
-	 *   dress?: any,
+	 *   dress: any,
 	 *   onSaved: () => void,
 	 *   onCancel: () => void
 	 * }}
 	 */
-	let { dress = null, onSaved, onCancel } = $props();
+	let { dress, onSaved, onCancel } = $props();
 
-	const isEditing = dress !== null;
-
-	let name = $state(dress?.name ?? "");
-	let garmentType = $state(dress?.garment_type ?? "");
-	let category = $state(dress?.category ?? "party_wear");
-	let subcategory = $state(dress?.subcategory ?? "");
-	let basePrice = $state(dress?.base_price ?? "");
-	let productionCost = $state(dress?.production_cost ?? "");
-	let notes = $state(dress?.notes ?? "");
-	let imageUrl = $state("");
-	let images = $state([]);
-	let variants = $state([]);
+	let name = $state(dress.name);
+	let garmentType = $state(dress.garment_type);
+	let category = $state(dress.category);
+	let subcategory = $state(dress.subcategory ?? "");
+	let basePrice = $state(dress.base_price);
+	let productionCost = $state(dress.production_cost ?? "");
+	let notes = $state(dress.notes ?? "");
 
 	let saving = $state(false);
 	let error = $state(null);
-
-	function addImageUrl() {
-		if (!imageUrl.trim()) return;
-		images = [...images, { image_url: imageUrl.trim(), is_primary: images.length === 0 }];
-		imageUrl = "";
-	}
-
-	function removeImage(index) {
-		images = images.filter((_, i) => i !== index);
-	}
 
 	async function handleSubmit(e) {
 		e.preventDefault();
 		saving = true;
 		error = null;
 
-		const dressPayload = {
+		const { error: updateError } = await updateStockDress(dress.id, {
 			name,
 			garment_type: garmentType,
 			category,
@@ -50,33 +37,11 @@
 			base_price: Number(basePrice),
 			production_cost: productionCost ? Number(productionCost) : null,
 			notes: notes || null,
-		};
-
-		if (isEditing) {
-			const { error: updateError } = await updateStockDress(dress.id, dressPayload);
-			saving = false;
-			if (updateError) {
-				error = updateError;
-				return;
-			}
-			onSaved();
-			return;
-		}
-
-		const { error: createError } = await createStockDressWithDetails({
-			dress: dressPayload,
-			images,
-			options: [],
-			variants: variants.map((v) => ({
-				price_override: v.price_override,
-				quantity: v.quantity,
-				axisValues: v.size ? [{ axis: "size", value: v.size }] : [],
-			})),
 		});
 
 		saving = false;
-		if (createError) {
-			error = createError;
+		if (updateError) {
+			error = updateError;
 			return;
 		}
 		onSaved();
@@ -128,29 +93,6 @@
 		</label>
 	</div>
 
-	{#if !isEditing}
-		<div class="form-section">
-			<div class="section-title">Images</div>
-			<p class="section-hint">Paste an image URL (real upload comes in a later pass).</p>
-			<div class="image-input-row">
-				<input type="url" placeholder="https://…" bind:value={imageUrl} />
-				<button type="button" class="btn-secondary" onclick={addImageUrl}>Add</button>
-			</div>
-			{#each images as img, i}
-				<div class="image-row">
-					<span class="image-url">{img.image_url}</span>
-					{#if img.is_primary}<span class="primary-tag">Primary</span>{/if}
-					<button type="button" class="remove-btn" onclick={() => removeImage(i)}>✕</button>
-				</div>
-			{/each}
-		</div>
-
-		<div class="form-section">
-			<div class="section-title">Variants</div>
-			<VariantList {variants} editable={true} onChange={(v) => (variants = v)} />
-		</div>
-	{/if}
-
 	{#if error}
 		<p class="error-text">Error: {error}</p>
 	{/if}
@@ -158,7 +100,7 @@
 	<div class="form-actions">
 		<button type="button" class="btn-secondary" onclick={onCancel}>Cancel</button>
 		<button type="submit" class="btn-gold" disabled={saving}>
-			{saving ? "Saving…" : isEditing ? "Save Changes" : "Create Stock Dress"}
+			{saving ? "Saving…" : "Save Changes"}
 		</button>
 	</div>
 </form>
@@ -185,12 +127,6 @@
 		margin-bottom: 12px;
 	}
 
-	.section-hint {
-		font-size: 11px;
-		color: var(--text-muted);
-		margin-bottom: 8px;
-	}
-
 	.form-field {
 		display: flex;
 		flex-direction: column;
@@ -209,52 +145,6 @@
 		font-size: 13px;
 		font-family: 'DM Sans', sans-serif;
 		color: var(--text);
-	}
-
-	.image-input-row {
-		display: flex;
-		gap: 8px;
-		margin-bottom: 10px;
-	}
-
-	.image-input-row input {
-		flex: 1;
-		padding: 8px 10px;
-		border: 1px solid var(--border);
-		border-radius: 8px;
-		font-size: 12px;
-	}
-
-	.image-row {
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		font-size: 11px;
-		padding: 6px 0;
-		border-top: 1px solid var(--border-light);
-	}
-
-	.image-url {
-		flex: 1;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-		color: var(--text-muted);
-	}
-
-	.primary-tag {
-		background: var(--gold-dim);
-		color: #8b6914;
-		font-size: 9px;
-		padding: 2px 6px;
-		border-radius: 8px;
-	}
-
-	.remove-btn {
-		background: none;
-		border: none;
-		color: var(--text-faint);
-		cursor: pointer;
 	}
 
 	.error-text {

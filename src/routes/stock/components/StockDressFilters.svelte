@@ -34,6 +34,7 @@
 
 	const STATUSES = [
 		{ value: "", label: "All Statuses" },
+		{ value: "draft", label: "Draft" },
 		{ value: "available", label: "Available" },
 		{ value: "reserved", label: "Reserved" },
 		{ value: "sold", label: "Sold" },

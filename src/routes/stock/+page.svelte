@@ -12,7 +12,6 @@
 
 	let selectedDress = $state(null);
 	let drawerOpen = $state(false);
-	let formOpen = $state(false);
 
 	async function load() {
 		loading = true;
@@ -32,6 +31,10 @@
 
 	const filteredDresses = $derived.by(() => {
 		return allDresses.filter((dress) => {
+			// Drafts are hidden from the default view (no status filter
+			// selected) — they're incomplete by design and would clutter the
+			// catalog. Still reachable by explicitly filtering for status=draft.
+			if (!filters.status && dress.status === "draft") return false;
 			if (filters.search) {
 				const q = filters.search.toLowerCase();
 				const matches =
@@ -58,18 +61,8 @@
 		drawerOpen = true;
 	}
 
-	function closeDrawer() {
+	async function closeDrawer() {
 		drawerOpen = false;
-	}
-
-	function openAddForm() {
-		selectedDress = null;
-		formOpen = true;
-	}
-
-	async function handleDrawerClosed() {
-		drawerOpen = false;
-		formOpen = false;
 		await load();
 	}
 </script>
@@ -85,7 +78,7 @@
 				<div class="page-title">Stock Dresses</div>
 				<div class="page-meta">Finished ready-made dresses available for sale</div>
 			</div>
-			<button class="btn-gold" onclick={openAddForm}>+ Add Stock Dress</button>
+			<a href="/stock/new" class="btn-gold">+ Add Stock Dress</a>
 		</div>
 
 		<StockDressFilters
@@ -107,16 +100,8 @@
 	</div>
 </div>
 
-{#if drawerOpen || formOpen}
-	<StockDressDrawer
-		dress={selectedDress}
-		startInEditMode={formOpen}
-		onClose={() => {
-			drawerOpen = false;
-			formOpen = false;
-		}}
-		onSaved={handleDrawerClosed}
-	/>
+{#if drawerOpen}
+	<StockDressDrawer dress={selectedDress} onClose={closeDrawer} onSaved={closeDrawer} />
 {/if}
 
 <style>
@@ -187,6 +172,7 @@
 		font-family: 'DM Sans', sans-serif;
 		box-shadow: 0 2px 8px rgba(201, 169, 97, 0.3);
 		transition: all 0.15s;
+		text-decoration: none;
 	}
 
 	.btn-gold:hover {

@@ -23,6 +23,7 @@ CREATE TYPE stock_subcategory AS ENUM (
 );
 
 CREATE TYPE stock_status AS ENUM (
+  'draft',
   'available',
   'reserved',
   'sold',
