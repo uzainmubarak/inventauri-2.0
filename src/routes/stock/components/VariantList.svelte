@@ -91,7 +91,7 @@
 						<span class="status-badge status-{variant.status}">{variant.status}</span>
 					</div>
 					{#if editable}
-						<button class="variant-remove" onclick={() => removeVariant(i)} aria-label="Remove variant">✕</button>
+						<button type="button" class="variant-remove" onclick={() => removeVariant(i)} aria-label="Remove variant">✕</button>
 					{/if}
 				</div>
 			{/each}
@@ -104,7 +104,7 @@
 					<div class="variant-card-header">
 						<span class="variant-sku">{editable ? "(assigned on save)" : (variant.sku ?? "—")}</span>
 						{#if editable}
-							<button class="variant-remove" onclick={() => removeVariant(i)} aria-label="Remove variant">✕</button>
+							<button type="button" class="variant-remove" onclick={() => removeVariant(i)} aria-label="Remove variant">✕</button>
 						{/if}
 					</div>
 					<div class="variant-card-row">
@@ -145,7 +145,7 @@
 	{/if}
 
 	{#if editable}
-		<button class="add-variant-btn" onclick={addVariant}>+ Add Variant</button>
+		<button type="button" class="add-variant-btn" onclick={addVariant}>+ Add Variant</button>
 	{/if}
 </div>
 
@@ -234,6 +234,11 @@
 	.status-archived {
 		background: #f0efed;
 		color: #6b6560;
+	}
+
+	.status-draft {
+		background: var(--blue-dim, rgba(58, 74, 107, 0.08));
+		color: #3a4a6b;
 	}
 
 	.add-variant-btn {

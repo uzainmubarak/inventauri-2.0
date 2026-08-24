@@ -28,7 +28,7 @@
 	}
 </script>
 
-<button class="stock-card" onclick={() => onSelect(dress)}>
+<button type="button" class="stock-card" onclick={() => onSelect(dress)}>
 	<div class="card-image">
 		{#if primaryImage}
 			<img src={primaryImage.image_url} alt={dress.name} />
@@ -148,6 +148,12 @@
 		background: #f0efed;
 		color: #6b6560;
 		border: 1px solid #ddd9d3;
+	}
+
+	.status-draft {
+		background: var(--blue-dim, rgba(58, 74, 107, 0.08));
+		color: #3a4a6b;
+		border: 1px solid rgba(58, 74, 107, 0.2);
 	}
 
 	/* Mobile: horizontal layout, image left, details right */

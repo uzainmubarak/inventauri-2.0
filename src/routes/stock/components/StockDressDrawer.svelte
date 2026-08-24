@@ -3,25 +3,24 @@
 	import VariantList from "./VariantList.svelte";
 	import StockDressForm from "./StockDressForm.svelte";
 
+	// Always shows an existing dress. Creating a new one has its own page
+	// (/stock/new) — see StockDressForm.svelte's header comment.
 	/**
 	 * @type {{
-	 *   dress: any | null,
-	 *   startInEditMode?: boolean,
+	 *   dress: any,
 	 *   onClose: () => void,
 	 *   onSaved: () => void
 	 * }}
 	 */
-	let { dress, startInEditMode = false, onClose, onSaved } = $props();
+	let { dress, onClose, onSaved } = $props();
 
 	let fullDress = $state(null);
-	let loading = $state(dress !== null);
+	let loading = $state(true);
 	let error = $state(null);
-	let editing = $state(startInEditMode);
+	let editing = $state(false);
 
 	$effect(() => {
-		if (dress) {
-			loadFullDress(dress.id);
-		}
+		loadFullDress(dress.id);
 	});
 
 	async function loadFullDress(id) {
@@ -58,17 +57,13 @@
 			{#if fullDress}
 				<div class="drawer-id">{fullDress.sku}</div>
 				<div class="drawer-title">{fullDress.name}</div>
-			{:else if !dress}
-				<div class="drawer-title">Add Stock Dress</div>
 			{/if}
 		</div>
-		<button class="drawer-close" onclick={onClose}>×</button>
+		<button type="button" class="drawer-close" onclick={onClose}>×</button>
 	</div>
 
 	<div class="drawer-body">
-		{#if !dress}
-			<StockDressForm onSaved={handleFormSaved} onCancel={onClose} />
-		{:else if loading}
+		{#if loading}
 			<p>Loading…</p>
 		{:else if error}
 			<p class="error-text">Error: {error}</p>
@@ -99,8 +94,8 @@
 			<VariantList variants={fullDress.stock_dress_variants ?? []} editable={false} />
 
 			<div class="drawer-actions">
-				<button class="btn-secondary" onclick={() => (editing = true)}>Edit</button>
-				<button class="btn-danger" onclick={handleArchive}>Archive</button>
+				<button type="button" class="btn-secondary" onclick={() => (editing = true)}>Edit</button>
+				<button type="button" class="btn-danger" onclick={handleArchive}>Archive</button>
 			</div>
 		{/if}
 	</div>

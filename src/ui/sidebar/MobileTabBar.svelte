@@ -25,7 +25,7 @@
 			<span class="tab-label">{tab.name}</span>
 		</a>
 	{/each}
-	<button class="tab-item" onclick={() => (moreOpen = true)}>
+	<button type="button" class="tab-item" onclick={() => (moreOpen = true)}>
 		<span class="tab-icon">⋯</span>
 		<span class="tab-label">More</span>
 	</button>
@@ -36,7 +36,7 @@
 	<div class="more-sheet">
 		<div class="more-sheet-header">
 			<span>More</span>
-			<button onclick={() => (moreOpen = false)}>×</button>
+			<button type="button" onclick={() => (moreOpen = false)}>×</button>
 		</div>
 		{#each MORE_ITEMS as item}
 			<a href={item.link} class="more-item" onclick={() => (moreOpen = false)}>
@@ -49,17 +49,23 @@
 
 <style>
 	.mobile-tab-bar {
+		display: none;
 		position: fixed;
 		bottom: 0;
 		left: 0;
 		right: 0;
 		height: 60px;
 		background: var(--sidebar-bg);
-		display: flex;
 		align-items: center;
 		justify-content: space-around;
 		z-index: 150;
 		border-top: 1px solid rgba(255, 255, 255, 0.06);
+	}
+
+	@media (max-width: 767px) {
+		.mobile-tab-bar {
+			display: flex;
+		}
 	}
 
 	.tab-item {
