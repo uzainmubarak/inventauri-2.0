@@ -6,6 +6,10 @@
 // Each function returns { data, error } — same shape Supabase itself uses.
 
 import { supabase } from "$lib/supabaseClient";
+import { addImage } from "$lib/services/stockDressImagesService";
+import { createOption, addOptionValue } from "$lib/services/stockDressOptionsService";
+import { createVariant } from "$lib/services/stockDressVariantsService";
+import { setVariantAxisValue } from "$lib/services/stockDressVariantValuesService";
 
 /**
  * Fetch all stock dresses, newest first.
@@ -97,4 +101,80 @@ export async function updateStockDress(id, updates) {
  */
 export async function archiveStockDress(id) {
 	return updateStockDress(id, { status: "archived" });
+}
+
+/**
+ * Create a stock dress along with its images, options, and variants in one
+ * call. Inserts run in dependency order (dress -> images -> options ->
+ * option values -> variant shells -> variant axis values). If any step
+ * fails, the function stops and returns that error immediately — the dress
+ * row (and whatever was inserted before the failure) is NOT rolled back,
+ * since Supabase's REST API has no cross-table transaction support here.
+ * Partial data is left in place; the caller can inspect `data.dress.id` to
+ * clean up manually if needed.
+ *
+ * @param {{
+ *   dress: { name: string, garment_type: string, category: string, subcategory?: string, base_price: number, production_cost?: number, notes?: string },
+ *   images?: { image_url: string, is_primary?: boolean, caption?: string }[],
+ *   options?: { name: string, values: { value: string, price_adjustment?: number }[] }[],
+ *   variants?: { price_override?: number, quantity?: number, axisValues: { axis: 'size' | 'color' | 'fabric' | 'other', value: string }[] }[]
+ * }} formData
+ * @returns {Promise<{ data: { dress: any } | null, error: string | null }>}
+ */
+export async function createStockDressWithDetails(formData) {
+	const { data: dress, error: dressError } = await createStockDress(formData.dress);
+	if (dressError) {
+		return { data: null, error: dressError };
+	}
+
+	for (const image of formData.images ?? []) {
+		const { error } = await addImage({ ...image, dress_id: dress.id });
+		if (error) {
+			return { data: { dress }, error: `Dress created (${dress.sku}), but image failed: ${error}` };
+		}
+	}
+
+	for (const option of formData.options ?? []) {
+		const { data: createdOption, error: optionError } = await createOption({
+			dress_id: dress.id,
+			name: option.name,
+		});
+		if (optionError) {
+			return {
+				data: { dress },
+				error: `Dress created (${dress.sku}), but option "${option.name}" failed: ${optionError}`,
+			};
+		}
+		for (const value of option.values) {
+			const { error } = await addOptionValue({ ...value, option_id: createdOption.id });
+			if (error) {
+				return {
+					data: { dress },
+					error: `Dress created (${dress.sku}), but option value "${value.value}" failed: ${error}`,
+				};
+			}
+		}
+	}
+
+	for (const variant of formData.variants ?? []) {
+		const { data: createdVariant, error: variantError } = await createVariant({
+			dress_id: dress.id,
+			price_override: variant.price_override,
+			quantity: variant.quantity,
+		});
+		if (variantError) {
+			return { data: { dress }, error: `Dress created (${dress.sku}), but a variant failed: ${variantError}` };
+		}
+		for (const axisValue of variant.axisValues) {
+			const { error } = await setVariantAxisValue({ ...axisValue, variant_id: createdVariant.id });
+			if (error) {
+				return {
+					data: { dress },
+					error: `Dress created (${dress.sku}), but variant axis value failed: ${error}`,
+				};
+			}
+		}
+	}
+
+	return { data: { dress }, error: null };
 }
