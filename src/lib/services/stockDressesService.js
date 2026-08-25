@@ -6,9 +6,13 @@
 // Each function returns { data, error } — same shape Supabase itself uses.
 
 import { supabase } from "$lib/supabaseClient";
-import { addImage } from "$lib/services/stockDressImagesService";
-import { createOption, addOptionValue } from "$lib/services/stockDressOptionsService";
-import { createVariant } from "$lib/services/stockDressVariantsService";
+import { addImage, deleteImage } from "$lib/services/stockDressImagesService";
+import {
+	createOption,
+	addOptionValue,
+	deleteOption,
+} from "$lib/services/stockDressOptionsService";
+import { createVariant, updateVariant, archiveVariant } from "$lib/services/stockDressVariantsService";
 import { setVariantAxisValue } from "$lib/services/stockDressVariantValuesService";
 
 /**
@@ -29,8 +33,9 @@ export async function listStockDresses() {
 }
 
 /**
- * Fetch a single stock dress by id, including its images and variants
- * (with each variant's axis values) — enough for the detail drawer.
+ * Fetch a single stock dress by id, including its images, options (with
+ * their values), and variants (with each variant's axis values) — enough
+ * for both the read-only detail drawer and the edit page.
  * @param {string} id
  * @returns {Promise<{ data: any | null, error: string | null }>}
  */
@@ -40,6 +45,7 @@ export async function getStockDressById(id) {
 		.select(
 			`*,
 			stock_dress_images (*),
+			stock_dress_options (*, stock_dress_option_values (*)),
 			stock_dress_variants (*, stock_dress_variant_values (*))`,
 		)
 		.eq("id", id)
@@ -172,6 +178,122 @@ export async function createStockDressWithDetails(formData) {
 					data: { dress },
 					error: `Dress created (${dress.sku}), but variant axis value failed: ${error}`,
 				};
+			}
+		}
+	}
+
+	return { data: { dress }, error: null };
+}
+
+/**
+ * Update an existing stock dress along with its images, options, and
+ * variants, diffing the edited lists against what's currently in the
+ * database:
+ *   - entries with an `id` already exist and are left as-is (nothing to
+ *     update at the field level for images/option-values in this pass —
+ *     only presence/absence is diffed)
+ *   - entries without an `id` are new and get created
+ *   - existing rows missing from the edited list are removed: images and
+ *     option values/options are hard-deleted (no lifecycle status column on
+ *     those tables), variants are archived instead (never hard-deleted,
+ *     matching the rest of the schema's soft-delete convention)
+ *
+ * Like createStockDressWithDetails, this is NOT transactional — requests
+ * run sequentially and a failure partway leaves prior steps applied. On
+ * failure the returned error says which step failed so the caller can
+ * decide whether to retry or investigate the partial state.
+ *
+ * @param {string} dressId
+ * @param {{
+ *   dress: { name: string, garment_type: string, category: string, subcategory?: string | null, base_price: number, production_cost?: number | null, notes?: string | null, status?: string },
+ *   currentImages: { id: string }[],
+ *   images: { id?: string, image_url: string, is_primary?: boolean }[],
+ *   currentOptions: { id: string }[],
+ *   options: { id?: string, name: string, values: { value: string, price_adjustment?: number }[] }[],
+ *   currentVariants: { id: string }[],
+ *   variants: { id?: string, price_override?: number, quantity?: number, axisValues: { axis: 'size' | 'color' | 'fabric' | 'other', value: string }[] }[]
+ * }} formData
+ * @returns {Promise<{ data: { dress: any } | null, error: string | null }>}
+ */
+export async function updateStockDressWithDetails(dressId, formData) {
+	const { data: dress, error: dressError } = await updateStockDress(dressId, formData.dress);
+	if (dressError) {
+		return { data: null, error: dressError };
+	}
+
+	const keptImageIds = new Set(formData.images.filter((i) => i.id).map((i) => i.id));
+	for (const existing of formData.currentImages) {
+		if (!keptImageIds.has(existing.id)) {
+			const { error } = await deleteImage(existing.id);
+			if (error) {
+				return { data: { dress }, error: `Dress saved, but removing an image failed: ${error}` };
+			}
+		}
+	}
+	for (const image of formData.images.filter((i) => !i.id)) {
+		const { error } = await addImage({ ...image, dress_id: dress.id });
+		if (error) {
+			return { data: { dress }, error: `Dress saved, but adding an image failed: ${error}` };
+		}
+	}
+
+	const keptOptionIds = new Set(formData.options.filter((o) => o.id).map((o) => o.id));
+	for (const existing of formData.currentOptions) {
+		if (!keptOptionIds.has(existing.id)) {
+			const { error } = await deleteOption(existing.id);
+			if (error) {
+				return { data: { dress }, error: `Dress saved, but removing an option failed: ${error}` };
+			}
+		}
+	}
+	for (const option of formData.options.filter((o) => !o.id)) {
+		const { data: createdOption, error: optionError } = await createOption({
+			dress_id: dress.id,
+			name: option.name,
+		});
+		if (optionError) {
+			return { data: { dress }, error: `Dress saved, but adding option "${option.name}" failed: ${optionError}` };
+		}
+		for (const value of option.values) {
+			const { error } = await addOptionValue({ ...value, option_id: createdOption.id });
+			if (error) {
+				return { data: { dress }, error: `Dress saved, but adding an option value failed: ${error}` };
+			}
+		}
+	}
+
+	const keptVariantIds = new Set(formData.variants.filter((v) => v.id).map((v) => v.id));
+	for (const existing of formData.currentVariants) {
+		if (!keptVariantIds.has(existing.id)) {
+			const { error } = await archiveVariant(existing.id);
+			if (error) {
+				return { data: { dress }, error: `Dress saved, but archiving a variant failed: ${error}` };
+			}
+		}
+	}
+	for (const variant of formData.variants) {
+		if (variant.id) {
+			const { error } = await updateVariant(variant.id, {
+				price_override: variant.price_override,
+				quantity: variant.quantity,
+			});
+			if (error) {
+				return { data: { dress }, error: `Dress saved, but updating a variant failed: ${error}` };
+			}
+			continue;
+		}
+		const { data: createdVariant, error: variantError } = await createVariant({
+			dress_id: dress.id,
+			price_override: variant.price_override,
+			quantity: variant.quantity,
+		});
+		if (variantError) {
+			return { data: { dress }, error: `Dress saved, but adding a variant failed: ${variantError}` };
+		}
+		for (const axisValue of variant.axisValues) {
+			const { error } = await setVariantAxisValue({ ...axisValue, variant_id: createdVariant.id });
+			if (error) {
+				return { data: { dress }, error: `Dress saved, but a new variant's axis value failed: ${error}` };
 			}
 		}
 	}

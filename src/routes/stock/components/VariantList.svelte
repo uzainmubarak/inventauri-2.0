@@ -23,6 +23,10 @@
 		onChange(variants.map((v, i) => (i === index ? { ...v, ...patch } : v)));
 	}
 
+	// `size` is the flat in-memory field this component edits directly. It's
+	// pre-populated from the DB's axis values when seeding an existing
+	// variant for editing (see StockDressFormFields.svelte), so this works
+	// the same whether the variant started out new or already persisted.
 	function axisValue(variant, axis) {
 		if (editable) return variant.size ?? "";
 		return variant.stock_dress_variant_values?.find((v) => v.axis === axis)?.value ?? "";
@@ -45,7 +49,7 @@
 			</div>
 			{#each variants as variant, i}
 				<div class="variant-table-row">
-					<div class="variant-sku">{editable ? "(assigned on save)" : (variant.sku ?? "—")}</div>
+					<div class="variant-sku">{variant.sku ?? "(assigned on save)"}</div>
 					<div>
 						{#if editable}
 							<input
@@ -102,7 +106,7 @@
 			{#each variants as variant, i}
 				<div class="variant-card">
 					<div class="variant-card-header">
-						<span class="variant-sku">{editable ? "(assigned on save)" : (variant.sku ?? "—")}</span>
+						<span class="variant-sku">{variant.sku ?? "(assigned on save)"}</span>
 						{#if editable}
 							<button type="button" class="variant-remove" onclick={() => removeVariant(i)} aria-label="Remove variant">✕</button>
 						{/if}

@@ -1,10 +1,12 @@
 <script>
 	import { getStockDressById, archiveStockDress } from "$lib/services/stockDressesService";
 	import VariantList from "./VariantList.svelte";
-	import StockDressForm from "./StockDressForm.svelte";
 
-	// Always shows an existing dress. Creating a new one has its own page
-	// (/stock/new) — see StockDressForm.svelte's header comment.
+	// Read-only detail view. Editing (including publishing a draft) lives at
+	// its own page, /stock/[id]/edit — see that route and
+	// StockDressFormFields.svelte for why: the edit flow needs the same
+	// scope as create (images, options, variants), which didn't fit in a
+	// 500px side panel.
 	/**
 	 * @type {{
 	 *   dress: any,
@@ -17,7 +19,6 @@
 	let fullDress = $state(null);
 	let loading = $state(true);
 	let error = $state(null);
-	let editing = $state(false);
 
 	$effect(() => {
 		loadFullDress(dress.id);
@@ -44,9 +45,8 @@
 		onSaved();
 	}
 
-	function handleFormSaved() {
-		editing = false;
-		onSaved();
+	function formatLabel(value) {
+		return value.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 	}
 </script>
 
@@ -67,8 +67,6 @@
 			<p>Loading…</p>
 		{:else if error}
 			<p class="error-text">Error: {error}</p>
-		{:else if editing}
-			<StockDressForm dress={fullDress} onSaved={handleFormSaved} onCancel={() => (editing = false)} />
 		{:else if fullDress}
 			<div class="drawer-images">
 				{#each fullDress.stock_dress_images ?? [] as img}
@@ -80,8 +78,8 @@
 			</div>
 
 			<div class="drawer-info-grid">
-				<div class="info-cell"><span class="info-label">Category</span>{fullDress.category}{fullDress.subcategory ? ` / ${fullDress.subcategory}` : ""}</div>
-				<div class="info-cell"><span class="info-label">Status</span>{fullDress.status}</div>
+				<div class="info-cell"><span class="info-label">Category</span>{formatLabel(fullDress.category)}{fullDress.subcategory ? ` / ${formatLabel(fullDress.subcategory)}` : ""}</div>
+				<div class="info-cell"><span class="info-label">Status</span>{formatLabel(fullDress.status)}</div>
 				<div class="info-cell"><span class="info-label">Base Price</span>PKR {Number(fullDress.base_price).toLocaleString()}</div>
 				<div class="info-cell"><span class="info-label">Garment Type</span>{fullDress.garment_type}</div>
 			</div>
@@ -90,11 +88,25 @@
 				<p class="drawer-notes">{fullDress.notes}</p>
 			{/if}
 
+			{#if fullDress.stock_dress_options?.length}
+				<div class="drawer-section-title">Options</div>
+				<div class="options-list">
+					{#each fullDress.stock_dress_options as option}
+						<div class="option-row">
+							<span class="option-name">{option.name}</span>
+							<span class="option-values">
+								{(option.stock_dress_option_values ?? []).map((v) => v.value).join(", ") || "—"}
+							</span>
+						</div>
+					{/each}
+				</div>
+			{/if}
+
 			<div class="drawer-section-title">Variants</div>
-			<VariantList variants={fullDress.stock_dress_variants ?? []} editable={false} />
+			<VariantList variants={(fullDress.stock_dress_variants ?? []).filter((v) => v.status !== 'archived')} editable={false} />
 
 			<div class="drawer-actions">
-				<button type="button" class="btn-secondary" onclick={() => (editing = true)}>Edit</button>
+				<a href="/stock/{fullDress.id}/edit" class="btn-secondary">Edit</a>
 				<button type="button" class="btn-danger" onclick={handleArchive}>Archive</button>
 			</div>
 		{/if}
@@ -231,6 +243,35 @@
 		margin-top: 20px;
 	}
 
+	.options-list {
+		border: 1px solid var(--border-light);
+		border-radius: 10px;
+		overflow: hidden;
+	}
+
+	.option-row {
+		display: flex;
+		justify-content: space-between;
+		gap: 12px;
+		padding: 10px 12px;
+		font-size: 12px;
+		border-bottom: 1px solid var(--border-light);
+	}
+
+	.option-row:last-child {
+		border-bottom: none;
+	}
+
+	.option-name {
+		font-weight: 500;
+		flex-shrink: 0;
+	}
+
+	.option-values {
+		color: var(--text-muted);
+		text-align: right;
+	}
+
 	.drawer-actions {
 		display: flex;
 		gap: 10px;
@@ -244,6 +285,10 @@
 		padding: 9px 16px;
 		font-size: 12px;
 		cursor: pointer;
+		text-decoration: none;
+		color: var(--text);
+		display: inline-flex;
+		align-items: center;
 	}
 
 	.btn-danger {

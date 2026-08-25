@@ -1,7 +1,7 @@
 <script>
 	import { goto } from "$app/navigation";
 	import { createStockDressWithDetails } from "$lib/services/stockDressesService";
-	import VariantList from "../components/VariantList.svelte";
+	import StockDressFormFields from "../components/StockDressFormFields.svelte";
 
 	let name = $state("");
 	let garmentType = $state("");
@@ -10,22 +10,12 @@
 	let basePrice = $state("");
 	let productionCost = $state("");
 	let notes = $state("");
-	let imageUrl = $state("");
 	let images = $state([]);
+	let options = $state([]);
 	let variants = $state([]);
 
 	let saving = $state(false);
 	let error = $state(null);
-
-	function addImageUrl() {
-		if (!imageUrl.trim()) return;
-		images = [...images, { image_url: imageUrl.trim(), is_primary: images.length === 0 }];
-		imageUrl = "";
-	}
-
-	function removeImage(index) {
-		images = images.filter((_, i) => i !== index);
-	}
 
 	function buildFormData(status) {
 		return {
@@ -34,13 +24,13 @@
 				garment_type: garmentType,
 				category,
 				subcategory: category === "bridal" && subcategory ? subcategory : null,
-				base_price: Number(basePrice),
+				base_price: Number(basePrice) || 0,
 				production_cost: productionCost ? Number(productionCost) : null,
 				notes: notes || null,
 				status,
 			},
 			images,
-			options: [],
+			options: options.map((o) => ({ name: o.name, values: o.values })),
 			variants: variants.map((v) => ({
 				price_override: v.price_override,
 				quantity: v.quantity,
@@ -92,70 +82,18 @@
 		</div>
 
 		<form class="stock-form" onsubmit={handleSubmit}>
-			<div class="form-section">
-				<div class="section-title">Basics</div>
-				<label class="form-field">
-					<span>Name</span>
-					<input type="text" bind:value={name} required={!saving} />
-				</label>
-				<label class="form-field">
-					<span>Garment Type</span>
-					<input type="text" bind:value={garmentType} placeholder="e.g. Farshi Lehenga" />
-				</label>
-				<label class="form-field">
-					<span>Category</span>
-					<select bind:value={category}>
-						<option value="party_wear">Party Wear</option>
-						<option value="formals">Formals</option>
-						<option value="bridal">Bridal</option>
-						<option value="nikkah_wear">Nikkah Wear</option>
-					</select>
-				</label>
-				{#if category === "bridal"}
-					<label class="form-field">
-						<span>Subcategory</span>
-						<select bind:value={subcategory}>
-							<option value="">—</option>
-							<option value="mehendi">Mehendi</option>
-							<option value="barat">Barat</option>
-							<option value="walima">Walima</option>
-						</select>
-					</label>
-				{/if}
-				<label class="form-field">
-					<span>Selling Price (PKR)</span>
-					<input type="number" min="0" step="0.01" bind:value={basePrice} />
-				</label>
-				<label class="form-field">
-					<span>Production Cost (PKR, internal only)</span>
-					<input type="number" min="0" step="0.01" bind:value={productionCost} />
-				</label>
-				<label class="form-field">
-					<span>Notes</span>
-					<textarea bind:value={notes} rows="3"></textarea>
-				</label>
-			</div>
-
-			<div class="form-section">
-				<div class="section-title">Images</div>
-				<p class="section-hint">Paste an image URL (real upload comes in a later pass).</p>
-				<div class="image-input-row">
-					<input type="url" placeholder="https://…" bind:value={imageUrl} />
-					<button type="button" class="btn-secondary" onclick={addImageUrl}>Add</button>
-				</div>
-				{#each images as img, i}
-					<div class="image-row">
-						<span class="image-url">{img.image_url}</span>
-						{#if img.is_primary}<span class="primary-tag">Primary</span>{/if}
-						<button type="button" class="remove-btn" onclick={() => removeImage(i)}>✕</button>
-					</div>
-				{/each}
-			</div>
-
-			<div class="form-section">
-				<div class="section-title">Variants</div>
-				<VariantList {variants} editable={true} onChange={(v) => (variants = v)} />
-			</div>
+			<StockDressFormFields
+				bind:name
+				bind:garmentType
+				bind:category
+				bind:subcategory
+				bind:basePrice
+				bind:productionCost
+				bind:notes
+				bind:images
+				bind:options
+				bind:variants
+			/>
 
 			{#if error}
 				<p class="error-text">Error: {error}</p>
@@ -238,94 +176,6 @@
 		flex-direction: column;
 		gap: 20px;
 		max-width: 640px;
-	}
-
-	.form-section {
-		border: 1px solid var(--border-light);
-		border-radius: 10px;
-		padding: 18px;
-		background: var(--white);
-	}
-
-	.section-title {
-		font-size: 11px;
-		font-weight: 600;
-		letter-spacing: 0.08em;
-		text-transform: uppercase;
-		color: var(--text-faint);
-		margin-bottom: 14px;
-	}
-
-	.section-hint {
-		font-size: 11px;
-		color: var(--text-muted);
-		margin-bottom: 8px;
-	}
-
-	.form-field {
-		display: flex;
-		flex-direction: column;
-		gap: 4px;
-		margin-bottom: 14px;
-		font-size: 12px;
-		color: var(--text-muted);
-	}
-
-	.form-field input,
-	.form-field select,
-	.form-field textarea {
-		padding: 9px 11px;
-		border: 1px solid var(--border);
-		border-radius: 8px;
-		font-size: 13px;
-		font-family: 'DM Sans', sans-serif;
-		color: var(--text);
-	}
-
-	.image-input-row {
-		display: flex;
-		gap: 8px;
-		margin-bottom: 10px;
-	}
-
-	.image-input-row input {
-		flex: 1;
-		padding: 9px 11px;
-		border: 1px solid var(--border);
-		border-radius: 8px;
-		font-size: 12px;
-	}
-
-	.image-row {
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		font-size: 11px;
-		padding: 8px 0;
-		border-top: 1px solid var(--border-light);
-	}
-
-	.image-url {
-		flex: 1;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-		color: var(--text-muted);
-	}
-
-	.primary-tag {
-		background: var(--gold-dim);
-		color: #8b6914;
-		font-size: 9px;
-		padding: 2px 6px;
-		border-radius: 8px;
-	}
-
-	.remove-btn {
-		background: none;
-		border: none;
-		color: var(--text-faint);
-		cursor: pointer;
 	}
 
 	.error-text {
