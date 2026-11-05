@@ -14,12 +14,27 @@
 	let garmentType = $state("");
 	let category = $state("party_wear");
 	let subcategory = $state("");
-	let basePrice = $state("");
-	let productionCost = $state("");
+	let description = $state("");
 	let notes = $state("");
+	/** @type {string[]} */
+	let tags = $state([]);
+	let price = $state("");
+	let compareAtPrice = $state("");
+	let cost = $state("");
+	let trackQuantity = $state(true);
+	let madeToOrder = $state(true);
+	let weightGrams = $state("");
+	let lengthCm = $state("");
+	let widthCm = $state("");
+	let heightCm = $state("");
+	/** @type {any[]} */
 	let images = $state([]);
+	/** @type {any[]} */
 	let options = $state([]);
+	/** @type {any[]} */
 	let variants = $state([]);
+	/** @type {string | null} */
+	let priceError = $state(null);
 
 	// Snapshots of what's currently in the DB, used to diff against the
 	// edited lists on save (see updateStockDressWithDetails).
@@ -48,33 +63,50 @@
 		garmentType = data.garment_type;
 		category = data.category;
 		subcategory = data.subcategory ?? "";
-		basePrice = data.base_price;
-		productionCost = data.production_cost ?? "";
+		description = data.description ?? "";
 		notes = data.notes ?? "";
+		tags = data.tags ?? [];
+		price = data.price;
+		compareAtPrice = data.compare_at_price ?? "";
+		cost = data.cost ?? "";
+		trackQuantity = data.track_quantity;
+		madeToOrder = data.made_to_order;
+		weightGrams = data.weight_grams ?? "";
+		lengthCm = data.length_cm ?? "";
+		widthCm = data.width_cm ?? "";
+		heightCm = data.height_cm ?? "";
 		originalStatus = data.status;
 
 		currentImages = data.stock_dress_images ?? [];
 		images = currentImages.map((img) => ({ ...img }));
 
 		currentOptions = data.stock_dress_options ?? [];
-		options = currentOptions.map((o) => ({
+		options = currentOptions.map(/** @param {any} o */ (o) => ({
 			id: o.id,
 			name: o.name,
-			values: (o.stock_dress_option_values ?? []).map((v) => ({ ...v })),
+			values: (o.stock_dress_option_values ?? []).map(/** @param {any} v */ (v) => ({ ...v })),
 			newValue: "",
+			newAdjustment: "",
 		}));
 
-		currentVariants = (data.stock_dress_variants ?? []).filter((v) => v.status !== "archived");
-		variants = currentVariants.map((v) => ({
+		currentVariants = (data.stock_dress_variants ?? []).filter(
+			/** @param {any} v */ (v) => v.status !== "archived",
+		);
+		variants = currentVariants.map(/** @param {any} v */ (v) => ({
 			id: v.id,
 			sku: v.sku,
-			size: v.stock_dress_variant_values?.find((av) => av.axis === "size")?.value ?? "",
+			barcode: v.barcode,
+			// Every axis, not just size — the schema has always supported four.
+			axisValues: (v.stock_dress_variant_values ?? []).map(
+				/** @param {any} av */ (av) => ({ axis: av.axis, value: av.value }),
+			),
 			quantity: v.quantity,
 			price_override: v.price_override,
 			status: v.status,
 		}));
 	}
 
+	/** @param {string} status */
 	function buildFormData(status) {
 		return {
 			dress: {
@@ -82,25 +114,35 @@
 				garment_type: garmentType,
 				category,
 				subcategory: category === "bridal" && subcategory ? subcategory : null,
-				base_price: Number(basePrice) || 0,
-				production_cost: productionCost ? Number(productionCost) : null,
+				description: description || null,
 				notes: notes || null,
+				tags,
+				price: Number(price) || 0,
+				compare_at_price: compareAtPrice ? Number(compareAtPrice) : null,
+				cost: cost ? Number(cost) : null,
+				track_quantity: trackQuantity,
+				made_to_order: madeToOrder,
+				weight_grams: weightGrams ? Number(weightGrams) : null,
+				length_cm: lengthCm ? Number(lengthCm) : null,
+				width_cm: widthCm ? Number(widthCm) : null,
+				height_cm: heightCm ? Number(heightCm) : null,
 				status,
 			},
 			currentImages,
 			images,
 			currentOptions,
-			options: options.map((o) => ({ id: o.id, name: o.name, values: o.values })),
+			options: options.map(/** @param {any} o */ (o) => ({ id: o.id, name: o.name, values: o.values })),
 			currentVariants,
-			variants: variants.map((v) => ({
+			variants: variants.map(/** @param {any} v */ (v) => ({
 				id: v.id,
 				price_override: v.price_override,
 				quantity: v.quantity,
-				axisValues: v.size ? [{ axis: "size", value: v.size }] : [],
+				axisValues: v.axisValues ?? [],
 			})),
 		};
 	}
 
+	/** @param {string} status */
 	async function save(status) {
 		saving = true;
 		saveError = null;
@@ -115,12 +157,19 @@
 		goto("/stock");
 	}
 
+	/** @param {SubmitEvent} e */
 	function handleSubmit(e) {
 		e.preventDefault();
-		// Publishing a draft moves it to 'available'; a dress that was never
-		// a draft keeps whatever status it already had (e.g. editing an
-		// Available dress doesn't silently change it to something else).
-		save(originalStatus === "draft" ? "available" : originalStatus);
+		if (priceError) return;
+		const publishing = originalStatus === "draft";
+		if (publishing && !(Number(price) > 0)) {
+			saveError = "Set a price above zero before publishing, or keep this as a draft.";
+			return;
+		}
+		// Publishing a draft moves it to 'active'; a dress that was never a
+		// draft keeps the status it already had, so saving an edit never
+		// silently changes it.
+		save(publishing ? "active" : originalStatus);
 	}
 
 	function handleSaveDraft() {
@@ -154,12 +203,22 @@
 					bind:garmentType
 					bind:category
 					bind:subcategory
-					bind:basePrice
-					bind:productionCost
+					bind:description
 					bind:notes
+					bind:tags
+					bind:price
+					bind:compareAtPrice
+					bind:cost
+					bind:trackQuantity
+					bind:madeToOrder
+					bind:weightGrams
+					bind:lengthCm
+					bind:widthCm
+					bind:heightCm
 					bind:images
 					bind:options
 					bind:variants
+					bind:priceError
 				/>
 
 				{#if saveError}

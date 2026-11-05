@@ -7,16 +7,33 @@
 	let garmentType = $state("");
 	let category = $state("party_wear");
 	let subcategory = $state("");
-	let basePrice = $state("");
-	let productionCost = $state("");
+	let description = $state("");
 	let notes = $state("");
+	/** @type {string[]} */
+	let tags = $state([]);
+	let price = $state("");
+	let compareAtPrice = $state("");
+	let cost = $state("");
+	let trackQuantity = $state(true);
+	let madeToOrder = $state(true);
+	let weightGrams = $state("");
+	let lengthCm = $state("");
+	let widthCm = $state("");
+	let heightCm = $state("");
+	/** @type {any[]} */
 	let images = $state([]);
+	/** @type {any[]} */
 	let options = $state([]);
+	/** @type {any[]} */
 	let variants = $state([]);
 
+	/** @type {string | null} */
+	let priceError = $state(null);
 	let saving = $state(false);
+	/** @type {string | null} */
 	let error = $state(null);
 
+	/** @param {string} status */
 	function buildFormData(status) {
 		return {
 			dress: {
@@ -24,21 +41,31 @@
 				garment_type: garmentType,
 				category,
 				subcategory: category === "bridal" && subcategory ? subcategory : null,
-				base_price: Number(basePrice) || 0,
-				production_cost: productionCost ? Number(productionCost) : null,
+				description: description || null,
 				notes: notes || null,
+				tags,
+				price: Number(price) || 0,
+				compare_at_price: compareAtPrice ? Number(compareAtPrice) : null,
+				cost: cost ? Number(cost) : null,
+				track_quantity: trackQuantity,
+				made_to_order: madeToOrder,
+				weight_grams: weightGrams ? Number(weightGrams) : null,
+				length_cm: lengthCm ? Number(lengthCm) : null,
+				width_cm: widthCm ? Number(widthCm) : null,
+				height_cm: heightCm ? Number(heightCm) : null,
 				status,
 			},
 			images,
-			options: options.map((o) => ({ name: o.name, values: o.values })),
-			variants: variants.map((v) => ({
+			options: options.map(/** @param {any} o */ (o) => ({ name: o.name, values: o.values })),
+			variants: variants.map(/** @param {any} v */ (v) => ({
 				price_override: v.price_override,
 				quantity: v.quantity,
-				axisValues: v.size ? [{ axis: "size", value: v.size }] : [],
+				axisValues: v.axisValues ?? [],
 			})),
 		};
 	}
 
+	/** @param {string} status */
 	async function save(status) {
 		saving = true;
 		error = null;
@@ -53,9 +80,17 @@
 		goto("/stock");
 	}
 
+	/** @param {SubmitEvent} e */
 	function handleSubmit(e) {
 		e.preventDefault();
-		save("available");
+		if (priceError) return;
+		// Publishing means a customer could be quoted this price, so it has to
+		// be a real one. Drafts are explicitly allowed to be incomplete.
+		if (!(Number(price) > 0)) {
+			error = "Set a price above zero before publishing, or save this as a draft.";
+			return;
+		}
+		save("active");
 	}
 
 	function handleSaveDraft() {
@@ -87,12 +122,22 @@
 				bind:garmentType
 				bind:category
 				bind:subcategory
-				bind:basePrice
-				bind:productionCost
+				bind:description
 				bind:notes
+				bind:tags
+				bind:price
+				bind:compareAtPrice
+				bind:cost
+				bind:trackQuantity
+				bind:madeToOrder
+				bind:weightGrams
+				bind:lengthCm
+				bind:widthCm
+				bind:heightCm
 				bind:images
 				bind:options
 				bind:variants
+				bind:priceError
 			/>
 
 			{#if error}
