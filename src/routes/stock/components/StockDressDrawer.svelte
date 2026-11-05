@@ -1,6 +1,7 @@
 <script>
 	import { getStockDressById, archiveStockDress } from "$lib/services/stockDressesService";
 	import VariantList from "./VariantList.svelte";
+	import { availabilityState, availabilityLabel } from "$lib/stock/availability";
 
 	// Read-only detail view. Editing (including publishing a draft) lives at
 	// its own page, /stock/[id]/edit — see that route and
@@ -16,14 +17,49 @@
 	 */
 	let { dress, onClose, onSaved } = $props();
 
+	/** @type {any} */
 	let fullDress = $state(null);
 	let loading = $state(true);
+	/** @type {string | null} */
 	let error = $state(null);
+
+	const activeVariants = $derived(
+		(fullDress?.stock_dress_variants ?? []).filter(
+			/** @param {any} v */ (v) => v.status !== "archived",
+		),
+	);
+
+	const totalQuantity = $derived(
+		activeVariants.reduce(
+			/** @param {number} sum @param {any} v */ (sum, v) => sum + (v.quantity ?? 0),
+			0,
+		),
+	);
+
+	const state = $derived(
+		fullDress ? availabilityState(fullDress, totalQuantity) : null,
+	);
+
+	// Read-only shape for VariantList: it renders every axis, not just size.
+	const variantRows = $derived(
+		activeVariants.map(/** @param {any} v */ (v) => ({
+			id: v.id,
+			sku: v.sku,
+			barcode: v.barcode,
+			quantity: v.quantity,
+			price_override: v.price_override,
+			status: v.status,
+			axisValues: (v.stock_dress_variant_values ?? []).map(
+				/** @param {any} av */ (av) => ({ axis: av.axis, value: av.value }),
+			),
+		})),
+	);
 
 	$effect(() => {
 		loadFullDress(dress.id);
 	});
 
+	/** @param {string} id */
 	async function loadFullDress(id) {
 		loading = true;
 		const { data, error: fetchError } = await getStockDressById(id);
@@ -45,6 +81,7 @@
 		onSaved();
 	}
 
+	/** @param {string} value */
 	function formatLabel(value) {
 		return value.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 	}
@@ -79,12 +116,38 @@
 
 			<div class="drawer-info-grid">
 				<div class="info-cell"><span class="info-label">Category</span>{formatLabel(fullDress.category)}{fullDress.subcategory ? ` / ${formatLabel(fullDress.subcategory)}` : ""}</div>
-				<div class="info-cell"><span class="info-label">Status</span>{formatLabel(fullDress.status)}</div>
-				<div class="info-cell"><span class="info-label">Base Price</span>PKR {Number(fullDress.base_price).toLocaleString()}</div>
+				<div class="info-cell">
+					<span class="info-label">Availability</span>
+					{state ? availabilityLabel(state) : "—"}
+				</div>
+				<div class="info-cell">
+					<span class="info-label">Price</span>
+					PKR {Number(fullDress.price).toLocaleString()}
+					{#if fullDress.compare_at_price}
+						<span class="compare-at">PKR {Number(fullDress.compare_at_price).toLocaleString()}</span>
+					{/if}
+				</div>
 				<div class="info-cell"><span class="info-label">Garment Type</span>{fullDress.garment_type}</div>
 			</div>
 
+			{#if fullDress.made_to_order}
+				<p class="drawer-flag">Can be made to order — stays orderable when stock runs out.</p>
+			{/if}
+
+			{#if fullDress.tags?.length}
+				<div class="tag-row">
+					{#each fullDress.tags as tag}
+						<span class="tag">{tag}</span>
+					{/each}
+				</div>
+			{/if}
+
+			{#if fullDress.description}
+				<p class="drawer-description">{fullDress.description}</p>
+			{/if}
+
 			{#if fullDress.notes}
+				<div class="drawer-section-title">Internal</div>
 				<p class="drawer-notes">{fullDress.notes}</p>
 			{/if}
 
@@ -95,7 +158,14 @@
 						<div class="option-row">
 							<span class="option-name">{option.name}</span>
 							<span class="option-values">
-								{(option.stock_dress_option_values ?? []).map((v) => v.value).join(", ") || "—"}
+								{(option.stock_dress_option_values ?? [])
+								.map(
+									/** @param {any} v */ (v) =>
+										Number(v.price_adjustment)
+											? `${v.value} (+${Number(v.price_adjustment).toLocaleString()})`
+											: v.value,
+								)
+								.join(", ") || "—"}
 							</span>
 						</div>
 					{/each}
@@ -103,7 +173,7 @@
 			{/if}
 
 			<div class="drawer-section-title">Variants</div>
-			<VariantList variants={(fullDress.stock_dress_variants ?? []).filter((v) => v.status !== 'archived')} editable={false} />
+			<VariantList variants={variantRows} editable={false} />
 
 			<div class="drawer-actions">
 				<a href="/stock/{fullDress.id}/edit" class="btn-secondary">Edit</a>
@@ -227,10 +297,48 @@
 		margin-bottom: 3px;
 	}
 
+	.drawer-description {
+		font-size: 13px;
+		color: var(--text);
+		margin-bottom: 14px;
+		line-height: 1.5;
+	}
+
 	.drawer-notes {
 		font-size: 12px;
 		color: var(--text-muted);
 		margin-bottom: 16px;
+	}
+
+	.drawer-flag {
+		font-size: 11px;
+		color: #8b6914;
+		background: var(--gold-dim);
+		border-radius: 6px;
+		padding: 7px 9px;
+		margin-bottom: 12px;
+	}
+
+	.compare-at {
+		color: var(--text-faint);
+		text-decoration: line-through;
+		margin-left: 6px;
+		font-size: 11px;
+	}
+
+	.tag-row {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 5px;
+		margin-bottom: 14px;
+	}
+
+	.tag {
+		font-size: 10px;
+		color: var(--text-muted);
+		background: var(--bg2);
+		border-radius: 8px;
+		padding: 3px 8px;
 	}
 
 	.drawer-section-title {
