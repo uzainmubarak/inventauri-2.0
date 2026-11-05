@@ -21,9 +21,16 @@ import { recordMovement } from "$lib/services/stockMovementsService";
  * @returns {Promise<{ data: any[] | null, error: string | null }>}
  */
 export async function listStockDresses() {
+	// Variants come along because the catalog card needs their quantities to
+	// decide what the dress reads as (in stock / made to order / sold out),
+	// and their axis values for the size filter.
 	const { data, error } = await supabase
 		.from("stock_dresses")
-		.select("*")
+		.select(
+			`*,
+			stock_dress_images (*),
+			stock_dress_variants (id, quantity, status, price_override, stock_dress_variant_values (*))`,
+		)
 		.order("created_at", { ascending: false });
 
 	if (error) {

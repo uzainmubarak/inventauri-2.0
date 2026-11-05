@@ -1,20 +1,33 @@
 <script>
+	import { effectivePrice } from "$lib/stock/pricing";
+	import { availabilityState, availabilityLabel } from "$lib/stock/availability";
+
 	/** @type {{ dress: any, onSelect: (dress: any) => void }} */
 	let { dress, onSelect } = $props();
+
+	const activeVariants = $derived(
+		(dress.stock_dress_variants ?? []).filter((v) => v.status !== "archived"),
+	);
+
+	const totalQuantity = $derived(
+		activeVariants.reduce(
+			/** @param {number} sum @param {any} v */
+			(sum, v) => sum + (v.quantity ?? 0),
+			0,
+		),
+	);
+
+	const state = $derived(availabilityState(dress, totalQuantity));
 
 	const primaryImage = $derived(
 		dress.stock_dress_images?.find((img) => img.is_primary) ?? dress.stock_dress_images?.[0],
 	);
 
-	// "Starting from" price: lowest price_override among non-archived
-	// variants, falling back to base_price if none set an override.
+	// "Starting from": the cheapest a buyer could actually pay for this
+	// design, across its variants. With no variants it is just the price.
 	const displayPrice = $derived.by(() => {
-		const activeVariants = (dress.stock_dress_variants ?? []).filter((v) => v.status !== "archived");
-		const overrides = activeVariants
-			.map((v) => v.price_override)
-			.filter((p) => p !== null && p !== undefined);
-		if (overrides.length === 0) return dress.base_price;
-		return Math.min(...overrides);
+		if (activeVariants.length === 0) return Number(dress.price);
+		return Math.min(...activeVariants.map((v) => effectivePrice(dress, v)));
 	});
 
 	const categoryLabel = $derived(
@@ -40,9 +53,21 @@
 		<div class="card-name">{dress.name}</div>
 		<div class="card-meta">{categoryLabel}</div>
 		<div class="card-footer">
-			<span class="card-price">PKR {Number(displayPrice).toLocaleString()}</span>
-			<span class="status-badge status-{dress.status}">{formatLabel(dress.status)}</span>
+			<span class="card-prices">
+				<span class="card-price">PKR {Number(displayPrice).toLocaleString()}</span>
+				{#if dress.compare_at_price}
+					<span class="card-compare-at">PKR {Number(dress.compare_at_price).toLocaleString()}</span>
+				{/if}
+			</span>
+			<span class="status-badge status-{state}">{availabilityLabel(state)}</span>
 		</div>
+		{#if dress.tags?.length}
+			<div class="card-tags">
+				{#each dress.tags.slice(0, 3) as tag}
+					<span class="card-tag">{tag}</span>
+				{/each}
+			</div>
+		{/if}
 	</div>
 </button>
 
@@ -111,10 +136,37 @@
 		margin-top: 6px;
 	}
 
+	.card-prices {
+		display: flex;
+		align-items: baseline;
+		gap: 6px;
+	}
+
 	.card-price {
 		font-size: 13px;
 		font-weight: 500;
 		color: #8b6914;
+	}
+
+	.card-compare-at {
+		font-size: 11px;
+		color: var(--text-faint);
+		text-decoration: line-through;
+	}
+
+	.card-tags {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 4px;
+		margin-top: 6px;
+	}
+
+	.card-tag {
+		font-size: 10px;
+		color: var(--text-muted);
+		background: var(--bg2);
+		border-radius: 8px;
+		padding: 2px 7px;
 	}
 
 	.status-badge {
@@ -126,19 +178,19 @@
 		letter-spacing: 0.04em;
 	}
 
-	.status-available {
+	.status-in_stock {
 		background: var(--green-dim);
 		color: var(--green);
 		border: 1px solid rgba(58, 107, 74, 0.18);
 	}
 
-	.status-reserved {
+	.status-made_to_order {
 		background: var(--gold-dim);
 		color: #8b6914;
 		border: 1px solid var(--gold-mid);
 	}
 
-	.status-sold {
+	.status-sold_out {
 		background: var(--error-dim);
 		color: var(--error);
 		border: 1px solid rgba(139, 58, 58, 0.18);

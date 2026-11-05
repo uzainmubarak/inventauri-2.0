@@ -31,19 +31,24 @@
 
 	const filteredDresses = $derived.by(() => {
 		return allDresses.filter((dress) => {
-			// Drafts are hidden from the default view (no status filter
-			// selected) — they're incomplete by design and would clutter the
-			// catalog. Still reachable by explicitly filtering for status=draft.
-			if (!filters.status && dress.status === "draft") return false;
+			// The status filter's empty value means "Active" — drafts are
+			// incomplete and archived designs are retired, so neither belongs
+			// in the everyday view. "All" ('all') opts out of the filter.
+			if (filters.status === "" && dress.status !== "active") return false;
+			if (filters.status && filters.status !== "all" && dress.status !== filters.status) {
+				return false;
+			}
 			if (filters.search) {
 				const q = filters.search.toLowerCase();
 				const matches =
-					dress.name.toLowerCase().includes(q) || dress.garment_type.toLowerCase().includes(q);
+					dress.name.toLowerCase().includes(q) ||
+					dress.garment_type.toLowerCase().includes(q) ||
+					(dress.sku ?? "").toLowerCase().includes(q) ||
+					(dress.tags ?? []).some(/** @param {string} t */ (t) => t.toLowerCase().includes(q));
 				if (!matches) return false;
 			}
 			if (filters.category && dress.category !== filters.category) return false;
 			if (filters.subcategory && dress.subcategory !== filters.subcategory) return false;
-			if (filters.status && dress.status !== filters.status) return false;
 			if (filters.sizeType) {
 				const variants = dress.stock_dress_variants ?? [];
 				const hasSizeType = variants.some((v) => {

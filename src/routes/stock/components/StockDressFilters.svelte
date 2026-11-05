@@ -32,13 +32,14 @@
 		{ value: "custom", label: "Custom" },
 	];
 
+	// product_status in schema v2. 'available'/'reserved'/'sold' are gone —
+	// those described a physical garment, not a design, and are now answered
+	// by quantity and the movement ledger.
 	const STATUSES = [
-		{ value: "", label: "All Statuses" },
-		{ value: "draft", label: "Draft" },
-		{ value: "available", label: "Available" },
-		{ value: "reserved", label: "Reserved" },
-		{ value: "sold", label: "Sold" },
+		{ value: "", label: "Active" },
+		{ value: "draft", label: "Drafts" },
 		{ value: "archived", label: "Archived" },
+		{ value: "all", label: "All" },
 	];
 
 	function emit(patch) {
@@ -52,7 +53,7 @@
 		<input
 			class="search-input"
 			type="text"
-			placeholder="Search by name or garment type…"
+			placeholder="Search name, garment type, SKU or tag…"
 			value={search}
 			oninput={(e) => emit({ search: e.currentTarget.value })}
 		/>
