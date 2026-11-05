@@ -1,5 +1,12 @@
-// Service layer for `stock_dress_variants` (F17). A variant's `sku` is
-// database-generated (see refresh_stock_variant_sku() in the migration) —
+// Service layer for the `stock_dress_variants` table.
+//
+// NOTE: `quantity` is absent from every payload here on purpose. It is a
+// cached total maintained by the stock_movements trigger — see
+// stockMovementsService.js. Writing it directly would desync it from the
+// ledger that explains it.
+
+// NOTE: `sku` and `barcode` are likewise database-generated (see
+// refresh_stock_variant_sku() in the migration) —
 // never set it directly here. It starts null and is filled in once axis
 // values are attached via stockDressVariantValuesService.
 
@@ -27,7 +34,7 @@ export async function listVariantsForDress(dressId) {
 /**
  * Create a bare variant shell (no axis values yet). SKU stays null until
  * stockDressVariantValuesService.setVariantAxisValue is called at least once.
- * @param {{ dress_id: string, price_override?: number, quantity?: number }} variant
+ * @param {{ dress_id: string, price_override?: number }} variant
  * @returns {Promise<{ data: any | null, error: string | null }>}
  */
 export async function createVariant(variant) {
@@ -46,7 +53,7 @@ export async function createVariant(variant) {
 
 /**
  * @param {string} id
- * @param {{ price_override?: number | null, quantity?: number | null, status?: string }} updates
+ * @param {{ price_override?: number | null, status?: string }} updates
  * @returns {Promise<{ data: any | null, error: string | null }>}
  */
 export async function updateVariant(id, updates) {

@@ -14,6 +14,7 @@ import {
 } from "$lib/services/stockDressOptionsService";
 import { createVariant, updateVariant, archiveVariant } from "$lib/services/stockDressVariantsService";
 import { setVariantAxisValue } from "$lib/services/stockDressVariantValuesService";
+import { recordMovement } from "$lib/services/stockMovementsService";
 
 /**
  * Fetch all stock dresses, newest first.
@@ -166,7 +167,6 @@ export async function createStockDressWithDetails(formData) {
 		const { data: createdVariant, error: variantError } = await createVariant({
 			dress_id: dress.id,
 			price_override: variant.price_override,
-			quantity: variant.quantity,
 		});
 		if (variantError) {
 			return { data: { dress }, error: `Dress created (${dress.sku}), but a variant failed: ${variantError}` };
@@ -177,6 +177,25 @@ export async function createStockDressWithDetails(formData) {
 				return {
 					data: { dress },
 					error: `Dress created (${dress.sku}), but variant axis value failed: ${error}`,
+				};
+			}
+		}
+
+		// Opening stock is a ledger entry, not a column write. Writing quantity
+		// directly would leave the variant holding a number with no history
+		// behind it — the exact hole the ledger exists to prevent.
+		const opening = Number(variant.quantity) || 0;
+		if (opening > 0) {
+			const { error } = await recordMovement({
+				variant_id: createdVariant.id,
+				delta: opening,
+				reason: "received",
+				note: "Opening stock",
+			});
+			if (error) {
+				return {
+					data: { dress },
+					error: `Dress created (${dress.sku}), but recording opening stock failed: ${error}`,
 				};
 			}
 		}
@@ -273,9 +292,9 @@ export async function updateStockDressWithDetails(dressId, formData) {
 	}
 	for (const variant of formData.variants) {
 		if (variant.id) {
+			// quantity is deliberately absent: only stock_movements moves it.
 			const { error } = await updateVariant(variant.id, {
 				price_override: variant.price_override,
-				quantity: variant.quantity,
 			});
 			if (error) {
 				return { data: { dress }, error: `Dress saved, but updating a variant failed: ${error}` };
@@ -285,7 +304,6 @@ export async function updateStockDressWithDetails(dressId, formData) {
 		const { data: createdVariant, error: variantError } = await createVariant({
 			dress_id: dress.id,
 			price_override: variant.price_override,
-			quantity: variant.quantity,
 		});
 		if (variantError) {
 			return { data: { dress }, error: `Dress saved, but adding a variant failed: ${variantError}` };
@@ -294,6 +312,19 @@ export async function updateStockDressWithDetails(dressId, formData) {
 			const { error } = await setVariantAxisValue({ ...axisValue, variant_id: createdVariant.id });
 			if (error) {
 				return { data: { dress }, error: `Dress saved, but a new variant's axis value failed: ${error}` };
+			}
+		}
+
+		const opening = Number(variant.quantity) || 0;
+		if (opening > 0) {
+			const { error } = await recordMovement({
+				variant_id: createdVariant.id,
+				delta: opening,
+				reason: "received",
+				note: "Opening stock",
+			});
+			if (error) {
+				return { data: { dress }, error: `Dress saved, but recording opening stock failed: ${error}` };
 			}
 		}
 	}
