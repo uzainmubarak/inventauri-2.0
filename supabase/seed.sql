@@ -21,7 +21,9 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON
   stock_dress_options,
   stock_dress_option_values,
   stock_dress_variants,
-  stock_dress_variant_values
+  stock_dress_variant_values,
+  stock_borrowers,
+  stock_movements
 TO anon;
 
 CREATE POLICY "DEV ONLY: anon can read stock dresses"
@@ -53,3 +55,14 @@ CREATE POLICY "DEV ONLY: anon can read stock dress variant values"
   ON stock_dress_variant_values FOR SELECT TO anon USING (true);
 CREATE POLICY "DEV ONLY: anon can write stock dress variant values"
   ON stock_dress_variant_values FOR ALL TO anon USING (true) WITH CHECK (true);
+
+CREATE POLICY "DEV ONLY: anon can read stock borrowers"
+  ON stock_borrowers FOR SELECT TO anon USING (true);
+CREATE POLICY "DEV ONLY: anon can write stock borrowers"
+  ON stock_borrowers FOR ALL TO anon USING (true) WITH CHECK (true);
+
+-- Movements are insert + read only, mirroring the authenticated policies.
+CREATE POLICY "DEV ONLY: anon can read stock movements"
+  ON stock_movements FOR SELECT TO anon USING (true);
+CREATE POLICY "DEV ONLY: anon can record stock movements"
+  ON stock_movements FOR INSERT TO anon WITH CHECK (true);

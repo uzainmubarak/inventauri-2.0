@@ -24,6 +24,18 @@ export async function listImagesForDress(dressId) {
 
 /**
  * Add an image (URL only — no file upload in this pass, see design spec).
+ *
+ * TODO(security): image_url is unvalidated free text that is rendered
+ * directly into <img src> (StockDressCard, StockDressDrawer). A staff
+ * account can therefore point other staff browsers at an arbitrary host,
+ * leaking IPs/timing and enabling CSRF against GET endpoints. Not an XSS
+ * vector — <img src> does not execute javascript:/data: URLs.
+ *
+ * Fix when R2 upload lands: validate here with new URL(), require
+ * protocol === 'https:' and an exact match on the R2 bucket hostname,
+ * reject (don't strip) anything else, and mirror it as a CHECK constraint.
+ * Deferred because there is no bucket origin configured to allowlist yet.
+ *
  * @param {{ dress_id: string, image_url: string, is_primary?: boolean, caption?: string, position?: number }} image
  * @returns {Promise<{ data: any | null, error: string | null }>}
  */

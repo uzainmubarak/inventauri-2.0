@@ -1,7 +1,12 @@
 -- ============================================================
--- INVENTAURI — STOCK DRESS MODULE
--- 6 tables · standalone module · no dependency on orders
--- See docs/inventauri_requirements.md §7a.
+-- INVENTAURI — STOCK MODULE (schema v2)
+-- 8 tables · standalone module · no dependency on orders
+--
+-- Design + reasoning: docs/stock-module-schema.md
+-- Source layout:      details/product/product-page.excalidraw
+--
+-- v1 of this file was never pushed to production, so it is rewritten in
+-- place rather than patched with ALTERs. Local only: `supabase db reset`.
 -- ============================================================
 
 
@@ -22,11 +27,19 @@ CREATE TYPE stock_subcategory AS ENUM (
   'walima'
 );
 
-CREATE TYPE stock_status AS ENUM (
+-- v1 had a single `stock_status` enum (draft|available|reserved|sold|
+-- archived) applied to BOTH products and variants. That conflated two
+-- different things: whether a design is listed, and where a physical
+-- garment is. Split here. `reserved` and `sold` are gone entirely —
+-- quantity and stock_movements express those now.
+CREATE TYPE product_status AS ENUM (
+  'active',
   'draft',
-  'available',
-  'reserved',
-  'sold',
+  'archived'     -- retired design; never making it again
+);
+
+CREATE TYPE variant_status AS ENUM (
+  'active',
   'archived'
 );
 
@@ -37,9 +50,44 @@ CREATE TYPE variant_axis AS ENUM (
   'other'
 );
 
+CREATE TYPE borrower_type AS ENUM (
+  'karigar',
+  'photographer',
+  'vendor',
+  'staff',
+  'other'
+);
+
+CREATE TYPE stock_movement_reason AS ENUM (
+  'received',         -- +  came into existence
+  'sold',             -- -
+  'customer_return',  -- +  customer brought it back
+  'damaged',          -- -  written off
+  'lost',             -- -  unaccounted for
+  'adjustment',       -- ±  physical count correction
+  'loaned_out',       -- -  shoot, karigar, trial, on approval
+  'loan_return'       -- +  came back
+);
+
 
 -- ────────────────────────────────────────────────────────────
--- SKU SEQUENCE + TRIGGER
+-- SHARED: updated_at maintenance
+--
+-- v1 declared updated_at but nothing ever wrote it, so it was just a
+-- second copy of created_at.
+-- ────────────────────────────────────────────────────────────
+
+CREATE OR REPLACE FUNCTION touch_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at := now();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+
+-- ────────────────────────────────────────────────────────────
+-- PRODUCT SKU SEQUENCE + TRIGGER
 -- ────────────────────────────────────────────────────────────
 
 CREATE SEQUENCE stock_sku_seq START 1;
@@ -63,29 +111,56 @@ CREATE TABLE stock_dresses (
   id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   sku               TEXT UNIQUE NOT NULL DEFAULT '',
   name              TEXT NOT NULL,
+  description       TEXT,
+  notes             TEXT,
   garment_type      TEXT NOT NULL,
   category          stock_category NOT NULL,
   subcategory       stock_subcategory,
-  base_price        NUMERIC(12,2) NOT NULL,
-  production_cost   NUMERIC(12,2),
-  status            stock_status NOT NULL DEFAULT 'available',
-  notes             TEXT,
+  tags              TEXT[] NOT NULL DEFAULT '{}',
+
+  cost              NUMERIC(12,2),
+  price             NUMERIC(12,2) NOT NULL,
+  compare_at_price  NUMERIC(12,2),
+
+  status            product_status NOT NULL DEFAULT 'draft',
+  track_quantity    BOOLEAN NOT NULL DEFAULT true,
+  made_to_order     BOOLEAN NOT NULL DEFAULT true,
+
+  weight_grams      INTEGER,
+  length_cm         NUMERIC(6,2),
+  width_cm          NUMERIC(6,2),
+  height_cm         NUMERIC(6,2),
+
   created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
 
   CONSTRAINT subcategory_bridal_only CHECK (
     subcategory IS NULL OR category = 'bridal'
+  ),
+
+  CONSTRAINT compare_at_above_price CHECK (
+    compare_at_price IS NULL OR compare_at_price > price
   )
 );
 
 COMMENT ON TABLE stock_dresses IS
-  'Finished ready-made dresses physically available for sale (not made-to-order production). F17.';
-COMMENT ON COLUMN stock_dresses.production_cost IS
-  'Internal only — do not surface to any client-facing UI.';
+  'Dress designs. A design can be sold both ready-made (the physical sample) and made-to-order, so quantity and made_to_order are independent. F17.';
+COMMENT ON COLUMN stock_dresses.cost IS
+  'Internal only — never surface to any client-facing UI.';
+COMMENT ON COLUMN stock_dresses.description IS
+  'Customer-facing. Internal remarks belong in notes.';
+COMMENT ON COLUMN stock_dresses.made_to_order IS
+  'True means a sold-out design is still orderable — a new one gets made. Selling the only sample does not make the design unavailable.';
+COMMENT ON COLUMN stock_dresses.compare_at_price IS
+  'Struck-through "was" price, e.g. an ageing sample sold at a discount. Must exceed price. profit/margin are derived in the UI, never stored.';
 
 CREATE TRIGGER set_stock_sku
 BEFORE INSERT ON stock_dresses
 FOR EACH ROW EXECUTE FUNCTION generate_stock_sku();
+
+CREATE TRIGGER touch_stock_dresses
+BEFORE UPDATE ON stock_dresses
+FOR EACH ROW EXECUTE FUNCTION touch_updated_at();
 
 
 -- ────────────────────────────────────────────────────────────
@@ -103,7 +178,7 @@ CREATE TABLE stock_dress_images (
 );
 
 COMMENT ON COLUMN stock_dress_images.image_url IS
-  'Cloudflare R2 public bucket URL — image bytes are never stored in Postgres.';
+  'Cloudflare R2 public bucket URL — image bytes are never stored in Postgres. TODO(security): unvalidated today and rendered into <img src>; add an https + exact-R2-hostname CHECK once the bucket origin exists. See stockDressImagesService.js.';
 
 CREATE UNIQUE INDEX one_primary_per_dress
 ON stock_dress_images(dress_id)
@@ -112,8 +187,13 @@ WHERE is_primary = true;
 
 -- ────────────────────────────────────────────────────────────
 -- 3. STOCK DRESS OPTIONS
--- Client choices at order time — not stocked, not SKU'd
--- e.g. "Dupatta Style", "Sleeve Type"
+--
+-- Variant or option? Does the finished thing exist before someone asks
+-- for it? On the rack, countable → variant. Made once the customer
+-- chooses → option. Price is not the test; variants vary in price too.
+--
+-- Golden Studio: size and colour are variants, dupatta style is an
+-- option — the same design is never hung twice with different dupattas.
 -- ────────────────────────────────────────────────────────────
 
 CREATE TABLE stock_dress_options (
@@ -127,7 +207,7 @@ CREATE TABLE stock_dress_options (
 
 -- ────────────────────────────────────────────────────────────
 -- 4. STOCK DRESS OPTION VALUES
--- e.g. "Plain", "Painted", "Spray" under "Dupatta Style"
+-- e.g. "Plain", "Hand-painted" under "Dupatta Style"
 -- ────────────────────────────────────────────────────────────
 
 CREATE TABLE stock_dress_option_values (
@@ -139,40 +219,45 @@ CREATE TABLE stock_dress_option_values (
   created_at        TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+COMMENT ON COLUMN stock_dress_option_values.price_adjustment IS
+  'Added on top of the variant price when chosen, e.g. hand-painted dupatta +40000.';
+
 
 -- ────────────────────────────────────────────────────────────
 -- 5. STOCK DRESS VARIANTS
--- Stockable units with SKU, quantity, price, status
--- Custom = GSP-00001 (no suffix, make-to-order, qty NULL)
--- Sized  = GSP-00001-S, GSP-00001-M etc.
+-- Countable units. SKU + barcode + quantity.
 -- ────────────────────────────────────────────────────────────
 
 CREATE TABLE stock_dress_variants (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   dress_id        UUID NOT NULL REFERENCES stock_dresses(id) ON DELETE CASCADE,
-  -- Nullable + no default: a variant is created before its axis values are
-  -- known (stock_dress_variant_values rows reference this variant's id via
-  -- FK, so they can only be inserted afterward). The SKU is filled in by
-  -- refresh_stock_variant_sku(), triggered from stock_dress_variant_values
-  -- once at least one axis value exists. See that trigger below.
+  -- Nullable + no default: a variant is created before its axis values
+  -- are known (those rows reference this variant by FK, so they can only
+  -- be inserted afterward). Filled in by refresh_stock_variant_sku().
   sku             TEXT UNIQUE,
+  barcode         TEXT UNIQUE,
   price_override  NUMERIC(12,2),
-  quantity        INTEGER,
-  status          stock_status NOT NULL DEFAULT 'available',
+  quantity        INTEGER NOT NULL DEFAULT 0,
+  status          variant_status NOT NULL DEFAULT 'active',
   created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 COMMENT ON COLUMN stock_dress_variants.price_override IS
-  'Overrides the parent dress base_price when set; null means use base price.';
-COMMENT ON COLUMN stock_dress_variants.sku IS
-  'Auto-generated from the parent dress SKU + this variant''s axis values (see refresh_stock_variant_sku()). Null until at least one axis value is attached.';
+  'Overrides the parent dress price when set; null means use the parent price.';
+COMMENT ON COLUMN stock_dress_variants.quantity IS
+  'Cached running total. ONLY stock_movements'' trigger writes this — never update it directly, or it will disagree with the ledger.';
+COMMENT ON COLUMN stock_dress_variants.barcode IS
+  'Code128 payload, rendered client-side. Defaults to the SKU and is then frozen: once a label is printed and sewn into a garment, a barcode that changed underneath it would stop matching. Editable by hand.';
+
+CREATE TRIGGER touch_stock_dress_variants
+BEFORE UPDATE ON stock_dress_variants
+FOR EACH ROW EXECUTE FUNCTION touch_updated_at();
 
 
 -- ────────────────────────────────────────────────────────────
 -- 6. STOCK DRESS VARIANT VALUES
--- Which axis values make up each variant
--- e.g. size=Small, color=Red
+-- Which axis values make up each variant, e.g. size=M, color=Red
 -- ────────────────────────────────────────────────────────────
 
 CREATE TABLE stock_dress_variant_values (
@@ -186,19 +271,16 @@ CREATE TABLE stock_dress_variant_values (
 
 
 -- ────────────────────────────────────────────────────────────
--- VARIANT SKU GENERATION
+-- VARIANT SKU + BARCODE GENERATION
 --
--- A variant's SKU is derived from its parent dress's SKU plus all of its
--- axis values, e.g. dress GSP-00001 + {size: M} → GSP-00001-M,
--- + {size: M, color: Red} → GSP-00001-M-RED (axes joined in a fixed order —
--- alphabetical by axis name — so the same combination always produces the
--- same SKU regardless of insert order). A variant with zero axis values
--- (the "Custom" case) keeps the bare dress SKU, e.g. GSP-00001.
+-- A variant's SKU is its parent dress SKU plus all its axis values, e.g.
+-- GSP-00001 + {size: M} → GSP-00001-M, + {color: Red} → GSP-00001-M-RED.
+-- Axes are joined alphabetically so the same combination always yields the
+-- same SKU regardless of insert order. A variant with no axis values (the
+-- Custom / make-to-order case) keeps the bare dress SKU.
 --
--- Fires on stock_dress_variant_values, not stock_dress_variants, because
--- axis values are only known after the variant row already exists (they
--- reference it by FK). Recomputes on insert, update, and delete so the SKU
--- always reflects current axis values.
+-- Fires on stock_dress_variant_values rather than stock_dress_variants
+-- because axis values only exist after the variant row does.
 -- ────────────────────────────────────────────────────────────
 
 CREATE OR REPLACE FUNCTION refresh_stock_variant_sku()
@@ -207,6 +289,7 @@ DECLARE
   target_variant_id UUID;
   dress_sku TEXT;
   suffix TEXT;
+  new_sku TEXT;
 BEGIN
   target_variant_id := COALESCE(NEW.variant_id, OLD.variant_id);
 
@@ -220,18 +303,179 @@ BEGIN
   FROM stock_dress_variant_values
   WHERE variant_id = target_variant_id;
 
+  new_sku := CASE
+    WHEN suffix IS NULL THEN dress_sku
+    ELSE dress_sku || '-' || suffix
+  END;
+
+  -- Barcode is only filled when empty, never rewritten: a printed label
+  -- already sewn into a garment must keep matching.
   UPDATE stock_dress_variants
-  SET sku = CASE WHEN suffix IS NULL THEN dress_sku ELSE dress_sku || '-' || suffix END
+  SET sku     = new_sku,
+      barcode = COALESCE(NULLIF(barcode, ''), new_sku)
   WHERE id = target_variant_id;
 
   RETURN COALESCE(NEW, OLD);
 END;
 $$ LANGUAGE plpgsql;
 
-DROP TRIGGER IF EXISTS refresh_variant_sku_on_value_change ON stock_dress_variant_values;
 CREATE TRIGGER refresh_variant_sku_on_value_change
 AFTER INSERT OR UPDATE OR DELETE ON stock_dress_variant_values
 FOR EACH ROW EXECUTE FUNCTION refresh_stock_variant_sku();
+
+
+-- ────────────────────────────────────────────────────────────
+-- 7. STOCK BORROWERS
+--
+-- Who may take a sample off the rack. A controlled list rather than free
+-- text: "Aslam" / "aslam" / "Aslam karigar" as three separate people
+-- would make "what does Aslam have right now" silently wrong.
+--
+-- Managed from Settings. Likely folds into F10 Contacts later — a dozen
+-- rows, so that merge is cheap.
+-- ────────────────────────────────────────────────────────────
+
+CREATE TABLE stock_borrowers (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name        TEXT NOT NULL,
+  phone       TEXT,
+  cnic        TEXT,
+  type        borrower_type NOT NULL,
+  note        TEXT,
+  is_active   BOOLEAN NOT NULL DEFAULT true,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+  CONSTRAINT cnic_format CHECK (
+    cnic IS NULL OR cnic ~ '^[0-9]{5}-?[0-9]{7}-?[0-9]$'
+  )
+);
+
+COMMENT ON COLUMN stock_borrowers.cnic IS
+  'National ID. PREREQUISITE: do not store real CNICs until Auth ships and RLS is staff-scoped — today RLS is TO authenticated (any Supabase user) and seed.sql grants anon locally. Fine for fake data, not for identity data.';
+COMMENT ON COLUMN stock_borrowers.is_active IS
+  'Deactivate rather than delete: drops them from the dropdown while keeping their loan history readable.';
+
+
+-- ────────────────────────────────────────────────────────────
+-- 8. STOCK MOVEMENTS
+--
+-- Append-only ledger. Every row answers: what happened to this dress,
+-- and why. A plain counter cannot tell "sold forever" from "at a
+-- photographer's since Tuesday" — both read 0.
+-- ────────────────────────────────────────────────────────────
+
+CREATE TABLE stock_movements (
+  id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  variant_id           UUID NOT NULL REFERENCES stock_dress_variants(id)
+                            ON DELETE RESTRICT,
+  delta                INTEGER NOT NULL,
+  reason               stock_movement_reason NOT NULL,
+
+  borrower_id          UUID REFERENCES stock_borrowers(id) ON DELETE RESTRICT,
+  expected_return_at   DATE,
+  resolves_movement_id UUID REFERENCES stock_movements(id),
+
+  note                 TEXT,
+  created_by           UUID,
+  created_at           TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+  CONSTRAINT delta_not_zero CHECK (delta <> 0),
+
+  CONSTRAINT delta_sign_matches_reason CHECK (
+    (reason IN ('received','customer_return','loan_return') AND delta > 0) OR
+    (reason IN ('sold','damaged','lost','loaned_out')       AND delta < 0) OR
+    (reason = 'adjustment')
+  ),
+
+  CONSTRAINT custody_only_on_loans CHECK (
+    reason = 'loaned_out'
+    OR (borrower_id IS NULL AND expected_return_at IS NULL)
+  ),
+
+  CONSTRAINT resolution_only_on_returns CHECK (
+    resolves_movement_id IS NULL OR reason = 'loan_return'
+  )
+);
+
+COMMENT ON TABLE stock_movements IS
+  'Append-only stock ledger. Corrections are posted as adjustment rows, never by editing history. Gains a nullable order_id when Orders ships — rows written before then correctly have none, so there is nothing to backfill.';
+COMMENT ON COLUMN stock_movements.created_by IS
+  'Staff FK once Auth ships. Null until then.';
+COMMENT ON COLUMN stock_movements.resolves_movement_id IS
+  'On a loan_return, points at the loaned_out row it closes. Open loans are loaned_out rows nothing points back at.';
+
+-- A loan can only be closed once.
+CREATE UNIQUE INDEX one_return_per_loan
+  ON stock_movements(resolves_movement_id)
+  WHERE resolves_movement_id IS NOT NULL;
+
+
+-- ────────────────────────────────────────────────────────────
+-- LEDGER → CACHED QUANTITY
+-- ────────────────────────────────────────────────────────────
+
+CREATE OR REPLACE FUNCTION apply_stock_movement()
+RETURNS TRIGGER AS $$
+BEGIN
+  UPDATE stock_dress_variants
+  SET quantity = quantity + NEW.delta
+  WHERE id = NEW.variant_id;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER apply_movement_to_quantity
+AFTER INSERT ON stock_movements
+FOR EACH ROW EXECUTE FUNCTION apply_stock_movement();
+
+
+-- ────────────────────────────────────────────────────────────
+-- APPEND-ONLY ENFORCEMENT
+-- A ledger you can edit is not a ledger.
+-- ────────────────────────────────────────────────────────────
+
+CREATE OR REPLACE FUNCTION reject_movement_mutation()
+RETURNS TRIGGER AS $$
+BEGIN
+  RAISE EXCEPTION
+    'stock_movements is append-only — post a correcting "adjustment" row instead of editing or deleting history';
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER stock_movements_append_only
+BEFORE UPDATE OR DELETE ON stock_movements
+FOR EACH ROW EXECUTE FUNCTION reject_movement_mutation();
+
+
+-- ────────────────────────────────────────────────────────────
+-- OPEN LOANS VIEW
+-- Samples currently off the rack. Add
+-- `WHERE expected_return_at < CURRENT_DATE` for an overdue list.
+-- ────────────────────────────────────────────────────────────
+
+CREATE VIEW stock_open_loans AS
+SELECT
+  m.id              AS movement_id,
+  m.variant_id,
+  v.sku             AS variant_sku,
+  d.id              AS dress_id,
+  d.name            AS dress_name,
+  b.id              AS borrower_id,
+  b.name            AS borrower_name,
+  b.type            AS borrower_type,
+  b.phone           AS borrower_phone,
+  m.expected_return_at,
+  m.note,
+  m.created_at      AS loaned_at
+FROM stock_movements m
+JOIN stock_dress_variants v ON v.id = m.variant_id
+JOIN stock_dresses d        ON d.id = v.dress_id
+LEFT JOIN stock_borrowers b ON b.id = m.borrower_id
+WHERE m.reason = 'loaned_out'
+  AND NOT EXISTS (
+    SELECT 1 FROM stock_movements r
+    WHERE r.resolves_movement_id = m.id
+  );
 
 
 -- ────────────────────────────────────────────────────────────
@@ -241,24 +485,29 @@ FOR EACH ROW EXECUTE FUNCTION refresh_stock_variant_sku();
 CREATE INDEX idx_stock_dresses_category     ON stock_dresses(category);
 CREATE INDEX idx_stock_dresses_status       ON stock_dresses(status);
 CREATE INDEX idx_stock_dresses_garment      ON stock_dresses(garment_type);
+CREATE INDEX idx_stock_dresses_tags         ON stock_dresses USING GIN(tags);
 CREATE INDEX idx_stock_images_dress         ON stock_dress_images(dress_id);
 CREATE INDEX idx_stock_images_primary       ON stock_dress_images(dress_id, is_primary);
 CREATE INDEX idx_stock_options_dress        ON stock_dress_options(dress_id);
 CREATE INDEX idx_stock_option_values_option ON stock_dress_option_values(option_id);
 CREATE INDEX idx_stock_variants_dress       ON stock_dress_variants(dress_id);
 CREATE INDEX idx_stock_variants_status      ON stock_dress_variants(status);
+CREATE INDEX idx_stock_variants_barcode     ON stock_dress_variants(barcode);
 CREATE INDEX idx_stock_variant_values       ON stock_dress_variant_values(variant_id);
+CREATE INDEX idx_stock_borrowers_active     ON stock_borrowers(is_active);
+CREATE INDEX idx_stock_movements_variant    ON stock_movements(variant_id, created_at DESC);
+CREATE INDEX idx_stock_movements_reason     ON stock_movements(reason);
+CREATE INDEX idx_stock_movements_borrower   ON stock_movements(borrower_id);
 
 
 -- ────────────────────────────────────────────────────────────
 -- ROW-LEVEL SECURITY
 --
--- NOTE: this project has no `staff`/auth table yet (Auth module comes right
--- after Stock). Until then, RLS is enabled but scoped to "any authenticated
--- Supabase user" rather than "authenticated AND is studio staff" — there is
--- currently no other user base, but this MUST be tightened to check against
--- the staff table once Auth ships. Anonymous (anon key, logged-out) access
--- is denied outright either way.
+-- NOTE: there is no staff/auth table yet (Auth is the next module). Until
+-- then RLS is enabled but scoped to "any authenticated Supabase user"
+-- rather than "authenticated AND studio staff". There is no other user
+-- base today, but this MUST be tightened once Auth ships — especially for
+-- stock_borrowers, which holds CNICs. Anonymous access is denied outright.
 -- ────────────────────────────────────────────────────────────
 
 ALTER TABLE stock_dresses               ENABLE ROW LEVEL SECURITY;
@@ -267,6 +516,8 @@ ALTER TABLE stock_dress_options         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE stock_dress_option_values   ENABLE ROW LEVEL SECURITY;
 ALTER TABLE stock_dress_variants        ENABLE ROW LEVEL SECURITY;
 ALTER TABLE stock_dress_variant_values  ENABLE ROW LEVEL SECURITY;
+ALTER TABLE stock_borrowers             ENABLE ROW LEVEL SECURITY;
+ALTER TABLE stock_movements             ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Authenticated users can read stock dresses"
   ON stock_dresses FOR SELECT TO authenticated USING (true);
@@ -297,3 +548,15 @@ CREATE POLICY "Authenticated users can read stock dress variant values"
   ON stock_dress_variant_values FOR SELECT TO authenticated USING (true);
 CREATE POLICY "Authenticated users can write stock dress variant values"
   ON stock_dress_variant_values FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+CREATE POLICY "Authenticated users can read stock borrowers"
+  ON stock_borrowers FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Authenticated users can write stock borrowers"
+  ON stock_borrowers FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+-- Movements are insert + read only. The append-only trigger also blocks
+-- UPDATE/DELETE, but there is no reason to grant them in the first place.
+CREATE POLICY "Authenticated users can read stock movements"
+  ON stock_movements FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Authenticated users can record stock movements"
+  ON stock_movements FOR INSERT TO authenticated WITH CHECK (true);
