@@ -1,6 +1,6 @@
 <script>
-    import Sidebar from "../ui/sidebar/Sidebar.svelte";
-    import MobileTabBar from "../ui/sidebar/MobileTabBar.svelte";
+    import Sidebar from "$lib/ui/sidebar/Sidebar.svelte";
+    import MobileTabBar from "$lib/ui/sidebar/MobileTabBar.svelte";
     import "../app.css";
 
     let { children } = $props();
