@@ -4,7 +4,7 @@
 	import { Textarea } from "$lib/ui/textarea";
 	import { Label } from "$lib/ui/label";
 	import { Badge } from "$lib/ui/badge";
-	import { Checkbox } from "$lib/ui/checkbox";
+	import { Switch } from "$lib/ui/switch";
 	import * as Card from "$lib/ui/card";
 </script>
 
@@ -33,7 +33,7 @@
 				<Textarea id="d" placeholder="Shown to customers" />
 			</div>
 			<div class="flex items-center gap-2">
-				<Checkbox id="t" checked />
+				<Switch id="t" checked />
 				<Label for="t">Track quantity</Label>
 			</div>
 		</Card.Content>
