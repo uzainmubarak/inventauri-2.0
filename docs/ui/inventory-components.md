@@ -60,7 +60,7 @@ but needs the design pass, `new` = to build.
 - Tests only for logic. Visual checks in the browser.
 
 ## Inventory decisions
-- Inventory follows Shopify's shape: options define axes (Colour, Size, Fabric), variants are the combinations, quantity lives per variant.
+- Options define axes (Colour, Size, Fabric). Variants are the combinations. Quantity lives on the variant when there are variants, and on the dress when there are none.
 - **Track quantity** is one checkbox on the dress. When on, the Variants table shows a Quantity column.
 - No default variant. A dress with no options has no variant row.
 - No "sell when out of stock" in inventory. Selling a piece that hasn't reached the rack is an order.
