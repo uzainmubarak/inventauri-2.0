@@ -69,7 +69,6 @@ but needs the design pass, `new` = to build.
 
 ## Resolved
 - Quantity lives on the dress and on each variant. Dress with no options: the dress holds the count. Dress with variants: the dress total is the sum of its variants.
-- Stock can only move onto variants when the dress holds none (set it to 0 first).
 
 ## Open
 - Editing a dress with no variants can't record a movement yet. Needs a "record movement" action.

@@ -453,21 +453,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Stock can only move onto variants once the dress itself holds none.
--- Otherwise the dress total would not equal the sum of its variants.
-CREATE OR REPLACE FUNCTION reject_variant_with_dress_stock()
-RETURNS TRIGGER AS $$
-BEGIN
-  IF (SELECT quantity FROM stock_dresses WHERE id = NEW.dress_id) <> 0 THEN
-    RAISE EXCEPTION 'dress holds stock — set its quantity to 0 before adding variants';
-  END IF;
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER reject_variant_with_dress_stock
-BEFORE INSERT ON stock_dress_variants
-FOR EACH ROW EXECUTE FUNCTION reject_variant_with_dress_stock();
 
 CREATE TRIGGER apply_movement_to_quantity
 AFTER INSERT ON stock_movements
