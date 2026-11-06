@@ -430,9 +430,6 @@ CREATE UNIQUE INDEX one_return_per_loan
 CREATE OR REPLACE FUNCTION apply_stock_movement()
 RETURNS TRIGGER AS $$
 BEGIN
-  -- Lock the dress first: stops a variant insert racing this check.
-  PERFORM 1 FROM stock_dresses WHERE id = NEW.dress_id FOR UPDATE;
-
   IF NEW.variant_id IS NULL THEN
     IF EXISTS (SELECT 1 FROM stock_dress_variants WHERE dress_id = NEW.dress_id) THEN
       RAISE EXCEPTION 'dress has variants — record the movement against a variant';
@@ -461,9 +458,6 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION reject_variant_with_dress_stock()
 RETURNS TRIGGER AS $$
 BEGIN
-  -- Lock the dress first: stops a dress-level movement racing this check.
-  PERFORM 1 FROM stock_dresses WHERE id = NEW.dress_id FOR UPDATE;
-
   IF (SELECT quantity FROM stock_dresses WHERE id = NEW.dress_id) <> 0 THEN
     RAISE EXCEPTION 'dress holds stock — set its quantity to 0 before adding variants';
   END IF;
