@@ -8,8 +8,8 @@ import {
 	updateStockDressWithDetails,
 	archiveStockDress,
 	listStockDresses,
-} from "./stockDressesService.js";
-import { listMovementsForVariant } from "./stockMovementsService.js";
+} from "./index.js";
+import { listMovementsForVariant } from "$lib/services/stockMovementsService";
 
 const base = {
 	name: "Test Farshi",

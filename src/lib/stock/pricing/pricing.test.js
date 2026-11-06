@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { computeProfit, computeMargin, effectivePrice } from "./pricing.js";
+import { computeProfit, computeMargin, effectivePrice } from "./index.js";
 
 describe("computeProfit", () => {
 	it("returns price minus cost", () => expect(computeProfit(70000, 30000)).toBe(40000));

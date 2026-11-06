@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { generateVariantMatrix } from "./variantMatrix.js";
+import { generateVariantMatrix } from "./index.js";
 
 const size = { axis: "size", values: ["S", "M"] };
 const color = { axis: "color", values: ["Red", "Blue"] };

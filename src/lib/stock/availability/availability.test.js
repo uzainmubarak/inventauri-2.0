@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { availabilityState, availabilityLabel } from "./availability.js";
+import { availabilityState, availabilityLabel } from "./index.js";
 
 const dress = (over = {}) => ({ status: "active", made_to_order: true, ...over });
 

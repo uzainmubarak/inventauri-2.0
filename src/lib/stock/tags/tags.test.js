@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { normaliseTags } from "./tags.js";
+import { normaliseTags } from "./index.js";
 
 describe("normaliseTags", () => {
 	it("trims whitespace", () => expect(normaliseTags(["  zari "])).toEqual(["zari"]));
