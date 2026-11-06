@@ -60,3 +60,23 @@ export async function listMovementsForVariant(variantId) {
 	}
 	return { data, error: null };
 }
+
+/**
+ * Movement history for a dress with no variants, oldest first.
+ *
+ * @param {string} dressId
+ * @returns {Promise<{ data: any[] | null, error: string | null }>}
+ */
+export async function listMovementsForDress(dressId) {
+	const { data, error } = await supabase
+		.from("stock_movements")
+		.select("*")
+		.eq("dress_id", dressId)
+		.order("created_at", { ascending: true });
+
+	if (error) {
+		console.error("listMovementsForDress failed:", error.message);
+		return { data: null, error: error.message };
+	}
+	return { data, error: null };
+}

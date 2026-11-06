@@ -134,6 +134,7 @@ export async function archiveStockDress(id) {
  *   options?: { name: string, values: { value: string, price_adjustment?: number }[] }[],
  *   variants?: { price_override?: number, quantity?: number, axisValues: { axis: 'size' | 'color' | 'fabric' | 'other', value: string }[] }[]
  *     — `quantity` here is OPENING stock, recorded as a 'received' movement; it never writes the column
+ *   opening_quantity?: number — OPENING stock for a dress with no variants; recorded as a movement on the dress
  * }} formData
  * @returns {Promise<{ data: { dress: any } | null, error: string | null }>}
  */
@@ -175,6 +176,21 @@ export async function createStockDressWithDetails(formData) {
 	// Off means this design is never counted, so no opening stock is recorded.
 	const trackQuantity = formData.dress.track_quantity !== false;
 
+	// A dress with no variants holds its own count. With variants, the count
+	// lives on each variant and the dress total is their sum.
+	const dressOpening = Number(formData.opening_quantity) || 0;
+	if (trackQuantity && dressOpening > 0 && (formData.variants ?? []).length === 0) {
+		const { error } = await recordMovement({
+			dress_id: dress.id,
+			delta: dressOpening,
+			reason: "received",
+			note: "Opening stock",
+		});
+		if (error) {
+			return { data: { dress }, error: `Dress created (${dress.sku}), but recording opening stock failed: ${error}` };
+		}
+	}
+
 	for (const variant of formData.variants ?? []) {
 		const { data: createdVariant, error: variantError } = await createVariant({
 			dress_id: dress.id,
@@ -199,6 +215,7 @@ export async function createStockDressWithDetails(formData) {
 		const opening = trackQuantity ? Number(variant.quantity) || 0 : 0;
 		if (opening > 0) {
 			const { error } = await recordMovement({
+				dress_id: dress.id,
 				variant_id: createdVariant.id,
 				delta: opening,
 				reason: "received",
@@ -333,6 +350,7 @@ export async function updateStockDressWithDetails(dressId, formData) {
 		const opening = trackQuantity ? Number(variant.quantity) || 0 : 0;
 		if (opening > 0) {
 			const { error } = await recordMovement({
+				dress_id: dress.id,
 				variant_id: createdVariant.id,
 				delta: opening,
 				reason: "received",

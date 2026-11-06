@@ -125,6 +125,9 @@ CREATE TABLE stock_dresses (
   status            product_status NOT NULL DEFAULT 'draft',
   track_quantity    BOOLEAN NOT NULL DEFAULT true,
   made_to_order     BOOLEAN NOT NULL DEFAULT true,
+  -- Cached total. With variants it is the sum of their quantities; without,
+  -- it is the dress's own count. Only stock_movements' trigger writes it.
+  quantity          INTEGER NOT NULL DEFAULT 0,
 
   weight_grams      INTEGER,
   length_cm         NUMERIC(6,2),
@@ -373,7 +376,10 @@ COMMENT ON COLUMN stock_borrowers.is_active IS
 
 CREATE TABLE stock_movements (
   id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  variant_id           UUID NOT NULL REFERENCES stock_dress_variants(id)
+  dress_id             UUID NOT NULL REFERENCES stock_dresses(id)
+                            ON DELETE RESTRICT,
+  -- Null only for a dress with no variants (see apply_stock_movement).
+  variant_id           UUID REFERENCES stock_dress_variants(id)
                             ON DELETE RESTRICT,
   delta                INTEGER NOT NULL,
   reason               stock_movement_reason NOT NULL,
@@ -424,12 +430,44 @@ CREATE UNIQUE INDEX one_return_per_loan
 CREATE OR REPLACE FUNCTION apply_stock_movement()
 RETURNS TRIGGER AS $$
 BEGIN
-  UPDATE stock_dress_variants
+  IF NEW.variant_id IS NULL THEN
+    IF EXISTS (SELECT 1 FROM stock_dress_variants WHERE dress_id = NEW.dress_id) THEN
+      RAISE EXCEPTION 'dress has variants — record the movement against a variant';
+    END IF;
+  ELSE
+    IF NOT EXISTS (
+      SELECT 1 FROM stock_dress_variants
+      WHERE id = NEW.variant_id AND dress_id = NEW.dress_id
+    ) THEN
+      RAISE EXCEPTION 'variant does not belong to this dress';
+    END IF;
+    UPDATE stock_dress_variants
+    SET quantity = quantity + NEW.delta
+    WHERE id = NEW.variant_id;
+  END IF;
+
+  UPDATE stock_dresses
   SET quantity = quantity + NEW.delta
-  WHERE id = NEW.variant_id;
+  WHERE id = NEW.dress_id;
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+
+-- Stock can only move onto variants once the dress itself holds none.
+-- Otherwise the dress total would not equal the sum of its variants.
+CREATE OR REPLACE FUNCTION reject_variant_with_dress_stock()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF (SELECT quantity FROM stock_dresses WHERE id = NEW.dress_id) <> 0 THEN
+    RAISE EXCEPTION 'dress holds stock — set its quantity to 0 before adding variants';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER reject_variant_with_dress_stock
+BEFORE INSERT ON stock_dress_variants
+FOR EACH ROW EXECUTE FUNCTION reject_variant_with_dress_stock();
 
 CREATE TRIGGER apply_movement_to_quantity
 AFTER INSERT ON stock_movements
@@ -475,8 +513,8 @@ SELECT
   m.note,
   m.created_at      AS loaned_at
 FROM stock_movements m
-JOIN stock_dress_variants v ON v.id = m.variant_id
-JOIN stock_dresses d        ON d.id = v.dress_id
+JOIN stock_dresses d        ON d.id = m.dress_id
+LEFT JOIN stock_dress_variants v ON v.id = m.variant_id
 LEFT JOIN stock_borrowers b ON b.id = m.borrower_id
 WHERE m.reason = 'loaned_out'
   AND NOT EXISTS (
@@ -503,6 +541,7 @@ CREATE INDEX idx_stock_variants_barcode     ON stock_dress_variants(barcode);
 CREATE INDEX idx_stock_variant_values       ON stock_dress_variant_values(variant_id);
 CREATE INDEX idx_stock_borrowers_active     ON stock_borrowers(is_active);
 CREATE INDEX idx_stock_movements_variant    ON stock_movements(variant_id, created_at DESC);
+CREATE INDEX idx_stock_movements_dress      ON stock_movements(dress_id, created_at DESC);
 CREATE INDEX idx_stock_movements_reason     ON stock_movements(reason);
 CREATE INDEX idx_stock_movements_borrower   ON stock_movements(borrower_id);
 

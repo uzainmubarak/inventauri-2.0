@@ -29,12 +29,7 @@
 		),
 	);
 
-	const totalQuantity = $derived(
-		activeVariants.reduce(
-			/** @param {number} sum @param {any} v */ (sum, v) => sum + (v.quantity ?? 0),
-			0,
-		),
-	);
+	const totalQuantity = $derived(dress.quantity ?? 0);
 
 	const state = $derived(
 		fullDress ? availabilityState(fullDress, totalQuantity) : null,

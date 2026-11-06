@@ -67,5 +67,10 @@ but needs the design pass, `new` = to build.
 - Made-to-order is not an inventory concept. It moves to the order side as a customisation flag. Removed from the Inventory panel.
 - Only units on the rack enter inventory.
 
+## Resolved
+- Quantity lives on the dress and on each variant. Dress with no options: the dress holds the count. Dress with variants: the dress total is the sum of its variants.
+- Stock can only move onto variants when the dress holds none (set it to 0 first).
+
 ## Open
-- A dress with no options and tracking on has no variant to hold a quantity. Decide: disallow tracking without options, or let quantity sit on the dress.
+- Editing a dress with no variants can't record a movement yet. Needs a "record movement" action.
+- Form field for dress-level opening stock (no variants) is not built yet.
