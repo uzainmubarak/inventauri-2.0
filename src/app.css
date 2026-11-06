@@ -15,18 +15,23 @@
   --shadow-lg:0 8px 32px rgba(0,0,0,0.12);
 }
 
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
+/* Wrapped in @layer base so Tailwind's utilities win over it. Unlayered
+   CSS beats layered CSS in the cascade, so an unlayered `* { padding: 0 }`
+   silently strips every px-* utility off every component. */
+@layer base {
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
 
-body {
-  font-family: 'DM Sans', sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  height: 100vh;
-  margin: 0;
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    margin: 0;
+  }
 }
 
 
