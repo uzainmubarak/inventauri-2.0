@@ -32,6 +32,24 @@
     height: 100vh;
     margin: 0;
   }
+
+  /* Tailwind v4 defaults borders to currentColor (black here). shadcn
+     components rely on this to pick up the studio border colour. */
+  * {
+    border-color: var(--border);
+  }
+
+  /* Native number spinners are tiny, ignore the design, and make it easy to
+     nudge a price by accident while scrolling. */
+  input[type='number'] {
+    appearance: textfield;
+    -moz-appearance: textfield;
+  }
+  input[type='number']::-webkit-outer-spin-button,
+  input[type='number']::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
 }
 
 
