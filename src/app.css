@@ -129,6 +129,10 @@
   --color-gold: var(--gold);
   --color-gold-dim: var(--gold-dim);
   --color-gold-mid: var(--gold-mid);
+  --color-green: var(--green);
+  --color-green-dim: var(--green-dim);
+  --color-blue: var(--blue);
+  --color-blue-dim: var(--blue-dim);
   --color-text-muted: var(--text-muted);
   --color-text-faint: var(--text-faint);
   --color-border-light: var(--border-light);
