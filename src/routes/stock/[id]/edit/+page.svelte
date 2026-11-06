@@ -133,12 +133,18 @@
 			currentOptions,
 			options: options.map(/** @param {any} o */ (o) => ({ id: o.id, name: o.name, values: o.values })),
 			currentVariants,
-			variants: variants.map(/** @param {any} v */ (v) => ({
-				id: v.id,
-				price_override: v.price_override,
-				quantity: v.quantity,
-				axisValues: v.axisValues ?? [],
-			})),
+			// Dropping an archived variant here is what archives it: the service
+			// archives anything in currentVariants that is missing from this
+			// list. Sending it with its id would mark it "kept" and the removal
+			// would silently do nothing.
+			variants: variants
+				.filter(/** @param {any} v */ (v) => v.status !== "archived")
+				.map(/** @param {any} v */ (v) => ({
+					id: v.id,
+					price_override: v.price_override,
+					quantity: v.quantity,
+					axisValues: v.axisValues ?? [],
+				})),
 		};
 	}
 
