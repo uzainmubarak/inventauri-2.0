@@ -3,7 +3,7 @@
 
 :root {
   --bg:#FAFAF9; --bg2:#F3F1EE; --bg3:#EDEBE7;
-  --gold:#C9A961; --gold-dim:rgba(201,169,97,0.12); --gold-mid:rgba(201,169,97,0.25);
+  --gold:#C9A961; --gold-dim:rgba(201,169,97,0.12); --gold-mid:rgba(201,169,97,0.25); --gold-text:#7A5C10;
   --error:#8B3A3A; --error-dim:rgba(139,58,58,0.10);
   --green:#3A6B4A; --green-dim:rgba(58,107,74,0.10);
   --blue-dim:rgba(58,74,107,0.08); --blue:#3A4A6B;
@@ -129,6 +129,7 @@
   --color-gold: var(--gold);
   --color-gold-dim: var(--gold-dim);
   --color-gold-mid: var(--gold-mid);
+  --color-gold-text: var(--gold-text);
   --color-green: var(--green);
   --color-green-dim: var(--green-dim);
   --color-blue: var(--blue);
