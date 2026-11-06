@@ -47,7 +47,7 @@ but needs the design pass, `new` = to build.
 | OptionValueChip | A single value inside an option, with price adjustment and remove |
 | VariantRow | One variant: axes, SKU, barcode, price override, quantity, status |
 | PricingPanel | Price, compare-at, cost, live profit and margin |
-| InventoryPanel | Track-quantity toggle, made-to-order toggle, opening stock |
+| InventoryPanel | Track-quantity checkbox (dress level), opening stock. Sits below Pricing, above Shipping. |
 | ShippingPanel | Weight or dimensions (collapsed by default) |
 | MovementHistory | Ledger list for one variant |
 | LoanForm | Record a loan: borrower dropdown, expected return |
@@ -58,3 +58,14 @@ but needs the design pass, `new` = to build.
 - Tokens only (from `src/app.css`), no hard-coded colours.
 - Every component: one folder, `index.js` entry, props documented in a comment.
 - Tests only for logic. Visual checks in the browser.
+
+## Inventory decisions
+- Inventory follows Shopify's shape: options define axes (Colour, Size, Fabric), variants are the combinations, quantity lives per variant.
+- **Track quantity** is one checkbox on the dress. When on, the Variants table shows a Quantity column.
+- No default variant. A dress with no options has no variant row.
+- No "sell when out of stock" in inventory. Selling a piece that hasn't reached the rack is an order.
+- Made-to-order is not an inventory concept. It moves to the order side as a customisation flag. Removed from the Inventory panel.
+- Only units on the rack enter inventory.
+
+## Open
+- A dress with no options and tracking on has no variant to hold a quantity. Decide: disallow tracking without options, or let quantity sit on the dress.
