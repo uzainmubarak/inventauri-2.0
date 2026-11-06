@@ -60,7 +60,9 @@ but needs the design pass, `new` = to build.
 - Tests only for logic. Visual checks in the browser.
 
 ## Inventory decisions
-- Options define axes (Colour, Size, Fabric). Variants are the combinations. Quantity lives on the variant when there are variants, and on the dress when there are none.
+- Options define axes (Colour, Size, Fabric). Variants are the combinations.
+- With variants, quantity lives on each variant. The dress-level count is hidden in the UI.
+- The dress-level count is kept underneath. If all variants are deleted, it reappears with its last value (Shopify's behaviour).
 - **Track quantity** is one checkbox on the dress. When on, the Variants table shows a Quantity column.
 - No default variant. A dress with no options has no variant row.
 - No "sell when out of stock" in inventory. Selling a piece that hasn't reached the rack is an order.
@@ -73,7 +75,7 @@ but needs the design pass, `new` = to build.
 - Only units on the rack enter inventory.
 
 ## Resolved
-- Quantity lives on the dress and on each variant. Dress with no options: the dress holds the count. Dress with variants: the dress total is the sum of its variants.
+- Dress with no variants: the dress holds the count. Dress with variants: each variant holds its own count, and the dress-level count is hidden.
 
 ## Open
 - Editing a dress with no variants can't record a movement yet. Needs a "record movement" action.
