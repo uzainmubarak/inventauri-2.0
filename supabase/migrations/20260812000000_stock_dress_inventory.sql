@@ -125,8 +125,9 @@ CREATE TABLE stock_dresses (
   status            product_status NOT NULL DEFAULT 'draft',
   track_quantity    BOOLEAN NOT NULL DEFAULT true,
   made_to_order     BOOLEAN NOT NULL DEFAULT true,
-  -- Cached total. With variants it is the sum of their quantities; without,
-  -- it is the dress's own count. Only stock_movements' trigger writes it.
+  -- The dress's own count. Used when the dress has no variants. With variants
+  -- it is kept underneath but hidden: each variant holds its own count
+  -- (Shopify's behaviour). Only stock_movements' trigger writes it.
   quantity          INTEGER NOT NULL DEFAULT 0,
 
   weight_grams      INTEGER,
@@ -444,6 +445,7 @@ BEGIN
     UPDATE stock_dress_variants
     SET quantity = quantity + NEW.delta
     WHERE id = NEW.variant_id;
+    RETURN NEW;
   END IF;
 
   UPDATE stock_dresses

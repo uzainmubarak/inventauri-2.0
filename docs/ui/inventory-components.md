@@ -47,7 +47,7 @@ but needs the design pass, `new` = to build.
 | OptionValueChip | A single value inside an option, with price adjustment and remove |
 | VariantRow | One variant: axes, SKU, barcode, price override, quantity, status |
 | PricingPanel | Price, compare-at, cost, live profit and margin |
-| InventoryPanel | Track-quantity checkbox (dress level), opening stock. Sits below Pricing, above Shipping. |
+| InventoryPanel | Track-quantity checkbox (dress level), quantity input (dress level, used only when there are no variants). Sits below Pricing, above Shipping. Shows this note when variants exist: "Quantity entered here is replaced by the variant quantities." |
 | ShippingPanel | Weight or dimensions (collapsed by default) |
 | MovementHistory | Ledger list for one variant |
 | LoanForm | Record a loan: borrower dropdown, expected return |
@@ -62,7 +62,8 @@ but needs the design pass, `new` = to build.
 ## Inventory decisions
 - Options define axes (Colour, Size, Fabric). Variants are the combinations.
 - With variants, quantity lives on each variant. The dress-level count is hidden in the UI.
-- The dress-level count is kept underneath. If all variants are deleted, it reappears with its last value (Shopify's behaviour).
+- The dress-level count is kept underneath and is not changed by variant movements. If all variants are deleted, it reappears with its last value (Shopify's behaviour).
+- Inventory card note when variants exist: "Quantity entered here is replaced by the variant quantities."
 - **Track quantity** is one checkbox on the dress. When on, the Variants table shows a Quantity column.
 - No default variant. A dress with no options has no variant row.
 - No "sell when out of stock" in inventory. Selling a piece that hasn't reached the rack is an order.
@@ -74,8 +75,17 @@ but needs the design pass, `new` = to build.
 - Not in the schema yet. Lead time fields would be added to `stock_dresses` when we build the order side.
 - Only units on the rack enter inventory.
 
+## Variant page (one variant's own fields)
+- Option value (e.g. size "M"): the variant's name
+- Image
+- Price override (falls back to the dress price)
+- Quantity on hand
+- SKU and barcode
+- Status (active or archived)
+- Not per variant: channels, catalogs, title, description. Compare-at, cost and shipping stay at dress level unless we decide otherwise.
+
 ## Resolved
-- Dress with no variants: the dress holds the count. Dress with variants: each variant holds its own count, and the dress-level count is hidden.
+- Dress with no variants: the dress holds the count. Dress with variants: each variant holds its own count, and the dress-level count is hidden and kept apart from variant stock.
 
 ## Open
 - Editing a dress with no variants can't record a movement yet. Needs a "record movement" action.

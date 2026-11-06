@@ -54,6 +54,14 @@ describe("createStockDressWithDetails", () => {
 		expect(movements[0].delta).toBe(4);
 	});
 
+	it("keeps the dress-level count apart from variant stock", async () => {
+		const { data } = await create({
+			variants: [{ price_override: null, quantity: 3, axisValues: [{ axis: "size", value: "M" }] }],
+		});
+		const { data: full } = await getStockDressById(data.dress.id);
+		expect(full.quantity).toBe(0);
+	});
+
 	it("rejects a dress-level movement once the dress has variants", async () => {
 		const { data } = await create({
 			variants: [{ price_override: null, quantity: 1, axisValues: [{ axis: "size", value: "M" }] }],

@@ -9,7 +9,14 @@
 		(dress.stock_dress_variants ?? []).filter((v) => v.status !== "archived"),
 	);
 
-	const totalQuantity = $derived(dress.quantity ?? 0);
+	const totalQuantity = $derived(
+		activeVariants.length > 0
+			? activeVariants.reduce(
+					/** @param {number} sum @param {any} v */ (sum, v) => sum + (v.quantity ?? 0),
+					0,
+				)
+			: (dress.quantity ?? 0),
+	);
 
 	const state = $derived(availabilityState(dress, totalQuantity));
 
