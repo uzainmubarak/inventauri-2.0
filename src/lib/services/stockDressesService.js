@@ -172,6 +172,9 @@ export async function createStockDressWithDetails(formData) {
 		}
 	}
 
+	// Off means this design is never counted, so no opening stock is recorded.
+	const trackQuantity = formData.dress.track_quantity !== false;
+
 	for (const variant of formData.variants ?? []) {
 		const { data: createdVariant, error: variantError } = await createVariant({
 			dress_id: dress.id,
@@ -193,7 +196,7 @@ export async function createStockDressWithDetails(formData) {
 		// Opening stock is a ledger entry, not a column write. Writing quantity
 		// directly would leave the variant holding a number with no history
 		// behind it — the exact hole the ledger exists to prevent.
-		const opening = Number(variant.quantity) || 0;
+		const opening = trackQuantity ? Number(variant.quantity) || 0 : 0;
 		if (opening > 0) {
 			const { error } = await recordMovement({
 				variant_id: createdVariant.id,
@@ -291,6 +294,8 @@ export async function updateStockDressWithDetails(dressId, formData) {
 		}
 	}
 
+	const trackQuantity = formData.dress.track_quantity !== false;
+
 	const keptVariantIds = new Set(formData.variants.filter((v) => v.id).map((v) => v.id));
 	for (const existing of formData.currentVariants) {
 		if (!keptVariantIds.has(existing.id)) {
@@ -325,7 +330,7 @@ export async function updateStockDressWithDetails(dressId, formData) {
 			}
 		}
 
-		const opening = Number(variant.quantity) || 0;
+		const opening = trackQuantity ? Number(variant.quantity) || 0 : 0;
 		if (opening > 0) {
 			const { error } = await recordMovement({
 				variant_id: createdVariant.id,

@@ -88,6 +88,40 @@ describe("createStockDressWithDetails", () => {
 		expect(full.stock_dress_variants[0].sku).toBe(`${data.dress.sku}-RED-M`);
 	});
 
+	it("refuses an active dress priced at zero", async () => {
+		const { error } = await createStockDressWithDetails({
+			dress: { ...base, price: 0, compare_at_price: null },
+			images: [],
+			options: [],
+			variants: [],
+		});
+		expect(error).toBeTruthy();
+	});
+
+	it("allows a draft priced at zero", async () => {
+		const { error } = await createStockDressWithDetails({
+			dress: { ...base, price: 0, compare_at_price: null, status: "draft" },
+			images: [],
+			options: [],
+			variants: [],
+		});
+		expect(error).toBe(null);
+	});
+
+	it("records no opening stock when track_quantity is off", async () => {
+		const { data } = await createStockDressWithDetails({
+			dress: { ...base, track_quantity: false },
+			images: [],
+			options: [],
+			variants: [{ price_override: null, quantity: 3, axisValues: [{ axis: "size", value: "M" }] }],
+		});
+		const { data: full } = await getStockDressById(data.dress.id);
+		const variant = full.stock_dress_variants[0];
+		expect(variant.quantity).toBe(0);
+		const { data: movements } = await listMovementsForVariant(variant.id);
+		expect(movements).toHaveLength(0);
+	});
+
 	it("surfaces the compare_at constraint as an error, not a throw", async () => {
 		const { error } = await createStockDressWithDetails({
 			dress: { ...base, compare_at_price: 1000 },

@@ -9,10 +9,11 @@
 	 * @type {{
 	 *   variants: any[],
 	 *   editable?: boolean,
+	 *   trackQuantity?: boolean,
 	 *   onChange?: (variants: any[]) => void
 	 * }}
 	 */
-	let { variants, editable = false, onChange } = $props();
+	let { variants, editable = false, trackQuantity = true, onChange } = $props();
 
 	const AXES = ["size", "color", "fabric", "other"];
 	const MAX_VARIANTS = 100;
@@ -212,7 +213,7 @@
 					<div class="variant-sku">{variant.sku ?? "(assigned on save)"}</div>
 					<div class="variant-sku">{variant.barcode ?? "—"}</div>
 					<div>
-						{#if editable && !variant.id}
+						{#if editable && !variant.id && trackQuantity}
 							<input
 								class="variant-input"
 								type="number"
@@ -225,7 +226,7 @@
 							/>
 						{:else}
 							<span class="qty-readonly" title="Changed by recording a stock movement">
-								{variant.quantity ?? 0}
+								{trackQuantity ? (variant.quantity ?? 0) : "—"}
 							</span>
 						{/if}
 					</div>
@@ -282,7 +283,7 @@
 					</div>
 					<div class="variant-card-row">
 						<span class="variant-card-label">Qty</span>
-						{#if editable && !variant.id}
+						{#if editable && !variant.id && trackQuantity}
 							<input
 								class="variant-input"
 								type="number"
@@ -294,7 +295,7 @@
 									})}
 							/>
 						{:else}
-							<span>{variant.quantity ?? 0}</span>
+							<span>{trackQuantity ? (variant.quantity ?? 0) : "—"}</span>
 						{/if}
 					</div>
 					<div class="variant-card-row">
@@ -327,8 +328,12 @@
 
 	{#if editable}
 		<p class="hint qty-hint">
-			Quantity is editable only before a variant is saved — that number becomes its opening stock
-			entry. After that it moves only by recording a stock movement.
+			{#if trackQuantity}
+				Quantity is editable only before a variant is saved — that number becomes its opening
+				stock entry. After that it moves only by recording a stock movement.
+			{:else}
+				Quantity tracking is off for this design, so nothing is counted.
+			{/if}
 		</p>
 		<button type="button" class="add-variant-btn" onclick={addBlankVariant}>
 			+ Add variant without axes

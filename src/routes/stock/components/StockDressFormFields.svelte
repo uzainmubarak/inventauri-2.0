@@ -344,7 +344,7 @@
 
 <div class="form-section">
 	<div class="section-title">Variants</div>
-	<VariantList {variants} editable={true} onChange={(v) => (variants = v)} />
+	<VariantList {variants} editable={true} {trackQuantity} onChange={(v) => (variants = v)} />
 </div>
 
 <div class="form-section">

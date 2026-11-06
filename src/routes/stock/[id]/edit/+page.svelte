@@ -167,15 +167,18 @@
 	function handleSubmit(e) {
 		e.preventDefault();
 		if (priceError) return;
-		const publishing = originalStatus === "draft";
-		if (publishing && !(Number(price) > 0)) {
-			saveError = "Set a price above zero before publishing, or keep this as a draft.";
+		const target = originalStatus === "draft" ? "active" : originalStatus;
+		// Any status a customer can be quoted from needs a real price — not
+		// just the draft->active step. The DB enforces this too; this is so
+		// the user gets a sentence instead of a constraint name.
+		if (target !== "draft" && !(Number(price) > 0)) {
+			saveError = "Set a price above zero before saving a published dress.";
 			return;
 		}
 		// Publishing a draft moves it to 'active'; a dress that was never a
 		// draft keeps the status it already had, so saving an edit never
 		// silently changes it.
-		save(publishing ? "active" : originalStatus);
+		save(target);
 	}
 
 	function handleSaveDraft() {

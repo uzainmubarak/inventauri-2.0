@@ -140,6 +140,13 @@ CREATE TABLE stock_dresses (
 
   CONSTRAINT compare_at_above_price CHECK (
     compare_at_price IS NULL OR compare_at_price > price
+  ),
+
+  -- A draft is allowed to be incomplete; anything a customer can be quoted
+  -- is not. Enforced here rather than only in the form so every path —
+  -- including Orders later — gets it.
+  CONSTRAINT price_positive_unless_draft CHECK (
+    status = 'draft' OR price > 0
   )
 );
 
