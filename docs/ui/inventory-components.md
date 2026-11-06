@@ -65,6 +65,11 @@ but needs the design pass, `new` = to build.
 - No default variant. A dress with no options has no variant row.
 - No "sell when out of stock" in inventory. Selling a piece that hasn't reached the rack is an order.
 - Made-to-order is not an inventory concept. It moves to the order side as a customisation flag. Removed from the Inventory panel.
+
+## Make-to-order timeline
+- Each make-to-order dress has a lead time, for example 2 to 4 weeks. Stored as a minimum and maximum, in weeks.
+- The customer sees the lead time on the dress. It is not an inventory quantity.
+- Not in the schema yet. Lead time fields would be added to `stock_dresses` when we build the order side.
 - Only units on the rack enter inventory.
 
 ## Resolved
