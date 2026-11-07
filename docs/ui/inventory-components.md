@@ -63,7 +63,7 @@ but needs the design pass, `new` = to build.
 - Options define axes (Colour, Size, Fabric). Variants are the combinations.
 - With variants, quantity lives on each variant. The dress-level count is hidden in the UI.
 - The dress-level count is kept underneath and is not changed by variant movements. If all variants are deleted, it reappears with its last value (Shopify's behaviour).
-- Inventory card note when variants exist: "Quantity entered here is replaced by the variant quantities."
+- **Rule:** once a dress has variants, the dress-level quantity input is disabled and shows the note: "Quantity entered here is replaced by the variant quantities." The entered value is not saved as a movement. Variant quantities take over.
 - **Track quantity** is one checkbox on the dress. When on, the Variants table shows a Quantity column.
 - No default variant. A dress with no options has no variant row.
 - No "sell when out of stock" in inventory. Selling a piece that hasn't reached the rack is an order.
