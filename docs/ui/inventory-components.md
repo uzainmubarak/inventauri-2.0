@@ -43,8 +43,7 @@ but needs the design pass, `new` = to build.
 
 | Component | Used for |
 |---|---|
-| OptionEditor | One option (e.g. Colour) with its values and price adjustment. The Options box rework starts here. |
-| OptionValueChip | A single value inside an option, with price adjustment and remove |
+| OptionRow | One option (e.g. Dupatta style): a name and its values, each with an optional photo and price adjustment, edited in place. Built, with `OptionsEditor` around it. |
 | VariantRow | One variant: axes, SKU, barcode, price override, quantity, status |
 | PricingPanel | Price, compare-at, cost, live profit and margin |
 | InventoryPanel | Track-quantity checkbox (dress level), quantity input (dress level; counts only when there are no variants, otherwise stored and hidden). Sits below Pricing, above Shipping. Shows this note when variants exist: "Quantity entered here is replaced by the variant quantities." |
@@ -60,7 +59,7 @@ but needs the design pass, `new` = to build.
 - Tests only for logic. Visual checks in the browser.
 
 ## Inventory decisions
-- Options define axes (Colour, Size, Fabric). Variants are the combinations.
+- Options and variants are separate (see `docs/stock-module-schema.md`, "Variant or option?"). A variant is what hangs on the rack: counted, with a SKU and barcode, built from axes (size, colour, fabric, other). An option is a choice a customer makes when ordering, such as dupatta style: not counted, no SKU, an optional price adjustment and an optional photo per value.
 - With variants, quantity lives on each variant. The dress-level count is hidden in the UI.
 - The dress-level count is kept underneath and is not changed by variant movements. If all variants are deleted, it reappears with its last value (Shopify's behaviour).
 - **Rule:** once a dress has variants, the dress-level quantity input stays editable but shows the note: "Quantity entered here is replaced by the variant quantities." The value is saved as a dress-level movement, kept apart from variant stock, and hidden. Variant quantities are what count.
@@ -100,8 +99,8 @@ Opened by clicking a variant in the Variants list. Same layout idea as Shopify's
 
 ## Build notes (design chat)
 Built from the canvas boards. Where the boards and the data disagreed, the data won:
-- **Options and variants are one thing, as designed.** Each option is an axis and variants follow it (`src/lib/stock/optionVariants`). The name picks the schema axis: Size, Colour (or Color) and Fabric map to their own; any other name is `other`, and only one custom option fits for now. Variants are never added by hand. A renamed value keeps its variant and stock, adding an option gives existing variants its first value, and a saved variant that no longer fits is archived. A value's price adjustment is added to the dress price for the variants that use it; a price typed on a variant wins.
-- **Older dresses.** Variants saved before this show their axes as options, so nothing is archived by opening them. An old order-time option such as "Dupatta style" now counts as the custom axis and will add variants the first time the options are edited. The form says how many will be added or archived before you save.
+- **Options and variants are separate cards.** Options are order-time choices, each value with a photo slot and an optional price adjustment, all edited in place (`OptionRow`). Variants are built from axes: Generate adds the combinations that are missing and never removes one, Add variant adds a single row, and removing a saved variant archives it. A saved dress opens with the axes its variants already use. Two variants with the same values are flagged before saving.
+- **Option value photos.** `stock_dress_option_values.image_url` is new (run `supabase db reset`; the migration is edited in place). Photos show in the form and the drawer and can be removed, but not added until there is storage to upload to.
 - **Photos can't be uploaded yet.** The Upload tile is disabled with a hint. Saved photos can be removed, reordered and set primary; that is saved.
 - **Make to order is a switch** on the dress (`made_to_order`). Off, an empty rack reads as Sold out; on, the design stays orderable. The lead time fields under it are a disabled placeholder ("Saved with orders") until the columns exist.
 - **No bottom action bar.** The title and the Cancel, Save draft and Save buttons stay at the top and shrink into a slim bar when the page scrolls. Errors show under the header and in the slim bar.

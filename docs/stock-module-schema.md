@@ -151,10 +151,11 @@ stock_dress_options
 
 stock_dress_option_values
   id, option_id FK, value, price_adjustment NUMERIC(12,2) DEFAULT 0,
-  position, created_at
+  image_url TEXT (optional photo of the choice), position, created_at
 ```
 
-`price_adjustment` exists but the UI has never written it.
+`image_url` has the same open validation task as `stock_dress_images.image_url`
+(https and the R2 host, once upload lands).
 
 ### Variant or option?
 

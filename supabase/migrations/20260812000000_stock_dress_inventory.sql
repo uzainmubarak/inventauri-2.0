@@ -223,12 +223,15 @@ CREATE TABLE stock_dress_option_values (
   option_id         UUID NOT NULL REFERENCES stock_dress_options(id) ON DELETE CASCADE,
   value             TEXT NOT NULL,
   price_adjustment  NUMERIC(12,2) NOT NULL DEFAULT 0,
+  image_url         TEXT,
   position          INTEGER NOT NULL DEFAULT 0,
   created_at        TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 COMMENT ON COLUMN stock_dress_option_values.price_adjustment IS
   'Added on top of the variant price when chosen, e.g. hand-painted dupatta +40000.';
+COMMENT ON COLUMN stock_dress_option_values.image_url IS
+  'Optional photo of this choice, so the customer can see what it looks like. Same rules as stock_dress_images.image_url: validate to https and the R2 host when upload lands.';
 
 
 -- ────────────────────────────────────────────────────────────
