@@ -37,20 +37,6 @@
 	const profit = $derived(fullDress ? computeProfit(fullDress.price, fullDress.cost) : null);
 	const margin = $derived(fullDress ? computeMargin(fullDress.price, fullDress.cost) : null);
 
-	// Axes (size, colour...) as the values the variants actually use.
-	const axes = $derived.by(() => {
-		/** @type {Map<string, string[]>} */
-		const byAxis = new Map();
-		for (const v of variants) {
-			for (const av of v.stock_dress_variant_values ?? []) {
-				const values = byAxis.get(av.axis) ?? [];
-				if (!values.includes(av.value)) values.push(av.value);
-				byAxis.set(av.axis, values);
-			}
-		}
-		return [...byAxis].map(([axis, values]) => ({ axis, values }));
-	});
-
 	$effect(() => {
 		load(dress.id);
 	});
@@ -75,9 +61,6 @@
 
 	/** @param {string} value */
 	const label = (value) => value.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
-	/** The axis is stored as "color"; the studio writes "Colour". */
-	/** @param {string} axis */
-	const axisLabel = (axis) => (axis === "color" ? "Colour" : label(axis));
 	/** @param {number | string} n */
 	const money = (n) => Number(n).toLocaleString();
 
@@ -201,26 +184,17 @@
 					</div>
 				</section>
 
-				{#if axes.length || fullDress.stock_dress_options?.length}
+				{#if fullDress.stock_dress_options?.length}
 					<section class="flex flex-col gap-3">
 						<h2 class="font-serif text-xl font-medium">Options</h2>
-						{#each axes as { axis, values } (axis)}
-							<div class="flex items-center gap-3">
-								<span class="text-muted-foreground w-24 shrink-0 text-[13px]">{axisLabel(axis)}</span>
-								<div class="flex flex-wrap gap-2">
-									{#each values as value (value)}
-										<span class="bg-secondary rounded-full px-3 py-1 text-[13px] font-medium">{value}</span>
-									{/each}
-								</div>
-							</div>
-						{/each}
-						{#each fullDress.stock_dress_options ?? [] as option (option.id)}
+						{#each fullDress.stock_dress_options as option (option.id)}
 							<div class="flex items-center gap-3">
 								<span class="text-muted-foreground w-24 shrink-0 text-[13px]">{option.name}</span>
 								<div class="flex flex-wrap gap-2">
 									{#each option.stock_dress_option_values ?? [] as v (v.id)}
-										<span class="bg-secondary rounded-full px-3 py-1 text-[13px] font-medium">
-											{v.value}{#if Number(v.price_adjustment)}<span class="text-muted-foreground ml-1.5 font-mono text-xs">+{money(v.price_adjustment)}</span>{/if}
+										<span class="bg-secondary flex h-8 items-center gap-2 rounded-full pr-3 text-[13px] font-medium {v.image_url ? 'pl-1' : 'pl-3'}">
+											{#if v.image_url}<img src={v.image_url} alt="" class="ring-border size-6 rounded-full object-cover ring-1" />{/if}
+											{v.value}{#if Number(v.price_adjustment)}<span class="text-muted-foreground font-mono text-xs">+ PKR {money(v.price_adjustment)}</span>{/if}
 										</span>
 									{/each}
 								</div>

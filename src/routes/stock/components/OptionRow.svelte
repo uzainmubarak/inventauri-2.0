@@ -3,37 +3,40 @@
 	import { Button } from "$lib/ui/button";
 	import { NumberField } from "$lib/ui/number-field";
 	import { Field } from "$lib/ui/field";
-	import { Combobox } from "$lib/ui/combobox";
 	import PencilIcon from "@lucide/svelte/icons/pencil";
 	import TrashIcon from "@lucide/svelte/icons/trash-2";
 	import XIcon from "@lucide/svelte/icons/x";
-	import { newUid, SUGGESTED_OPTIONS } from "$lib/stock/optionVariants";
+	import ImageIcon from "@lucide/svelte/icons/image";
+	import { newUid } from "$lib/stock/options";
 
 	/**
-	 * One option, such as Size or Colour. Closed it reads as a name and its
-	 * values; open, every value is a field you can change in place, each with an
-	 * optional price adjustment.
+	 * One option, such as Dupatta style. Closed it reads as a name and its
+	 * values; open, every value is a row you can change in place: a photo, the
+	 * text and an optional price adjustment.
+	 *
+	 * Options are the choices a customer makes when ordering. They are not
+	 * counted and have no SKU; see docs/stock-module-schema.md.
 	 *
 	 * Props: `option` (bindable), `issue` (what is wrong with it, if anything),
-	 * `taken` (option names already used, so they are not suggested again),
-	 * `onChange(kind)` where kind is "structure" when the name or a value
-	 * changed and "price" when only an adjustment did, `onRemove`.
+	 * `onRemove`.
 	 * @type {{
-	 *   option: import("$lib/stock/optionVariants").Option,
+	 *   option: import("$lib/stock/options").Option,
 	 *   issue: string | null,
-	 *   taken: string[],
-	 *   onChange: (kind: "structure" | "price") => void,
 	 *   onRemove: () => void
 	 * }}
 	 */
-	let { option = $bindable(), issue, taken, onChange, onRemove } = $props();
+	let { option = $bindable(), issue, onRemove } = $props();
+
+	// shortcut: photos can be shown and removed but not added, because there is no
+	// storage to upload to yet. Turn this on and wire the file picker when there is.
+	const canUpload = false;
 
 	let draft = $state("");
 	let nameError = $state(false);
 
 	const nameId = $derived(`option-name-${option.uid}`);
 	const draftId = $derived(`option-draft-${option.uid}`);
-	const suggestions = $derived(SUGGESTED_OPTIONS.filter((n) => !taken.includes(n.toLowerCase())));
+	const GRID = "grid grid-cols-[40px_minmax(0,1fr)_minmax(0,190px)_36px] items-center gap-2";
 
 	// A just-added option opens with its name field ready.
 	$effect(() => {
@@ -52,10 +55,8 @@
 			.split(/[,\n]/)
 			.map((t) => t.trim())
 			.filter(Boolean)
-			.map((value) => ({ uid: newUid(), value, price_adjustment: 0 }));
-		if (!added.length) return;
-		option.values = [...option.values, ...added];
-		onChange("structure");
+			.map((value) => ({ uid: newUid(), value, price_adjustment: 0, image_url: null }));
+		if (added.length) option.values = [...option.values, ...added];
 	}
 
 	function commitDraft() {
@@ -66,13 +67,9 @@
 	/** @param {number} i */
 	function removeValue(i) {
 		option.values = option.values.filter((_, vi) => vi !== i);
-		onChange("structure");
 	}
 
-	/** @param {string} name */
-	function useName(name) {
-		option.name = name;
-		onChange("structure");
+	function focusDraft() {
 		document.getElementById(draftId)?.focus();
 	}
 
@@ -89,6 +86,32 @@
 	}
 </script>
 
+{#snippet photo(/** @type {import("$lib/stock/options").OptionValue} */ value)}
+	{#if value.image_url}
+		<span class="relative inline-flex size-10 shrink-0">
+			<img src={value.image_url} alt="" class="ring-border size-10 rounded-[10px] object-cover ring-1" />
+			<button
+				type="button"
+				aria-label="Remove the photo of {value.value || 'this value'}"
+				class="absolute -top-1.5 -right-1.5 flex size-[18px] items-center justify-center rounded-full bg-[var(--sidebar-bg)] text-white"
+				onclick={() => (value.image_url = null)}
+			>
+				<XIcon class="size-2.5" />
+			</button>
+		</span>
+	{:else}
+		<button
+			type="button"
+			disabled={!canUpload}
+			title={canUpload ? undefined : "Photo upload is not available yet. It arrives once storage is set up."}
+			aria-label="Add a photo for {value.value || 'this value'}"
+			class="border-text-muted text-muted-foreground flex size-10 shrink-0 items-center justify-center rounded-[10px] border border-dashed disabled:cursor-not-allowed disabled:opacity-50"
+		>
+			<ImageIcon class="size-4" />
+		</button>
+	{/if}
+{/snippet}
+
 {#if option.editing}
 	<div
 		class="border-primary ring-primary flex flex-col gap-[18px] rounded-xl border p-5 ring-1"
@@ -100,51 +123,35 @@
 			for={nameId}
 			error={issue ?? (nameError && !option.name.trim() ? "Give this option a name." : null)}
 		>
-			<Combobox
+			<Input
 				id={nameId}
 				bind:value={option.name}
-				options={suggestions}
-				placeholder="e.g. Size"
+				placeholder="e.g. Dupatta style"
 				aria-invalid={Boolean(issue)}
-				oninput={() => {
-					nameError = false;
-					onChange("structure");
-				}}
+				oninput={() => (nameError = false)}
 				onkeydown={(e) => {
 					if (e.key === "Enter") {
 						e.preventDefault();
-						document.getElementById(draftId)?.focus();
+						focusDraft();
 					}
 				}}
 			/>
-			{#if !option.name.trim() && suggestions.length}
-				<div class="flex flex-wrap items-center gap-2">
-					<span class="text-muted-foreground text-[13px]">Suggestions</span>
-					{#each suggestions as name (name)}
-						<button
-							type="button"
-							class="border-border bg-background hover:bg-muted h-7 rounded-full border px-3 text-[13px] font-medium"
-							onclick={() => useName(name)}>{name}</button
-						>
-					{/each}
-				</div>
-			{/if}
 		</Field>
 
 		<div class="flex flex-col gap-2">
-			<div class="text-muted-foreground grid grid-cols-[minmax(0,1fr)_minmax(0,200px)_36px] gap-2 text-xs font-medium">
-				<span>Values</span><span>Price adjustment</span><span></span>
+			<div class="{GRID} text-muted-foreground text-xs font-medium">
+				<span>Photo</span><span>Values</span><span>Price adjustment</span><span></span>
 			</div>
 			{#each option.values as value, vi (value.uid)}
-				<div class="grid grid-cols-[minmax(0,1fr)_minmax(0,200px)_36px] items-center gap-2">
+				<div class={GRID}>
+					{@render photo(value)}
 					<Input
 						aria-label="Value {vi + 1} of {option.name || 'this option'}"
 						bind:value={value.value}
-						oninput={() => onChange("structure")}
 						onkeydown={(e) => {
 							if (e.key === "Enter") {
 								e.preventDefault();
-								document.getElementById(draftId)?.focus();
+								focusDraft();
 							}
 						}}
 					/>
@@ -154,14 +161,21 @@
 						placeholder="0"
 						aria-label="Price adjustment for {value.value || 'this value'}"
 						bind:value={value.price_adjustment}
-						oninput={() => onChange("price")}
 					/>
 					<Button variant="ghost" size="icon" aria-label="Remove {value.value || 'this value'}" onclick={() => removeValue(vi)}>
 						<XIcon />
 					</Button>
 				</div>
 			{/each}
-			<div class="grid grid-cols-[minmax(0,1fr)_minmax(0,200px)_36px] items-center gap-2">
+			<div class={GRID}>
+				<button
+					type="button"
+					disabled
+					aria-label="Add a photo for the next value"
+					class="border-text-muted text-muted-foreground flex size-10 shrink-0 items-center justify-center rounded-[10px] border border-dashed opacity-50"
+				>
+					<ImageIcon class="size-4" />
+				</button>
 				<Input
 					id={draftId}
 					aria-label="Add another value to {option.name || 'this option'}"
@@ -188,7 +202,9 @@
 		</div>
 
 		<p class="text-muted-foreground text-[13px]">
-			Press Enter to add the next value. Paste a list like “S, M, L” to add several at once.
+			Press Enter to add the next value. Paste a list like “Full, Half” to add several at once. A photo shows the
+			customer what the choice looks like.
+			{#if !canUpload}Photo upload is not available yet.{/if}
 		</p>
 
 		<div class="flex items-center justify-between">
@@ -207,7 +223,10 @@
 			<span class="text-sm font-semibold">{option.name}</span>
 			<span class="flex flex-wrap gap-2">
 				{#each option.values.filter((v) => v.value.trim()) as value (value.uid)}
-					<span class="bg-secondary flex h-7 items-center gap-2 rounded-full px-3 text-[13px] font-medium">
+					<span
+						class="bg-secondary flex h-8 items-center gap-2 rounded-full pr-3 text-[13px] font-medium {value.image_url ? 'pl-1' : 'pl-3'}"
+					>
+						{#if value.image_url}<img src={value.image_url} alt="" class="ring-border size-6 rounded-full object-cover ring-1" />{/if}
 						{value.value}
 						{#if Number(value.price_adjustment)}
 							<span class="text-muted-foreground font-mono text-xs">+ PKR {money(Number(value.price_adjustment))}</span>

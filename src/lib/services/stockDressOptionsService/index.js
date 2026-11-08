@@ -42,7 +42,7 @@ export async function createOption(option) {
 }
 
 /**
- * @param {{ option_id: string, value: string, price_adjustment?: number, position?: number }} optionValue
+ * @param {{ option_id: string, value: string, price_adjustment?: number, image_url?: string | null, position?: number }} optionValue
  * @returns {Promise<{ data: any | null, error: string | null }>}
  */
 export async function addOptionValue(optionValue) {
@@ -109,7 +109,7 @@ export async function updateOption(optionId, updates) {
 /**
  * Rename a value, change what it adds to the price, or move it in the list.
  * @param {string} optionValueId
- * @param {{ value?: string, price_adjustment?: number, position?: number }} updates
+ * @param {{ value?: string, price_adjustment?: number, image_url?: string | null, position?: number }} updates
  * @returns {Promise<{ data: null, error: string | null }>}
  */
 export async function updateOptionValue(optionValueId, updates) {

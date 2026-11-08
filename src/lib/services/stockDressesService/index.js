@@ -21,7 +21,7 @@ import {
 	updateOptionValue,
 } from "$lib/services/stockDressOptionsService";
 import { createVariant, updateVariant, archiveVariant } from "$lib/services/stockDressVariantsService";
-import { setVariantAxisValue, removeVariantAxisValue } from "$lib/services/stockDressVariantValuesService";
+import { setVariantAxisValue } from "$lib/services/stockDressVariantValuesService";
 import { recordMovement } from "$lib/services/stockMovementsService";
 
 /**
@@ -65,7 +65,7 @@ export async function listGarmentTypes() {
 
 /**
  * Fetch a single stock dress by id, including its images, options (with
- * their values), and variants (with each variant's axis values) — enough
+ * their values), and variants (with each variant's axis values), enough
  * for both the read-only detail drawer and the edit page.
  * @param {string} id
  * @returns {Promise<{ data: any | null, error: string | null }>}
@@ -383,12 +383,6 @@ export async function updateStockDressWithDetails(dressId, formData) {
 			if (error) {
 				return { data: { dress }, error: `Dress saved, but updating a variant failed: ${error}` };
 			}
-			// A renamed option value keeps its variant. The new values replace the
-			// old ones, which also refreshes the SKU in the database.
-			const axisError = await syncVariantAxes(variant, formData.currentVariants);
-			if (axisError) {
-				return { data: { dress }, error: `Dress saved, but updating a variant's options failed: ${axisError}` };
-			}
 			continue;
 		}
 		const { data: createdVariant, error: variantError } = await createVariant({
@@ -427,7 +421,7 @@ export async function updateStockDressWithDetails(dressId, formData) {
  * Bring one saved option (its name, place and values) in line with the form.
  * Values with an id are updated if they changed, values without one are added,
  * and saved values missing from the form are removed.
- * @param {{ id?: string, name: string, values: { id?: string, value: string, price_adjustment?: number }[] }} option
+ * @param {{ id?: string, name: string, values: { id?: string, value: string, price_adjustment?: number, image_url?: string | null }[] }} option
  * @param {number} position
  * @param {any[]} currentOptions
  * @returns {Promise<string | null>} an error message, or null
@@ -452,7 +446,13 @@ async function syncSavedOption(option, position, currentOptions) {
 	for (const [valueIndex, value] of option.values.entries()) {
 		const adjustment = value.price_adjustment ?? 0;
 		if (!value.id) {
-			const { error } = await addOptionValue({ option_id: optionId, value: value.value, price_adjustment: adjustment, position: valueIndex });
+			const { error } = await addOptionValue({
+				option_id: optionId,
+				value: value.value,
+				price_adjustment: adjustment,
+				image_url: value.image_url ?? null,
+				position: valueIndex,
+			});
 			if (error) return error;
 			continue;
 		}
@@ -461,37 +461,15 @@ async function syncSavedOption(option, position, currentOptions) {
 			before &&
 			(before.value !== value.value ||
 				Number(before.price_adjustment) !== Number(adjustment) ||
+				(before.image_url ?? null) !== (value.image_url ?? null) ||
 				(before.position ?? 0) !== valueIndex);
 		if (changed) {
-			const { error } = await updateOptionValue(value.id, { value: value.value, price_adjustment: adjustment, position: valueIndex });
-			if (error) return error;
-		}
-	}
-	return null;
-}
-
-/**
- * Make a saved variant's axis values match the form: remove axes it no longer
- * has, and set the ones that are new or changed.
- * @param {{ id?: string, axisValues: { axis: 'size' | 'color' | 'fabric' | 'other', value: string }[] }} variant
- * @param {any[]} currentVariants
- * @returns {Promise<string | null>} an error message, or null
- */
-async function syncVariantAxes(variant, currentVariants) {
-	const variantId = /** @type {string} */ (variant.id);
-	const current = currentVariants.find((v) => v.id === variantId);
-	const before = new Map((current?.stock_dress_variant_values ?? []).map(/** @param {any} av */ (av) => [av.axis, av.value]));
-	const after = new Map(variant.axisValues.map((av) => [av.axis, av.value]));
-
-	for (const axis of before.keys()) {
-		if (!after.has(axis)) {
-			const { error } = await removeVariantAxisValue(variantId, axis);
-			if (error) return error;
-		}
-	}
-	for (const [axis, value] of after) {
-		if (before.get(axis) !== value) {
-			const { error } = await setVariantAxisValue({ variant_id: variantId, axis, value });
+			const { error } = await updateOptionValue(value.id, {
+				value: value.value,
+				price_adjustment: adjustment,
+				image_url: value.image_url ?? null,
+				position: valueIndex,
+			});
 			if (error) return error;
 		}
 	}

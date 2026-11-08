@@ -15,7 +15,8 @@
 	import { availabilityState } from "$lib/stock/availability";
 	import { listGarmentTypes } from "$lib/services/stockDressesService";
 	import FormSection from "./FormSection.svelte";
-	import OptionsAndVariants from "./OptionsAndVariants.svelte";
+	import OptionsEditor from "./OptionsEditor.svelte";
+	import VariantList from "./VariantList.svelte";
 	import StatusBadge from "./StatusBadge.svelte";
 
 	/**
@@ -241,10 +242,17 @@
 		</FormSection>
 
 		<FormSection
-			title="Options and variants"
-			description="Add options like size or colour. Each combination becomes a variant you can count."
+			title="Options"
+			description="Choices a customer makes when ordering, such as dupatta style. They can add to the price. They are not counted and have no SKU."
 		>
-			<OptionsAndVariants bind:options bind:variants {price} {trackQuantity} {editing} />
+			<OptionsEditor bind:options />
+		</FormSection>
+
+		<FormSection
+			title="Variants"
+			description="What hangs on the rack, such as size and colour. Each version is counted and gets its own SKU and barcode."
+		>
+			<VariantList {variants} {trackQuantity} onChange={(v) => (variants = v)} />
 		</FormSection>
 
 		<FormSection title="Make to order">

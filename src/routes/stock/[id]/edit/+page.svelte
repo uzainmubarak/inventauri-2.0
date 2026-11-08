@@ -4,7 +4,8 @@
 	import { getStockDressById, updateStockDressWithDetails } from "$lib/services/stockDressesService";
 	import { recordMovement } from "$lib/services/stockMovementsService";
 	import { Button } from "$lib/ui/button";
-	import { fromDress, optionIssues, optionsForSave, variantsForSave } from "$lib/stock/optionVariants";
+	import { optionIssues, optionsForSave, optionsFromDress } from "$lib/stock/options";
+	import { findDuplicateVariants, variantsForSave } from "$lib/stock/variantMatrix";
 	import StockDressFormFields from "../../components/StockDressFormFields.svelte";
 	import StockDressFormLayout from "../../components/StockDressFormLayout.svelte";
 
@@ -104,7 +105,27 @@
 		currentVariants = (data.stock_dress_variants ?? []).filter(
 			/** @param {any} v */ (v) => v.status !== "archived",
 		);
-		({ options, variants } = fromDress(data));
+		options = optionsFromDress(data);
+		variants = currentVariants.map(/** @param {any} v */ (v) => ({
+			id: v.id,
+			sku: v.sku,
+			barcode: v.barcode,
+			// Every axis, not just size: the schema has always supported four.
+			axisValues: (v.stock_dress_variant_values ?? []).map(
+				/** @param {any} av */ (av) => ({ axis: av.axis, value: av.value }),
+			),
+			quantity: v.quantity,
+			price_override: v.price_override,
+			status: v.status,
+		}));
+	}
+
+	/** What stops the form from being saved, or null. */
+	function formProblem() {
+		if (optionIssues(options).some(Boolean)) return "Fix the options marked in red first.";
+		const duplicates = findDuplicateVariants(variants);
+		if (duplicates.length) return `${duplicates.join(", ")} is listed more than once among the variants.`;
+		return null;
 	}
 
 	/** @param {string} target */
@@ -134,7 +155,7 @@
 			currentOptions,
 			options: optionsForSave(options),
 			currentVariants,
-			variants: variantsForSave(price, options, variants),
+			variants: variantsForSave(variants),
 		};
 	}
 
@@ -175,8 +196,9 @@
 	function handleSubmit(e) {
 		e.preventDefault();
 		if (priceError) return;
-		if (optionIssues(options).some(Boolean)) {
-			saveError = "Fix the options marked in red first.";
+		const problem = formProblem();
+		if (problem) {
+			saveError = problem;
 			return;
 		}
 		// Any status a customer can be quoted from needs a real price. The DB
@@ -191,8 +213,9 @@
 
 	function handleSaveDraft() {
 		if (priceError) return;
-		if (optionIssues(options).some(Boolean)) {
-			saveError = "Fix the options marked in red first.";
+		const problem = formProblem();
+		if (problem) {
+			saveError = problem;
 			return;
 		}
 		save("draft");

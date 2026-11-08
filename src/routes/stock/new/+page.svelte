@@ -2,7 +2,8 @@
 	import { goto } from "$app/navigation";
 	import { createStockDressWithDetails } from "$lib/services/stockDressesService";
 	import { Button } from "$lib/ui/button";
-	import { optionIssues, optionsForSave, variantsForSave } from "$lib/stock/optionVariants";
+	import { optionIssues, optionsForSave } from "$lib/stock/options";
+	import { findDuplicateVariants, variantsForSave } from "$lib/stock/variantMatrix";
 	import StockDressFormFields from "../components/StockDressFormFields.svelte";
 	import StockDressFormLayout from "../components/StockDressFormLayout.svelte";
 
@@ -39,6 +40,14 @@
 	/** @type {string | null} */
 	let error = $state(null);
 
+	/** What stops the form from being saved, or null. */
+	function formProblem() {
+		if (optionIssues(options).some(Boolean)) return "Fix the options marked in red first.";
+		const duplicates = findDuplicateVariants(variants);
+		if (duplicates.length) return `${duplicates.join(", ")} is listed more than once among the variants.`;
+		return null;
+	}
+
 	/** @param {string} target */
 	function buildFormData(target) {
 		return {
@@ -63,7 +72,7 @@
 			},
 			images,
 			options: optionsForSave(options),
-			variants: variantsForSave(price, options, variants),
+			variants: variantsForSave(variants),
 			opening_quantity: Number(quantity) || 0,
 		};
 	}
@@ -87,8 +96,9 @@
 	function handleSubmit(e) {
 		e.preventDefault();
 		if (priceError) return;
-		if (optionIssues(options).some(Boolean)) {
-			error = "Fix the options marked in red first.";
+		const problem = formProblem();
+		if (problem) {
+			error = problem;
 			return;
 		}
 		// Anything a customer could be quoted from needs a real price. Drafts
@@ -103,8 +113,9 @@
 	function handleSaveDraft() {
 		// A draft is allowed to be incomplete, so it skips the price rule.
 		if (priceError) return;
-		if (optionIssues(options).some(Boolean)) {
-			error = "Fix the options marked in red first.";
+		const problem = formProblem();
+		if (problem) {
+			error = problem;
 			return;
 		}
 		save("draft");
