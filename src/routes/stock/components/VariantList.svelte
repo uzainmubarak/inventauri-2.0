@@ -1,4 +1,10 @@
 <script>
+	import * as Table from "$lib/ui/table";
+	import { Button } from "$lib/ui/button";
+	import { Select } from "$lib/ui/select";
+	import { NumberField } from "$lib/ui/number-field";
+	import { TagInput } from "$lib/ui/tag-input";
+	import XIcon from "@lucide/svelte/icons/x";
 	import { generateVariantMatrix } from "$lib/stock/variantMatrix";
 
 	/**
@@ -6,23 +12,28 @@
 	 * fabric) combine into them; anything made only once a customer asks for
 	 * it is an Option instead. See docs/stock-module-schema.md.
 	 *
+	 * Props: `variants` (rows), `trackQuantity` (shows the Quantity column),
+	 * `onChange(next)`.
 	 * @type {{
 	 *   variants: any[],
-	 *   editable?: boolean,
 	 *   trackQuantity?: boolean,
 	 *   onChange?: (variants: any[]) => void
 	 * }}
 	 */
-	let { variants, editable = false, trackQuantity = true, onChange } = $props();
+	let { variants, trackQuantity = true, onChange } = $props();
 
 	const AXES = ["size", "color", "fabric", "other"];
 	const MAX_VARIANTS = 100;
 
-	/** @type {{ axis: string, values: string[], newValue: string }[]} */
+	/** @type {{ axis: string, values: string[] }[]} */
 	let axes = $state([]);
 	let newAxis = $state("size");
 	/** @type {string | null} */
 	let matrixNotice = $state(null);
+
+	/** The axis is stored as "color"; the studio writes "Colour". */
+	/** @param {string} axis */
+	const axisLabel = (axis) => (axis === "color" ? "Colour" : axis.replace(/^\w/, (c) => c.toUpperCase()));
 
 	/** @param {any[]} next */
 	function emit(next) {
@@ -31,33 +42,14 @@
 
 	function addAxis() {
 		if (axes.some((a) => a.axis === newAxis)) return;
-		axes = [...axes, { axis: newAxis, values: [], newValue: "" }];
+		axes = [...axes, { axis: newAxis, values: [] }];
+		// Offer the next axis that is still free.
+		newAxis = AXES.find((a) => !axes.some((x) => x.axis === a)) ?? newAxis;
 	}
 
 	/** @param {number} index */
 	function removeAxis(index) {
 		axes = axes.filter((_, i) => i !== index);
-	}
-
-	/** @param {number} index */
-	function addAxisValue(index) {
-		const axis = axes[index];
-		const value = axis.newValue?.trim();
-		if (!value) return;
-		if (axis.values.some((v) => v.toLowerCase() === value.toLowerCase())) {
-			axes = axes.map((a, i) => (i === index ? { ...a, newValue: "" } : a));
-			return;
-		}
-		axes = axes.map((a, i) =>
-			i === index ? { ...a, values: [...a.values, value], newValue: "" } : a,
-		);
-	}
-
-	/** @param {number} axisIndex @param {number} valueIndex */
-	function removeAxisValue(axisIndex, valueIndex) {
-		axes = axes.map((a, i) =>
-			i === axisIndex ? { ...a, values: a.values.filter((_, vi) => vi !== valueIndex) } : a,
-		);
 	}
 
 	function generate() {
@@ -123,6 +115,7 @@
 	const visibleVariants = $derived(
 		variants.filter(/** @param {any} v */ (v) => v.status !== "archived"),
 	);
+	const canGenerate = $derived(axes.some((a) => a.values.length > 0));
 
 	/** @param {any} variant */
 	function indexOf(variant) {
@@ -130,466 +123,130 @@
 	}
 </script>
 
-{#if editable}
-	<div class="axis-builder">
-		<p class="hint">
-			Define the axes you actually stock, then generate the combinations. A design you only ever
-			make to order needs no axes at all.
-		</p>
-
-		{#each axes as axis, ai}
-			<div class="axis-block">
-				<div class="axis-header">
-					<span class="axis-name">{axis.axis}</span>
-					<button type="button" class="remove-btn" onclick={() => removeAxis(ai)} aria-label="Remove axis">✕</button>
-				</div>
-				<div class="chip-row">
-					{#each axis.values as value, vi}
-						<span class="chip">
-							{value}
-							<button
-								type="button"
-								class="chip-remove"
-								onclick={() => removeAxisValue(ai, vi)}
-								aria-label="Remove value">✕</button
-							>
-						</span>
-					{/each}
-				</div>
-				<div class="inline-input-row">
-					<input
-						type="text"
-						placeholder={axis.axis === "size" ? "e.g. M" : "e.g. Red"}
-						bind:value={axis.newValue}
-						onkeydown={(e) => {
-							if (e.key === "Enter") {
-								e.preventDefault();
-								addAxisValue(ai);
-							}
-						}}
-					/>
-					<button type="button" class="btn-secondary" onclick={() => addAxisValue(ai)}>Add Value</button>
-				</div>
+<div class="flex flex-col gap-4">
+	<div class="flex flex-col gap-3">
+		{#each axes as axis, ai (axis.axis)}
+			<div class="flex items-center gap-3">
+				<span class="w-20 shrink-0 text-sm font-medium">{axisLabel(axis.axis)}</span>
+				<TagInput
+					class="flex-1"
+					bind:value={axis.values}
+					placeholder={axis.axis === "size" ? "Add a size, e.g. M" : `Add a ${axisLabel(axis.axis).toLowerCase()}`}
+				/>
+				<Button variant="ghost" size="icon" aria-label="Remove {axisLabel(axis.axis)}" onclick={() => removeAxis(ai)}>
+					<XIcon />
+				</Button>
 			</div>
 		{/each}
 
-		<div class="inline-input-row">
-			<select bind:value={newAxis}>
-				{#each AXES as axisOption}
-					<option value={axisOption} disabled={axes.some((a) => a.axis === axisOption)}>
-						{axisOption}
-					</option>
-				{/each}
-			</select>
-			<button type="button" class="btn-secondary" onclick={addAxis}>Add Axis</button>
-			<button type="button" class="btn-outline" onclick={generate} disabled={axes.length === 0}>
-				Generate variants
-			</button>
+		<div class="flex flex-wrap items-center gap-2">
+			{#if axes.length < AXES.length}
+				<div class="w-36">
+					<Select aria-label="Axis to add" bind:value={newAxis}>
+						{#each AXES as axisOption (axisOption)}
+							<option value={axisOption} disabled={axes.some((a) => a.axis === axisOption)}>
+								{axisLabel(axisOption)}
+							</option>
+						{/each}
+					</Select>
+				</div>
+				<Button variant="outline" onclick={addAxis}>Add axis</Button>
+			{/if}
+			<Button onclick={generate} disabled={!canGenerate}>Generate variants</Button>
 		</div>
 
 		{#if matrixNotice}
-			<p class="notice">{matrixNotice}</p>
+			<p class="bg-accent text-accent-foreground rounded-lg px-3 py-2 text-[13px]">{matrixNotice}</p>
 		{/if}
 	</div>
-{/if}
 
-<div class="variant-section">
 	{#if visibleVariants.length === 0}
-		<p class="variant-empty">No variants yet.</p>
+		<p class="text-muted-foreground text-sm">
+			No variants. A design you only ever make to order needs none, and a dress with no variants
+			holds its own count.
+		</p>
 	{:else}
-		<!-- Desktop/tablet: table -->
-		<div class="variant-table">
-			<div class="variant-table-header">
-				<div>Variant</div>
-				<div>SKU</div>
-				<div>Barcode</div>
-				<div>Qty</div>
-				<div>Price Override</div>
-				{#if editable}<div></div>{/if}
-			</div>
-			{#each visibleVariants as variant}
-				<div class="variant-table-row">
-					<div>{describe(variant)}</div>
-					<div class="variant-sku">{variant.sku ?? "(assigned on save)"}</div>
-					<div class="variant-sku">{variant.barcode ?? "—"}</div>
-					<div>
-						{#if editable && !variant.id && trackQuantity}
-							<input
-								class="variant-input"
-								type="number"
-								min="0"
-								value={variant.quantity ?? 0}
-								oninput={(e) =>
-									updateVariant(indexOf(variant), {
-										quantity: e.currentTarget.value ? Number(e.currentTarget.value) : 0,
-									})}
-							/>
-						{:else}
-							<span class="qty-readonly" title="Changed by recording a stock movement">
-								{trackQuantity ? (variant.quantity ?? 0) : "—"}
-							</span>
-						{/if}
-					</div>
-					<div>
-						{#if editable}
-							<input
-								class="variant-input"
-								type="number"
-								min="0"
-								step="0.01"
-								placeholder="—"
-								value={variant.price_override ?? ""}
-								oninput={(e) =>
-									updateVariant(indexOf(variant), {
-										price_override: e.currentTarget.value ? Number(e.currentTarget.value) : null,
-									})}
-							/>
-						{:else}
-							{variant.price_override
-								? `PKR ${Number(variant.price_override).toLocaleString()}`
-								: "—"}
-						{/if}
-					</div>
-					{#if editable}
-						<button
-							type="button"
-							class="variant-remove"
-							onclick={() => removeVariant(indexOf(variant))}
-							aria-label="Remove variant">✕</button
-						>
-					{/if}
-				</div>
-			{/each}
+		<div class="border-border overflow-hidden rounded-xl border">
+			<Table.Root aria-label="Variants">
+				<Table.Header>
+					<Table.Row class="h-10 hover:bg-transparent">
+						<Table.Head>Variant</Table.Head>
+						<Table.Head>SKU</Table.Head>
+						<Table.Head>Barcode</Table.Head>
+						<Table.Head class="text-right">Price override</Table.Head>
+						{#if trackQuantity}<Table.Head class="text-right">Quantity</Table.Head>{/if}
+						<Table.Head class="w-12"><span class="sr-only">Remove</span></Table.Head>
+					</Table.Row>
+				</Table.Header>
+				<Table.Body>
+					{#each visibleVariants as variant (variant)}
+						<Table.Row class="h-14">
+							<Table.Cell class="px-3 font-medium">{describe(variant)}</Table.Cell>
+							<Table.Cell class="text-muted-foreground px-3 font-mono text-xs">{variant.sku ?? "Set on save"}</Table.Cell>
+							<Table.Cell class="text-muted-foreground px-3 font-mono text-xs">{variant.barcode ?? "Same as SKU"}</Table.Cell>
+							<Table.Cell class="px-3">
+								<NumberField
+									class="ml-auto h-8 w-36"
+									prefix="PKR"
+									min="0"
+									step="0.01"
+									aria-label="Price override for {describe(variant)}"
+									placeholder="Dress price"
+									value={variant.price_override}
+									oninput={(e) =>
+										updateVariant(indexOf(variant), {
+											price_override: e.currentTarget.value ? Number(e.currentTarget.value) : null,
+										})}
+								/>
+							</Table.Cell>
+							{#if trackQuantity}
+								<Table.Cell class="px-3 text-right">
+									{#if !variant.id}
+										<NumberField
+											class="ml-auto h-8 w-24"
+											min="0"
+											aria-label="Opening quantity for {describe(variant)}"
+											value={variant.quantity ?? 0}
+											oninput={(e) =>
+												updateVariant(indexOf(variant), {
+													quantity: e.currentTarget.value ? Number(e.currentTarget.value) : 0,
+												})}
+										/>
+									{:else}
+										<span class="font-mono text-[13px]" title="Changed from the variant's own page">{variant.quantity ?? 0}</span>
+									{/if}
+								</Table.Cell>
+							{/if}
+							<Table.Cell class="px-1">
+								<Button
+									variant="ghost"
+									size="icon"
+									aria-label="Remove {describe(variant)}"
+									onclick={() => removeVariant(indexOf(variant))}
+								>
+									<XIcon />
+								</Button>
+							</Table.Cell>
+						</Table.Row>
+					{/each}
+				</Table.Body>
+			</Table.Root>
 		</div>
-
-		<!-- Mobile: stacked cards -->
-		<div class="variant-cards">
-			{#each visibleVariants as variant}
-				<div class="variant-card">
-					<div class="variant-card-header">
-						<span class="variant-card-title">{describe(variant)}</span>
-						{#if editable}
-							<button
-								type="button"
-								class="variant-remove"
-								onclick={() => removeVariant(indexOf(variant))}
-								aria-label="Remove variant">✕</button
-							>
-						{/if}
-					</div>
-					<div class="variant-card-row">
-						<span class="variant-card-label">SKU</span>
-						<span class="variant-sku">{variant.sku ?? "(assigned on save)"}</span>
-					</div>
-					<div class="variant-card-row">
-						<span class="variant-card-label">Qty</span>
-						{#if editable && !variant.id && trackQuantity}
-							<input
-								class="variant-input"
-								type="number"
-								min="0"
-								value={variant.quantity ?? 0}
-								oninput={(e) =>
-									updateVariant(indexOf(variant), {
-										quantity: e.currentTarget.value ? Number(e.currentTarget.value) : 0,
-									})}
-							/>
-						{:else}
-							<span>{trackQuantity ? (variant.quantity ?? 0) : "—"}</span>
-						{/if}
-					</div>
-					<div class="variant-card-row">
-						<span class="variant-card-label">Price Override</span>
-						{#if editable}
-							<input
-								class="variant-input"
-								type="number"
-								min="0"
-								step="0.01"
-								placeholder="—"
-								value={variant.price_override ?? ""}
-								oninput={(e) =>
-									updateVariant(indexOf(variant), {
-										price_override: e.currentTarget.value ? Number(e.currentTarget.value) : null,
-									})}
-							/>
-						{:else}
-							<span
-								>{variant.price_override
-									? `PKR ${Number(variant.price_override).toLocaleString()}`
-									: "—"}</span
-							>
-						{/if}
-					</div>
-				</div>
-			{/each}
-		</div>
-	{/if}
-
-	{#if editable}
-		<p class="hint qty-hint">
+		<p class="text-muted-foreground text-[13px]">
 			{#if trackQuantity}
-				Quantity is editable only before a variant is saved — that number becomes its opening
-				stock entry. After that it moves only by recording a stock movement.
+				A new variant's quantity is its opening stock. After it is saved, change it from the
+				variant's own page. Leave the price override empty to use the dress price.
 			{:else}
-				Quantity tracking is off for this design, so nothing is counted.
+				Quantity tracking is off for this dress, so nothing is counted.
 			{/if}
 		</p>
-		<button type="button" class="add-variant-btn" onclick={addBlankVariant}>
-			+ Add variant without axes
-		</button>
 	{/if}
+
+	<button
+		type="button"
+		class="text-muted-foreground hover:text-foreground border-border w-fit rounded-lg border border-dashed px-3 py-2 text-[13px]"
+		onclick={addBlankVariant}
+	>
+		+ Add a variant without axes
+	</button>
 </div>
-
-<style>
-	.axis-builder {
-		border: 1px dashed var(--border);
-		border-radius: 10px;
-		padding: 14px;
-		margin-bottom: 14px;
-	}
-
-	.hint {
-		font-size: 11px;
-		color: var(--text-muted);
-		margin-bottom: 10px;
-	}
-
-	.qty-hint {
-		margin-top: 10px;
-		margin-bottom: 0;
-	}
-
-	.notice {
-		font-size: 11px;
-		color: #8b6914;
-		background: var(--gold-dim);
-		border-radius: 6px;
-		padding: 7px 9px;
-		margin-top: 8px;
-	}
-
-	.axis-block {
-		border-top: 1px solid var(--border-light);
-		padding-top: 10px;
-		margin-top: 10px;
-	}
-
-	.axis-block:first-of-type {
-		border-top: none;
-		padding-top: 0;
-		margin-top: 0;
-	}
-
-	.axis-header {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		margin-bottom: 6px;
-	}
-
-	.axis-name {
-		font-size: 12px;
-		font-weight: 500;
-		text-transform: capitalize;
-	}
-
-	.chip-row {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 6px;
-		margin-bottom: 8px;
-	}
-
-	.chip {
-		display: inline-flex;
-		align-items: center;
-		gap: 5px;
-		background: var(--bg2);
-		border: 1px solid var(--border);
-		border-radius: 20px;
-		padding: 3px 6px 3px 10px;
-		font-size: 11px;
-	}
-
-	.chip-remove,
-	.remove-btn {
-		background: none;
-		border: none;
-		color: var(--text-faint);
-		cursor: pointer;
-		font-size: 10px;
-		padding: 2px;
-	}
-
-	.inline-input-row {
-		display: flex;
-		gap: 8px;
-		align-items: center;
-	}
-
-	.inline-input-row input,
-	.inline-input-row select {
-		flex: 1;
-		padding: 8px 10px;
-		border: 1px solid var(--border);
-		border-radius: 8px;
-		font-size: 12px;
-		font-family: 'DM Sans', sans-serif;
-	}
-
-	.inline-input-row select {
-		text-transform: capitalize;
-	}
-
-	.btn-secondary {
-		background: var(--white);
-		border: 1px solid var(--border);
-		border-radius: 8px;
-		padding: 8px 14px;
-		font-size: 12px;
-		cursor: pointer;
-		white-space: nowrap;
-	}
-
-	.btn-outline {
-		background: var(--white);
-		border: 1px solid var(--gold-mid);
-		color: #8b6914;
-		border-radius: 8px;
-		padding: 8px 14px;
-		font-size: 12px;
-		font-weight: 500;
-		cursor: pointer;
-		white-space: nowrap;
-	}
-
-	.btn-outline:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
-	}
-
-	.variant-empty {
-		color: var(--text-muted);
-		font-size: 12px;
-		padding: 12px 0;
-	}
-
-	.variant-table {
-		border: 1px solid var(--border);
-		border-radius: 10px;
-		overflow: hidden;
-	}
-
-	.variant-table-header,
-	.variant-table-row {
-		display: grid;
-		grid-template-columns: 1.2fr 1.3fr 1.3fr 80px 120px 32px;
-		align-items: center;
-		padding: 10px 12px;
-		gap: 8px;
-	}
-
-	.variant-table-header {
-		background: #f5f3f0;
-		font-size: 10px;
-		font-weight: 600;
-		letter-spacing: 0.06em;
-		text-transform: uppercase;
-		color: var(--text-faint);
-	}
-
-	.variant-table-row {
-		border-top: 1px solid var(--border-light);
-		font-size: 12px;
-	}
-
-	.variant-sku {
-		font-family: 'JetBrains Mono', monospace;
-		color: var(--text-muted);
-		font-size: 11px;
-	}
-
-	.qty-readonly {
-		color: var(--text-muted);
-	}
-
-	.variant-input {
-		width: 100%;
-		padding: 5px 8px;
-		border: 1px solid var(--border);
-		border-radius: 6px;
-		font-size: 12px;
-		font-family: 'DM Sans', sans-serif;
-	}
-
-	.variant-remove {
-		background: none;
-		border: none;
-		color: var(--text-faint);
-		cursor: pointer;
-		font-size: 13px;
-	}
-
-	.add-variant-btn {
-		margin-top: 10px;
-		background: none;
-		border: 1px dashed var(--border);
-		border-radius: 8px;
-		padding: 8px 14px;
-		font-size: 12px;
-		color: var(--text-muted);
-		cursor: pointer;
-		width: 100%;
-	}
-
-	.variant-cards {
-		display: none;
-	}
-
-	@media (max-width: 767px) {
-		.variant-table {
-			display: none;
-		}
-
-		.variant-cards {
-			display: flex;
-			flex-direction: column;
-			gap: 10px;
-		}
-
-		.variant-card {
-			border: 1px solid var(--border);
-			border-radius: 10px;
-			padding: 12px;
-		}
-
-		.variant-card-header {
-			display: flex;
-			justify-content: space-between;
-			align-items: center;
-			margin-bottom: 8px;
-		}
-
-		.variant-card-title {
-			font-weight: 500;
-			font-size: 13px;
-		}
-
-		.variant-card-row {
-			display: flex;
-			justify-content: space-between;
-			align-items: center;
-			font-size: 12px;
-			margin-bottom: 6px;
-		}
-
-		.variant-card-label {
-			color: var(--text-muted);
-		}
-
-		.variant-card-row .variant-input {
-			width: 55%;
-		}
-	}
-</style>

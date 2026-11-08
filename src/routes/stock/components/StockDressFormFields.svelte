@@ -1,12 +1,35 @@
 <script>
-	import VariantList from "./VariantList.svelte";
+	import { Input } from "$lib/ui/input";
+	import { Textarea } from "$lib/ui/textarea";
+	import { Select } from "$lib/ui/select";
+	import { Combobox } from "$lib/ui/combobox";
+	import { TagInput } from "$lib/ui/tag-input";
+	import { NumberField } from "$lib/ui/number-field";
+	import { ImageUploader } from "$lib/ui/image-uploader";
+	import { Switch } from "$lib/ui/switch";
+	import { Label } from "$lib/ui/label";
+	import { Field } from "$lib/ui/field";
+	import { Button } from "$lib/ui/button";
+	import PlusIcon from "@lucide/svelte/icons/plus";
+	import ChevronDownIcon from "@lucide/svelte/icons/chevron-down";
 	import { computeProfit, computeMargin } from "$lib/stock/pricing";
 	import { normaliseTags } from "$lib/stock/tags";
+	import { availabilityState } from "$lib/stock/availability";
+	import { listGarmentTypes } from "$lib/services/stockDressesService";
+	import FormSection from "./FormSection.svelte";
+	import OptionEditor from "./OptionEditor.svelte";
+	import VariantList from "./VariantList.svelte";
+	import StatusBadge from "./StatusBadge.svelte";
 
 	/**
 	 * Shared field markup for both /stock/new (create) and /stock/[id]/edit
-	 * (edit). The parent page owns all the state via bindable props and
-	 * decides what "Save" means.
+	 * (edit): the cards on the left and the status and summary on the right.
+	 * The parent page owns all the state via bindable props and decides what
+	 * "Save" means.
+	 *
+	 * `quantity` is the dress-level count. It only counts when the dress has no
+	 * variants; with variants it is stored and hidden, and the variant
+	 * quantities are what count. `editing` is true on the edit page.
 	 *
 	 * @type {{
 	 *   name: string,
@@ -20,6 +43,8 @@
 	 *   compareAtPrice: string | number,
 	 *   cost: string | number,
 	 *   trackQuantity: boolean,
+	 *   quantity: string | number,
+	 *   status: string,
 	 *   madeToOrder: boolean,
 	 *   weightGrams: string | number,
 	 *   lengthCm: string | number,
@@ -28,6 +53,7 @@
 	 *   images: any[],
 	 *   options: any[],
 	 *   variants: any[],
+	 *   editing?: boolean,
 	 *   priceError?: string | null,
 	 * }}
 	 */
@@ -43,7 +69,9 @@
 		compareAtPrice = $bindable(),
 		cost = $bindable(),
 		trackQuantity = $bindable(),
-		madeToOrder = $bindable(),
+		quantity = $bindable(),
+		status = $bindable(),
+		madeToOrder,
 		weightGrams = $bindable(),
 		lengthCm = $bindable(),
 		widthCm = $bindable(),
@@ -51,13 +79,19 @@
 		images = $bindable(),
 		options = $bindable(),
 		variants = $bindable(),
+		editing = false,
 		priceError = $bindable(),
 	} = $props();
 
-	let imageUrl = $state("");
-	let newOptionName = $state("");
-	let newTag = $state("");
 	let shippingOpen = $state(false);
+	/** @type {string[]} */
+	let garmentTypes = $state([]);
+
+	$effect(() => {
+		listGarmentTypes().then(({ data }) => {
+			if (data) garmentTypes = data;
+		});
+	});
 
 	// Derived, never stored — a saved copy would go stale the moment cost or
 	// price changed. See docs/stock-module-schema.md.
@@ -76,36 +110,20 @@
 
 	$effect(() => {
 		priceError = compareAtInvalid
-			? "Compare-at price must be higher than the price — it is the “was” price."
+			? "Compare-at price must be higher than the price. It is the “was” price."
 			: null;
 	});
 
-	function addTag() {
-		if (!newTag.trim()) return;
-		tags = normaliseTags([...tags, newTag]);
-		newTag = "";
-	}
-
-	/** @param {number} index */
-	function removeTag(index) {
-		tags = tags.filter(/** @param {string} _ @param {number} i */ (_, i) => i !== index);
-	}
-
-	function addImageUrl() {
-		if (!imageUrl.trim()) return;
-		images = [...images, { image_url: imageUrl.trim(), is_primary: images.length === 0 }];
-		imageUrl = "";
-	}
-
-	/** @param {number} index */
-	function removeImage(index) {
-		images = images.filter(/** @param {any} _ @param {number} i */ (_, i) => i !== index);
-	}
+	const activeVariants = $derived(variants.filter(/** @param {any} v */ (v) => v.status !== "archived"));
+	const totalQuantity = $derived(
+		activeVariants.length > 0
+			? activeVariants.reduce(/** @param {number} sum @param {any} v */ (sum, v) => sum + (Number(v.quantity) || 0), 0)
+			: Number(quantity) || 0,
+	);
+	const shownAs = $derived(availabilityState({ status, made_to_order: madeToOrder }, totalQuantity));
 
 	function addOption() {
-		if (!newOptionName.trim()) return;
-		options = [...options, { name: newOptionName.trim(), values: [], newValue: "", newAdjustment: "" }];
-		newOptionName = "";
+		options = [...options, { name: "", values: [], newValue: "", newAdjustment: "" }];
 	}
 
 	/** @param {number} index */
@@ -113,522 +131,225 @@
 		options = options.filter(/** @param {any} _ @param {number} i */ (_, i) => i !== index);
 	}
 
-	/** @param {number} optionIndex */
-	function addOptionValue(optionIndex) {
-		const option = options[optionIndex];
-		if (!option.newValue?.trim()) return;
-		options = options.map(/** @param {any} o @param {number} i */ (o, i) =>
-			i === optionIndex
-				? {
-						...o,
-						values: [
-							...o.values,
-							{
-								value: o.newValue.trim(),
-								price_adjustment: Number(o.newAdjustment) || 0,
-							},
-						],
-						newValue: "",
-						newAdjustment: "",
-					}
-				: o,
-		);
-	}
+	/** @param {number | string} value */
+	const money = (value) => Number(value).toLocaleString();
 
-	/** @param {number} optionIndex @param {number} valueIndex */
-	function removeOptionValue(optionIndex, valueIndex) {
-		options = options.map(/** @param {any} o @param {number} i */ (o, i) =>
-			i === optionIndex
-				? {
-						...o,
-						values: o.values.filter(
-							/** @param {any} _ @param {number} vi */ (_, vi) => vi !== valueIndex,
-						),
-					}
-				: o,
-		);
-	}
-
-	/** @param {number} value */
-	function money(value) {
-		return Number(value).toLocaleString();
-	}
+	const STATUSES = $derived([
+		{ value: "draft", label: "Draft" },
+		{ value: "active", label: "Active" },
+		...(editing ? [{ value: "archived", label: "Archived" }] : []),
+	]);
 </script>
 
-<div class="form-section">
-	<div class="section-title">Basics</div>
-	<label class="form-field">
-		<span>Name</span>
-		<input type="text" bind:value={name} />
-	</label>
-	<label class="form-field">
-		<span>Garment Type</span>
-		<input type="text" bind:value={garmentType} placeholder="e.g. Farshi Lehenga" />
-	</label>
-	<label class="form-field">
-		<span>Category</span>
-		<select bind:value={category}>
-			<option value="party_wear">Party Wear</option>
-			<option value="formals">Formals</option>
-			<option value="bridal">Bridal</option>
-			<option value="nikkah_wear">Nikkah Wear</option>
-		</select>
-	</label>
-	{#if category === "bridal"}
-		<label class="form-field">
-			<span>Subcategory</span>
-			<select bind:value={subcategory}>
-				<option value="">—</option>
-				<option value="mehendi">Mehendi</option>
-				<option value="barat">Barat</option>
-				<option value="walima">Walima</option>
-			</select>
-		</label>
-	{/if}
-	<label class="form-field">
-		<span>Description</span>
-		<textarea bind:value={description} rows="3" placeholder="Shown to customers"></textarea>
-	</label>
-	<label class="form-field">
-		<span>Internal Notes</span>
-		<textarea bind:value={notes} rows="2" placeholder="Staff only — never shown to a client"></textarea>
-	</label>
+<div class="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_316px]">
+	<div class="flex min-w-0 flex-col gap-6">
+		<FormSection title="Basics">
+			<Field label="Name" for="dress-name">
+				<Input id="dress-name" bind:value={name} />
+			</Field>
+			<Field label="Garment type" for="dress-type" hint="Pick an existing type or type a new one.">
+				<Combobox id="dress-type" bind:value={garmentType} options={garmentTypes} placeholder="e.g. Farshi lehenga" />
+			</Field>
+			<div class="grid gap-4 @md:grid-cols-2">
+				<Field label="Category" for="dress-category">
+					<Select id="dress-category" bind:value={category}>
+						<option value="party_wear">Party wear</option>
+						<option value="formals">Formals</option>
+						<option value="bridal">Bridal</option>
+						<option value="nikkah_wear">Nikkah wear</option>
+					</Select>
+				</Field>
+				<Field label="Subcategory" for="dress-subcategory" hint="Bridal designs only.">
+					<Select id="dress-subcategory" bind:value={subcategory} disabled={category !== "bridal"}>
+						<option value="">None</option>
+						<option value="mehendi">Mehendi</option>
+						<option value="barat">Barat</option>
+						<option value="walima">Walima</option>
+					</Select>
+				</Field>
+			</div>
+			<Field label="Description" for="dress-description">
+				<Textarea id="dress-description" bind:value={description} rows={3} placeholder="Shown to customers" />
+			</Field>
+			<Field label="Internal notes" for="dress-notes">
+				<Textarea id="dress-notes" bind:value={notes} rows={2} placeholder="Staff only, never shown to a client" />
+			</Field>
+			<Field label="Tags" for="dress-tags" hint="Press Enter or comma to add. Duplicates are ignored.">
+				<TagInput id="dress-tags" bind:value={tags} normalise={normaliseTags} />
+			</Field>
+		</FormSection>
 
-	<div class="form-field">
-		<span>Tags</span>
-		<div class="chip-row">
-			{#each tags as tag, i}
-				<span class="chip">
-					{tag}
-					<button type="button" class="chip-remove" onclick={() => removeTag(i)} aria-label="Remove tag">✕</button>
-				</span>
-			{/each}
-		</div>
-		<div class="inline-input-row">
-			<input
-				type="text"
-				placeholder="e.g. zari"
-				bind:value={newTag}
-				onkeydown={(e) => {
-					if (e.key === "Enter") {
-						e.preventDefault();
-						addTag();
-					}
-				}}
+		<FormSection title="Images" description="The first photo is the primary one. Drag to reorder.">
+			<ImageUploader
+				bind:images
+				uploadDisabled
+				uploadHint="Photo upload is not available yet. It arrives once storage is set up."
 			/>
-			<button type="button" class="btn-secondary" onclick={addTag}>Add Tag</button>
-		</div>
-	</div>
-</div>
+		</FormSection>
 
-<div class="form-section">
-	<div class="section-title">Pricing</div>
-	<label class="form-field">
-		<span>Price (PKR)</span>
-		<input type="number" min="0" step="0.01" bind:value={price} />
-	</label>
-	<label class="form-field">
-		<span>Compare-at Price (PKR, optional)</span>
-		<input type="number" min="0" step="0.01" bind:value={compareAtPrice} placeholder="The “was” price" />
-	</label>
-	{#if compareAtInvalid}
-		<p class="field-error">{priceError}</p>
-	{/if}
-	<label class="form-field">
-		<span>Cost per Item (PKR, internal only)</span>
-		<input type="number" min="0" step="0.01" bind:value={cost} />
-	</label>
-
-	<div class="derived-row">
-		<div class="derived-cell">
-			<span class="derived-label">Profit</span>
-			<span class="derived-value">{profit === null ? "—" : `PKR ${money(profit)}`}</span>
-		</div>
-		<div class="derived-cell">
-			<span class="derived-label">Margin</span>
-			<span class="derived-value">{margin === null ? "—" : `${(margin * 100).toFixed(1)}%`}</span>
-		</div>
-	</div>
-</div>
-
-<div class="form-section">
-	<div class="section-title">Inventory</div>
-	<label class="check-field">
-		<input type="checkbox" bind:checked={trackQuantity} />
-		<span>
-			<strong>Track quantity</strong>
-			<small>Off for pieces you never count — quantity stays at zero and no stock is recorded.</small>
-		</span>
-	</label>
-	<label class="check-field">
-		<input type="checkbox" bind:checked={madeToOrder} />
-		<span>
-			<strong>Can be made to order</strong>
-			<small>Selling the last one leaves this design orderable instead of sold out — a new one gets made.</small>
-		</span>
-	</label>
-</div>
-
-<div class="form-section">
-	<div class="section-title">Images</div>
-	<p class="section-hint">Paste an image URL (real upload comes in a later pass).</p>
-	<div class="inline-input-row">
-		<input type="url" placeholder="https://…" bind:value={imageUrl} />
-		<button type="button" class="btn-secondary" onclick={addImageUrl}>Add</button>
-	</div>
-	{#each images as img, i}
-		<div class="image-row">
-			<span class="image-url">{img.image_url}</span>
-			{#if img.is_primary}<span class="primary-tag">Primary</span>{/if}
-			<button type="button" class="remove-btn" onclick={() => removeImage(i)}>✕</button>
-		</div>
-	{/each}
-</div>
-
-<div class="form-section">
-	<div class="section-title">Options</div>
-	<p class="section-hint">
-		Choices made at order time that are not stocked separately — e.g. “Dupatta Style” with
-		“Plain” / “Hand-painted”. Anything you keep on the rack ready to sell is a variant, not an
-		option.
-	</p>
-	<div class="inline-input-row">
-		<input type="text" placeholder="Option name, e.g. Dupatta Style" bind:value={newOptionName} />
-		<button type="button" class="btn-secondary" onclick={addOption}>Add Option</button>
-	</div>
-	{#each options as option, oi}
-		<div class="option-block">
-			<div class="option-block-header">
-				<span class="option-name">{option.name}</span>
-				<button type="button" class="remove-btn" onclick={() => removeOption(oi)}>✕</button>
+		<FormSection title="Pricing">
+			<div class="grid gap-4 @lg:grid-cols-3">
+				<Field label="Price" for="dress-price">
+					<NumberField id="dress-price" prefix="PKR" min="0" step="0.01" bind:value={price} />
+				</Field>
+				<Field label="Compare-at price" for="dress-compare" error={compareAtInvalid ? priceError : null}>
+					<NumberField
+						id="dress-compare"
+						prefix="PKR"
+						min="0"
+						step="0.01"
+						placeholder="The “was” price"
+						aria-invalid={compareAtInvalid}
+						bind:value={compareAtPrice}
+					/>
+				</Field>
+				<Field label="Cost" for="dress-cost" hint="Internal only.">
+					<NumberField id="dress-cost" prefix="PKR" min="0" step="0.01" bind:value={cost} />
+				</Field>
 			</div>
-			<div class="chip-row">
-				{#each option.values as value, vi}
-					<span class="chip">
-						{value.value}{#if Number(value.price_adjustment)}<span class="chip-adjust"
-								>+{money(value.price_adjustment)}</span
-							>{/if}
-						<button
-							type="button"
-							class="chip-remove"
-							onclick={() => removeOptionValue(oi, vi)}
-							aria-label="Remove value">✕</button
-						>
-					</span>
+			<div class="grid gap-3 @md:grid-cols-2">
+				<div class="flex items-center justify-between gap-3 rounded-xl px-4 py-3 {profit === null ? 'bg-secondary' : profit >= 0 ? 'bg-green-dim text-green' : 'bg-destructive/10 text-destructive'}">
+					<span class="text-[13px]">Profit</span>
+					<span class="font-mono text-sm font-medium">{profit === null ? "–" : `PKR ${money(profit)}`}</span>
+				</div>
+				<div class="flex items-center justify-between gap-3 rounded-xl px-4 py-3 {margin === null ? 'bg-secondary' : margin >= 0 ? 'bg-green-dim text-green' : 'bg-destructive/10 text-destructive'}">
+					<span class="text-[13px]">Margin</span>
+					<span class="font-mono text-sm font-medium">{margin === null ? "–" : `${(margin * 100).toFixed(1)}%`}</span>
+				</div>
+			</div>
+			<p class="text-muted-foreground text-[13px]">
+				Compare-at is the struck-through “was” price and must be higher than the price. Profit and
+				margin are worked out live and never saved.
+			</p>
+		</FormSection>
+
+		<FormSection title="Inventory">
+			<div class="flex items-start gap-3">
+				<Switch id="track-quantity" class="mt-px" bind:checked={trackQuantity} />
+				<div class="flex flex-col gap-0.5">
+					<Label for="track-quantity" class="text-sm">Track quantity</Label>
+					<p class="text-muted-foreground text-[13px]">
+						Count what is on the rack. Off for pieces you never count.
+					</p>
+				</div>
+			</div>
+			{#if trackQuantity}
+				<Field
+					label="Quantity"
+					for="dress-quantity"
+					class="max-w-xs"
+					hint={activeVariants.length > 0
+						? "Quantity entered here is replaced by the variant quantities."
+						: editing
+							? "A change is saved as an adjustment in the stock history."
+							: "Saved as the opening stock."}
+				>
+					<NumberField id="dress-quantity" min="0" bind:value={quantity} />
+				</Field>
+			{/if}
+		</FormSection>
+
+		<FormSection
+			title="Options and variants"
+			description="Options are choices made when ordering. Variants are what hangs on the rack, such as size and colour."
+		>
+			<div class="flex flex-col gap-4">
+				<h3 class="text-sm font-semibold">Options</h3>
+				{#each options as option, oi (oi)}
+					<OptionEditor bind:option={options[oi]} index={oi} onRemove={() => removeOption(oi)} />
 				{/each}
+				<Button variant="outline" class="w-fit" onclick={addOption}><PlusIcon />Add option</Button>
 			</div>
-			<div class="inline-input-row">
-				<input
-					type="text"
-					placeholder="Value, e.g. Hand-painted"
-					bind:value={option.newValue}
-					onkeydown={(e) => {
-						if (e.key === "Enter") {
-							e.preventDefault();
-							addOptionValue(oi);
-						}
-					}}
-				/>
-				<input
-					class="adjust-input"
-					type="number"
-					step="0.01"
-					placeholder="+PKR"
-					bind:value={option.newAdjustment}
-				/>
-				<button type="button" class="btn-secondary" onclick={() => addOptionValue(oi)}>Add Value</button>
+			<div class="border-border-light flex flex-col gap-4 border-t pt-5">
+				<h3 class="text-sm font-semibold">Variants</h3>
+				<VariantList {variants} {trackQuantity} onChange={(v) => (variants = v)} />
 			</div>
-		</div>
-	{/each}
+		</FormSection>
+
+		<FormSection title="Make to order" description="How long a new piece takes when the rack is empty. Customers see this on the dress. It is not counted as stock.">
+			{#snippet action()}
+				<span class="border-border text-muted-foreground flex h-6 shrink-0 items-center rounded-full border px-2.5 text-xs font-medium">Saved with orders</span>
+			{/snippet}
+			<div class="grid gap-4 @md:grid-cols-2">
+				<Field label="Shortest" for="lead-min">
+					<NumberField id="lead-min" suffix="weeks" placeholder="2" disabled />
+				</Field>
+				<Field label="Longest" for="lead-max">
+					<NumberField id="lead-max" suffix="weeks" placeholder="4" disabled />
+				</Field>
+			</div>
+		</FormSection>
+
+		<section class="bg-card ring-foreground/10 @container rounded-xl ring-1">
+			<button
+				type="button"
+				class="flex w-full items-center justify-between gap-4 px-6 py-5 text-left"
+				aria-expanded={shippingOpen}
+				aria-controls="shipping-fields"
+				onclick={() => (shippingOpen = !shippingOpen)}
+			>
+				<span class="flex flex-col gap-0.5">
+					<span class="font-serif text-xl font-medium">Shipping</span>
+					<span class="text-muted-foreground text-[13px]">Optional. Only needed if your courier prices on weight or size.</span>
+				</span>
+				<ChevronDownIcon class="text-text-muted size-4 transition-transform {shippingOpen ? 'rotate-180' : ''}" />
+			</button>
+			{#if shippingOpen}
+				<div id="shipping-fields" class="grid grid-cols-2 gap-4 px-6 pb-6 @lg:grid-cols-4">
+					<Field label="Weight" for="dress-weight">
+						<NumberField id="dress-weight" suffix="g" min="0" bind:value={weightGrams} />
+					</Field>
+					<Field label="Length" for="dress-length">
+						<NumberField id="dress-length" suffix="cm" min="0" step="0.01" bind:value={lengthCm} />
+					</Field>
+					<Field label="Width" for="dress-width">
+						<NumberField id="dress-width" suffix="cm" min="0" step="0.01" bind:value={widthCm} />
+					</Field>
+					<Field label="Height" for="dress-height">
+						<NumberField id="dress-height" suffix="cm" min="0" step="0.01" bind:value={heightCm} />
+					</Field>
+				</div>
+			{/if}
+		</section>
+	</div>
+
+	<aside class="flex flex-col gap-6 xl:sticky xl:top-6">
+		<FormSection title="Status" class="p-5">
+			<Field label="Listing" for="dress-status">
+				<Select id="dress-status" bind:value={status}>
+					{#each STATUSES as opt (opt.value)}<option value={opt.value}>{opt.label}</option>{/each}
+				</Select>
+			</Field>
+			<div class="flex items-center gap-2.5">
+				<span class="text-muted-foreground text-[13px]">Shows as</span>
+				<StatusBadge state={shownAs} />
+			</div>
+			<p class="text-muted-foreground text-[13px] leading-relaxed">
+				Drafts stay off the stock list until you set them to Active.
+			</p>
+		</FormSection>
+
+		<FormSection title="Summary" class="gap-1 p-5">
+			<dl class="divide-border-light flex flex-col divide-y">
+				<div class="flex items-center justify-between py-2.5">
+					<dt class="text-muted-foreground text-sm">Price</dt>
+					<dd class="font-mono text-[13px] font-medium">{Number(price) ? `PKR ${money(price)}` : "–"}</dd>
+				</div>
+				<div class="flex items-center justify-between py-2.5">
+					<dt class="text-muted-foreground text-sm">Profit</dt>
+					<dd class="font-mono text-[13px] font-medium">
+						{profit === null ? "–" : `PKR ${money(profit)}`}{margin === null ? "" : ` · ${(margin * 100).toFixed(1)}%`}
+					</dd>
+				</div>
+				<div class="flex items-center justify-between py-2.5">
+					<dt class="text-muted-foreground text-sm">Variants</dt>
+					<dd class="font-mono text-[13px] font-medium">{activeVariants.length}</dd>
+				</div>
+				<div class="flex items-center justify-between py-2.5">
+					<dt class="text-muted-foreground text-sm">{editing ? "In stock" : "Opening stock"}</dt>
+					<dd class="font-mono text-[13px] font-medium">{trackQuantity ? totalQuantity : "–"}</dd>
+				</div>
+			</dl>
+		</FormSection>
+	</aside>
 </div>
-
-<div class="form-section">
-	<div class="section-title">Variants</div>
-	<VariantList {variants} editable={true} {trackQuantity} onChange={(v) => (variants = v)} />
-</div>
-
-<div class="form-section">
-	<button
-		type="button"
-		class="section-toggle"
-		onclick={() => (shippingOpen = !shippingOpen)}
-		aria-expanded={shippingOpen}
-	>
-		<span class="section-title">Shipping</span>
-		<span class="toggle-caret">{shippingOpen ? "−" : "+"}</span>
-	</button>
-	{#if shippingOpen}
-		<p class="section-hint">Optional — only needed if your courier prices on weight or volume.</p>
-		<label class="form-field">
-			<span>Weight (grams)</span>
-			<input type="number" min="0" bind:value={weightGrams} />
-		</label>
-		<div class="dimension-row">
-			<label class="form-field">
-				<span>Length (cm)</span>
-				<input type="number" min="0" step="0.01" bind:value={lengthCm} />
-			</label>
-			<label class="form-field">
-				<span>Width (cm)</span>
-				<input type="number" min="0" step="0.01" bind:value={widthCm} />
-			</label>
-			<label class="form-field">
-				<span>Height (cm)</span>
-				<input type="number" min="0" step="0.01" bind:value={heightCm} />
-			</label>
-		</div>
-	{/if}
-</div>
-
-<style>
-	.form-section {
-		border: 1px solid var(--border-light);
-		border-radius: 10px;
-		padding: 18px;
-		background: var(--white);
-	}
-
-	.section-title {
-		font-size: 11px;
-		font-weight: 600;
-		letter-spacing: 0.08em;
-		text-transform: uppercase;
-		color: var(--text-faint);
-		margin-bottom: 14px;
-		display: block;
-	}
-
-	.section-toggle {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		width: 100%;
-		background: none;
-		border: none;
-		padding: 0;
-		cursor: pointer;
-		font-family: 'DM Sans', sans-serif;
-	}
-
-	.section-toggle .section-title {
-		margin-bottom: 0;
-	}
-
-	.toggle-caret {
-		color: var(--text-faint);
-		font-size: 14px;
-	}
-
-	.section-hint {
-		font-size: 11px;
-		color: var(--text-muted);
-		margin-bottom: 8px;
-		margin-top: 10px;
-	}
-
-	.form-field {
-		display: flex;
-		flex-direction: column;
-		gap: 4px;
-		margin-bottom: 14px;
-		font-size: 12px;
-		color: var(--text-muted);
-	}
-
-	.form-field input,
-	.form-field select,
-	.form-field textarea {
-		padding: 9px 11px;
-		border: 1px solid var(--border);
-		border-radius: 8px;
-		font-size: 13px;
-		font-family: 'DM Sans', sans-serif;
-		color: var(--text);
-	}
-
-	.field-error {
-		font-size: 11px;
-		color: var(--error);
-		margin: -8px 0 12px;
-	}
-
-	.derived-row {
-		display: grid;
-		grid-template-columns: 1fr 1fr;
-		border: 1px solid var(--border-light);
-		border-radius: 8px;
-		overflow: hidden;
-		background: var(--bg2);
-	}
-
-	.derived-cell {
-		padding: 10px 12px;
-		border-right: 1px solid var(--border-light);
-	}
-
-	.derived-cell:last-child {
-		border-right: none;
-	}
-
-	.derived-label {
-		display: block;
-		font-size: 10px;
-		color: var(--text-faint);
-		text-transform: uppercase;
-		letter-spacing: 0.06em;
-		margin-bottom: 3px;
-	}
-
-	.derived-value {
-		font-size: 14px;
-		font-weight: 500;
-		color: var(--text);
-	}
-
-	.check-field {
-		display: flex;
-		gap: 10px;
-		align-items: flex-start;
-		margin-bottom: 14px;
-		font-size: 13px;
-		cursor: pointer;
-	}
-
-	.check-field input {
-		margin-top: 3px;
-	}
-
-	.check-field strong {
-		display: block;
-		font-weight: 500;
-		color: var(--text);
-	}
-
-	.check-field small {
-		display: block;
-		font-size: 11px;
-		color: var(--text-muted);
-		margin-top: 2px;
-	}
-
-	.dimension-row {
-		display: grid;
-		grid-template-columns: repeat(3, 1fr);
-		gap: 10px;
-	}
-
-	.inline-input-row {
-		display: flex;
-		gap: 8px;
-		margin-bottom: 10px;
-	}
-
-	.inline-input-row input {
-		flex: 1;
-		padding: 9px 11px;
-		border: 1px solid var(--border);
-		border-radius: 8px;
-		font-size: 12px;
-		font-family: 'DM Sans', sans-serif;
-	}
-
-	.adjust-input {
-		max-width: 110px;
-	}
-
-	.image-row {
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		font-size: 11px;
-		padding: 8px 0;
-		border-top: 1px solid var(--border-light);
-	}
-
-	.image-url {
-		flex: 1;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-		color: var(--text-muted);
-	}
-
-	.primary-tag {
-		background: var(--gold-dim);
-		color: #8b6914;
-		font-size: 9px;
-		padding: 2px 6px;
-		border-radius: 8px;
-	}
-
-	.remove-btn {
-		background: none;
-		border: none;
-		color: var(--text-faint);
-		cursor: pointer;
-	}
-
-	.option-block {
-		border-top: 1px solid var(--border-light);
-		padding-top: 12px;
-		margin-top: 12px;
-	}
-
-	.option-block:first-of-type {
-		border-top: none;
-		padding-top: 0;
-		margin-top: 0;
-	}
-
-	.option-block-header {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		margin-bottom: 8px;
-	}
-
-	.option-name {
-		font-size: 13px;
-		font-weight: 500;
-	}
-
-	.chip-row {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 6px;
-		margin-bottom: 8px;
-	}
-
-	.chip {
-		display: inline-flex;
-		align-items: center;
-		gap: 5px;
-		background: var(--bg2);
-		border: 1px solid var(--border);
-		border-radius: 20px;
-		padding: 3px 6px 3px 10px;
-		font-size: 11px;
-		color: var(--text);
-	}
-
-	.chip-adjust {
-		color: #8b6914;
-		font-weight: 500;
-		margin-left: 4px;
-	}
-
-	.chip-remove {
-		background: none;
-		border: none;
-		color: var(--text-faint);
-		cursor: pointer;
-		font-size: 10px;
-		padding: 2px;
-	}
-
-	@media (max-width: 767px) {
-		.dimension-row {
-			grid-template-columns: 1fr;
-		}
-	}
-</style>

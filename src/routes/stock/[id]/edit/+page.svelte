@@ -2,13 +2,19 @@
 	import { page } from "$app/state";
 	import { goto } from "$app/navigation";
 	import { getStockDressById, updateStockDressWithDetails } from "$lib/services/stockDressesService";
+	import { recordMovement } from "$lib/services/stockMovementsService";
+	import { Button } from "$lib/ui/button";
 	import StockDressFormFields from "../../components/StockDressFormFields.svelte";
+	import StockDressFormLayout from "../../components/StockDressFormLayout.svelte";
 
 	const dressId = page.params.id;
 
 	let loading = $state(true);
+	/** @type {string | null} */
 	let loadError = $state(null);
+	/** @type {string | null} */
 	let originalStatus = $state(null);
+	let originalQuantity = $state(0);
 
 	let name = $state("");
 	let garmentType = $state("");
@@ -22,6 +28,9 @@
 	let compareAtPrice = $state("");
 	let cost = $state("");
 	let trackQuantity = $state(true);
+	let quantity = $state(0);
+	let status = $state("active");
+	// Carried through untouched: this form has no control for it.
 	let madeToOrder = $state(true);
 	let weightGrams = $state("");
 	let lengthCm = $state("");
@@ -38,11 +47,15 @@
 
 	// Snapshots of what's currently in the DB, used to diff against the
 	// edited lists on save (see updateStockDressWithDetails).
+	/** @type {any[]} */
 	let currentImages = $state([]);
+	/** @type {any[]} */
 	let currentOptions = $state([]);
+	/** @type {any[]} */
 	let currentVariants = $state([]);
 
 	let saving = $state(false);
+	/** @type {string | null} */
 	let saveError = $state(null);
 
 	$effect(() => {
@@ -52,7 +65,7 @@
 	async function load() {
 		loading = true;
 		loadError = null;
-		const { data, error } = await getStockDressById(dressId);
+		const { data, error } = await getStockDressById(dressId ?? "");
 		loading = false;
 		if (error) {
 			loadError = error;
@@ -70,15 +83,22 @@
 		compareAtPrice = data.compare_at_price ?? "";
 		cost = data.cost ?? "";
 		trackQuantity = data.track_quantity;
+		quantity = data.quantity ?? 0;
+		originalQuantity = data.quantity ?? 0;
 		madeToOrder = data.made_to_order;
 		weightGrams = data.weight_grams ?? "";
 		lengthCm = data.length_cm ?? "";
 		widthCm = data.width_cm ?? "";
 		heightCm = data.height_cm ?? "";
 		originalStatus = data.status;
+		status = data.status;
 
-		currentImages = data.stock_dress_images ?? [];
-		images = currentImages.map((img) => ({ ...img }));
+		// The dress's own photos only. A variant's photos live on its page, and
+		// the save below deletes any saved photo missing from this list.
+		currentImages = (data.stock_dress_images ?? [])
+			.filter(/** @param {any} i */ (i) => !i.variant_id)
+			.sort(/** @param {any} a @param {any} b */ (a, b) => (a.position ?? 0) - (b.position ?? 0));
+		images = currentImages.map(/** @param {any} img */ (img) => ({ ...img }));
 
 		currentOptions = data.stock_dress_options ?? [];
 		options = currentOptions.map(/** @param {any} o */ (o) => ({
@@ -106,8 +126,8 @@
 		}));
 	}
 
-	/** @param {string} status */
-	function buildFormData(status) {
+	/** @param {string} target */
+	function buildFormData(target) {
 		return {
 			dress: {
 				name,
@@ -126,12 +146,15 @@
 				length_cm: lengthCm ? Number(lengthCm) : null,
 				width_cm: widthCm ? Number(widthCm) : null,
 				height_cm: heightCm ? Number(heightCm) : null,
-				status,
+				status: target,
 			},
 			currentImages,
 			images,
 			currentOptions,
-			options: options.map(/** @param {any} o */ (o) => ({ id: o.id, name: o.name, values: o.values })),
+			// A saved option keeps its id; a new one with no name is dropped.
+			options: options
+				.filter(/** @param {any} o */ (o) => o.id || o.name.trim())
+				.map(/** @param {any} o */ (o) => ({ id: o.id, name: o.name.trim(), values: o.values })),
 			currentVariants,
 			// Dropping an archived variant here is what archives it: the service
 			// archives anything in currentVariants that is missing from this
@@ -148,18 +171,36 @@
 		};
 	}
 
-	/** @param {string} status */
-	async function save(status) {
+	/** @param {string} target */
+	async function save(target) {
 		saving = true;
 		saveError = null;
 
-		const { error } = await updateStockDressWithDetails(dressId, buildFormData(status));
-
-		saving = false;
+		const { error } = await updateStockDressWithDetails(dressId ?? "", buildFormData(target));
 		if (error) {
+			saving = false;
 			saveError = error;
 			return;
 		}
+
+		// The count only moves through the ledger, so a changed quantity is
+		// posted as an adjustment for the difference, never written directly.
+		const delta = (Number(quantity) || 0) - originalQuantity;
+		if (trackQuantity && delta !== 0) {
+			const { error: moveError } = await recordMovement({
+				dress_id: dressId ?? "",
+				delta,
+				reason: "adjustment",
+				note: "Count corrected on the edit page",
+			});
+			if (moveError) {
+				saving = false;
+				saveError = `Saved, but recording the quantity change failed: ${moveError}`;
+				return;
+			}
+		}
+
+		saving = false;
 		goto("/stock");
 	}
 
@@ -167,232 +208,66 @@
 	function handleSubmit(e) {
 		e.preventDefault();
 		if (priceError) return;
-		const target = originalStatus === "draft" ? "active" : originalStatus;
-		// Any status a customer can be quoted from needs a real price — not
-		// just the draft->active step. The DB enforces this too; this is so
-		// the user gets a sentence instead of a constraint name.
-		if (target !== "draft" && !(Number(price) > 0)) {
+		// Any status a customer can be quoted from needs a real price. The DB
+		// enforces this too; this is so the user gets a sentence instead of a
+		// constraint name.
+		if (status !== "draft" && !(Number(price) > 0)) {
 			saveError = "Set a price above zero before saving a published dress.";
 			return;
 		}
-		// Publishing a draft moves it to 'active'; a dress that was never a
-		// draft keeps the status it already had, so saving an edit never
-		// silently changes it.
-		save(target);
+		save(status);
 	}
 
 	function handleSaveDraft() {
+		if (priceError) return;
 		save("draft");
 	}
 </script>
 
-<div class="topbar">
-	<div class="breadcrumb">
-		<a href="/stock">Stock Dresses</a> <span>/ Edit</span>
-	</div>
-</div>
+{#if loading}
+	<p class="text-muted-foreground p-12 text-sm">Loading…</p>
+{:else if loadError}
+	<p class="text-destructive p-12 text-sm">Error: {loadError}</p>
+{:else}
+	<form class="flex min-h-0 flex-1 flex-col" onsubmit={handleSubmit}>
+		<StockDressFormLayout crumb="Edit" title={name || "Edit dress"} error={saveError}>
+			<StockDressFormFields
+				bind:name
+				bind:garmentType
+				bind:category
+				bind:subcategory
+				bind:description
+				bind:notes
+				bind:tags
+				bind:price
+				bind:compareAtPrice
+				bind:cost
+				bind:trackQuantity
+				bind:quantity
+				bind:status
+				{madeToOrder}
+				bind:weightGrams
+				bind:lengthCm
+				bind:widthCm
+				bind:heightCm
+				bind:images
+				bind:options
+				bind:variants
+				bind:priceError
+				editing
+			/>
 
-<div class="content-area">
-	<div class="scroll-area">
-		{#if loading}
-			<p>Loading…</p>
-		{:else if loadError}
-			<p class="error-text">Error: {loadError}</p>
-		{:else}
-			<div class="page-header">
-				<div>
-					<div class="page-title">Edit Stock Dress</div>
-					<div class="page-meta">{name}</div>
-				</div>
-			</div>
-
-			<form class="stock-form" onsubmit={handleSubmit}>
-				<StockDressFormFields
-					bind:name
-					bind:garmentType
-					bind:category
-					bind:subcategory
-					bind:description
-					bind:notes
-					bind:tags
-					bind:price
-					bind:compareAtPrice
-					bind:cost
-					bind:trackQuantity
-					bind:madeToOrder
-					bind:weightGrams
-					bind:lengthCm
-					bind:widthCm
-					bind:heightCm
-					bind:images
-					bind:options
-					bind:variants
-					bind:priceError
-				/>
-
-				{#if saveError}
-					<p class="error-text">Error: {saveError}</p>
+			{#snippet actions()}
+				<Button variant="outline" size="lg" href="/stock">Cancel</Button>
+				{#if originalStatus === "draft"}
+					<Button variant="secondary" size="lg" type="button" onclick={handleSaveDraft} disabled={saving}>
+						{saving ? "Saving…" : "Save draft"}
+					</Button>
 				{/if}
-
-				<div class="form-actions">
-					<a href="/stock" class="btn-secondary">Cancel</a>
-					{#if originalStatus === "draft"}
-						<button type="button" class="btn-outline" onclick={handleSaveDraft} disabled={saving}>
-							{saving ? "Saving…" : "Save Draft"}
-						</button>
-						<button type="submit" class="btn-gold" disabled={saving}>
-							{saving ? "Saving…" : "Publish"}
-						</button>
-					{:else}
-						<button type="submit" class="btn-gold" disabled={saving}>
-							{saving ? "Saving…" : "Save Changes"}
-						</button>
-					{/if}
-				</div>
-			</form>
-		{/if}
-	</div>
-</div>
-
-<style>
-	.topbar {
-		background: var(--bg);
-		border-bottom: 1px solid var(--border);
-		padding: 0 28px;
-		height: 56px;
-		display: flex;
-		align-items: center;
-		flex-shrink: 0;
-	}
-
-	.breadcrumb {
-		font-size: 12px;
-		color: var(--text-muted);
-	}
-
-	.breadcrumb a {
-		color: var(--text-muted);
-		text-decoration: none;
-	}
-
-	.breadcrumb a:hover {
-		color: var(--gold);
-	}
-
-	.breadcrumb span {
-		color: var(--text);
-		font-weight: 500;
-	}
-
-	.content-area {
-		flex: 1;
-		overflow: hidden;
-	}
-
-	.scroll-area {
-		height: 100%;
-		overflow-y: auto;
-		padding: 24px 28px;
-	}
-
-	.page-header {
-		margin-bottom: 22px;
-	}
-
-	.page-title {
-		font-family: 'Playfair Display', serif;
-		font-size: 34px;
-		font-weight: 500;
-		letter-spacing: -0.01em;
-		line-height: 1;
-	}
-
-	.page-meta {
-		font-size: 12px;
-		color: var(--text-muted);
-		margin-top: 6px;
-	}
-
-	.stock-form {
-		display: flex;
-		flex-direction: column;
-		gap: 20px;
-		max-width: 640px;
-	}
-
-	.error-text {
-		color: var(--error);
-		font-size: 12px;
-	}
-
-	.form-actions {
-		display: flex;
-		justify-content: flex-end;
-		gap: 10px;
-		padding-bottom: 20px;
-	}
-
-	.btn-gold {
-		background: var(--gold);
-		border: none;
-		border-radius: 8px;
-		padding: 10px 18px;
-		font-size: 12px;
-		font-weight: 500;
-		color: #fff;
-		cursor: pointer;
-	}
-
-	.btn-gold:disabled {
-		opacity: 0.6;
-		cursor: not-allowed;
-	}
-
-	.btn-outline {
-		background: var(--white);
-		border: 1px solid var(--gold-mid);
-		color: #8b6914;
-		border-radius: 8px;
-		padding: 10px 18px;
-		font-size: 12px;
-		font-weight: 500;
-		cursor: pointer;
-	}
-
-	.btn-outline:disabled {
-		opacity: 0.6;
-		cursor: not-allowed;
-	}
-
-	.btn-secondary {
-		background: var(--white);
-		border: 1px solid var(--border);
-		border-radius: 8px;
-		padding: 10px 18px;
-		font-size: 12px;
-		color: var(--text);
-		cursor: pointer;
-		text-decoration: none;
-		display: inline-flex;
-		align-items: center;
-	}
-
-	@media (max-width: 767px) {
-		.scroll-area {
-			padding: 16px;
-			padding-bottom: 72px;
-		}
-
-		.form-actions {
-			flex-direction: column-reverse;
-			align-items: stretch;
-		}
-
-		.form-actions .btn-secondary,
-		.form-actions .btn-outline,
-		.form-actions .btn-gold {
-			justify-content: center;
-			width: 100%;
-		}
-	}
-</style>
+				<Button size="lg" type="submit" disabled={saving}>
+					{saving ? "Saving…" : originalStatus === "draft" && status === "active" ? "Publish" : "Save changes"}
+				</Button>
+			{/snippet}
+		</StockDressFormLayout>
+	</form>
+{/if}
