@@ -432,9 +432,8 @@ CREATE OR REPLACE FUNCTION apply_stock_movement()
 RETURNS TRIGGER AS $$
 BEGIN
   IF NEW.variant_id IS NULL THEN
-    IF EXISTS (SELECT 1 FROM stock_dress_variants WHERE dress_id = NEW.dress_id) THEN
-      RAISE EXCEPTION 'dress has variants — record the movement against a variant';
-    END IF;
+    -- Allowed even with variants: the dress count is stored and hidden, not summed.
+    NULL;
   ELSE
     IF NOT EXISTS (
       SELECT 1 FROM stock_dress_variants

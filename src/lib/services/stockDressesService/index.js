@@ -176,10 +176,10 @@ export async function createStockDressWithDetails(formData) {
 	// Off means this design is never counted, so no opening stock is recorded.
 	const trackQuantity = formData.dress.track_quantity !== false;
 
-	// A dress with no variants holds its own count. With variants, the count
-	// lives on each variant and the dress total is their sum.
+	// The dress-level count is stored even when variants exist, but the UI hides
+	// it and variant quantities are what count (Shopify's behaviour).
 	const dressOpening = Number(formData.opening_quantity) || 0;
-	if (trackQuantity && dressOpening > 0 && (formData.variants ?? []).length === 0) {
+	if (trackQuantity && dressOpening > 0) {
 		const { error } = await recordMovement({
 			dress_id: dress.id,
 			delta: dressOpening,

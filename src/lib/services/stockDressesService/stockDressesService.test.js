@@ -9,7 +9,7 @@ import {
 	archiveStockDress,
 	listStockDresses,
 } from "./index.js";
-import { listMovementsForVariant, listMovementsForDress, recordMovement } from "$lib/services/stockMovementsService";
+import { listMovementsForVariant, listMovementsForDress } from "$lib/services/stockMovementsService";
 
 const base = {
 	name: "Test Farshi",
@@ -62,16 +62,14 @@ describe("createStockDressWithDetails", () => {
 		expect(full.quantity).toBe(0);
 	});
 
-	it("rejects a dress-level movement once the dress has variants", async () => {
+	it("stores a dress-level movement even once the dress has variants, apart from variant stock", async () => {
 		const { data } = await create({
+			opening_quantity: 2,
 			variants: [{ price_override: null, quantity: 1, axisValues: [{ axis: "size", value: "M" }] }],
 		});
-		const { error } = await recordMovement({
-			dress_id: data.dress.id,
-			delta: 1,
-			reason: "received",
-		});
-		expect(error).toMatch(/record the movement against a variant/);
+		const { data: full } = await getStockDressById(data.dress.id);
+		expect(full.quantity).toBe(2);
+		expect(full.stock_dress_variants[0].quantity).toBe(1);
 	});
 
 	it("records initial quantity as a received movement, not a direct write", async () => {
