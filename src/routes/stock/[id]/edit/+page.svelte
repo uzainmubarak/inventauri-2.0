@@ -4,6 +4,7 @@
 	import { getStockDressById, updateStockDressWithDetails } from "$lib/services/stockDressesService";
 	import { recordMovement } from "$lib/services/stockMovementsService";
 	import { Button } from "$lib/ui/button";
+	import { fromDress, optionIssues, optionsForSave, variantsForSave } from "$lib/stock/optionVariants";
 	import StockDressFormFields from "../../components/StockDressFormFields.svelte";
 	import StockDressFormLayout from "../../components/StockDressFormLayout.svelte";
 
@@ -30,7 +31,6 @@
 	let trackQuantity = $state(true);
 	let quantity = $state(0);
 	let status = $state("active");
-	// Carried through untouched: this form has no control for it.
 	let madeToOrder = $state(true);
 	let weightGrams = $state("");
 	let lengthCm = $state("");
@@ -101,29 +101,10 @@
 		images = currentImages.map(/** @param {any} img */ (img) => ({ ...img }));
 
 		currentOptions = data.stock_dress_options ?? [];
-		options = currentOptions.map(/** @param {any} o */ (o) => ({
-			id: o.id,
-			name: o.name,
-			values: (o.stock_dress_option_values ?? []).map(/** @param {any} v */ (v) => ({ ...v })),
-			newValue: "",
-			newAdjustment: "",
-		}));
-
 		currentVariants = (data.stock_dress_variants ?? []).filter(
 			/** @param {any} v */ (v) => v.status !== "archived",
 		);
-		variants = currentVariants.map(/** @param {any} v */ (v) => ({
-			id: v.id,
-			sku: v.sku,
-			barcode: v.barcode,
-			// Every axis, not just size — the schema has always supported four.
-			axisValues: (v.stock_dress_variant_values ?? []).map(
-				/** @param {any} av */ (av) => ({ axis: av.axis, value: av.value }),
-			),
-			quantity: v.quantity,
-			price_override: v.price_override,
-			status: v.status,
-		}));
+		({ options, variants } = fromDress(data));
 	}
 
 	/** @param {string} target */
@@ -151,23 +132,9 @@
 			currentImages,
 			images,
 			currentOptions,
-			// A saved option keeps its id; a new one with no name is dropped.
-			options: options
-				.filter(/** @param {any} o */ (o) => o.id || o.name.trim())
-				.map(/** @param {any} o */ (o) => ({ id: o.id, name: o.name.trim(), values: o.values })),
+			options: optionsForSave(options),
 			currentVariants,
-			// Dropping an archived variant here is what archives it: the service
-			// archives anything in currentVariants that is missing from this
-			// list. Sending it with its id would mark it "kept" and the removal
-			// would silently do nothing.
-			variants: variants
-				.filter(/** @param {any} v */ (v) => v.status !== "archived")
-				.map(/** @param {any} v */ (v) => ({
-					id: v.id,
-					price_override: v.price_override,
-					quantity: v.quantity,
-					axisValues: v.axisValues ?? [],
-				})),
+			variants: variantsForSave(price, options, variants),
 		};
 	}
 
@@ -208,6 +175,10 @@
 	function handleSubmit(e) {
 		e.preventDefault();
 		if (priceError) return;
+		if (optionIssues(options).some(Boolean)) {
+			saveError = "Fix the options marked in red first.";
+			return;
+		}
 		// Any status a customer can be quoted from needs a real price. The DB
 		// enforces this too; this is so the user gets a sentence instead of a
 		// constraint name.
@@ -220,6 +191,10 @@
 
 	function handleSaveDraft() {
 		if (priceError) return;
+		if (optionIssues(options).some(Boolean)) {
+			saveError = "Fix the options marked in red first.";
+			return;
+		}
 		save("draft");
 	}
 </script>
@@ -245,7 +220,7 @@
 				bind:trackQuantity
 				bind:quantity
 				bind:status
-				{madeToOrder}
+				bind:madeToOrder
 				bind:weightGrams
 				bind:lengthCm
 				bind:widthCm
@@ -257,14 +232,14 @@
 				editing
 			/>
 
-			{#snippet actions()}
-				<Button variant="outline" size="lg" href="/stock">Cancel</Button>
+			{#snippet actions(/** @type {boolean} */ compact)}
+				<Button variant="outline" size={compact ? "sm" : "lg"} href="/stock">Cancel</Button>
 				{#if originalStatus === "draft"}
-					<Button variant="secondary" size="lg" type="button" onclick={handleSaveDraft} disabled={saving}>
+					<Button variant="secondary" size={compact ? "sm" : "lg"} type="button" onclick={handleSaveDraft} disabled={saving}>
 						{saving ? "Saving…" : "Save draft"}
 					</Button>
 				{/if}
-				<Button size="lg" type="submit" disabled={saving}>
+				<Button size={compact ? "sm" : "lg"} type="submit" disabled={saving}>
 					{saving ? "Saving…" : originalStatus === "draft" && status === "active" ? "Publish" : "Save changes"}
 				</Button>
 			{/snippet}

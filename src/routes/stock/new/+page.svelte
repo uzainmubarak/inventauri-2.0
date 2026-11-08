@@ -2,6 +2,7 @@
 	import { goto } from "$app/navigation";
 	import { createStockDressWithDetails } from "$lib/services/stockDressesService";
 	import { Button } from "$lib/ui/button";
+	import { optionIssues, optionsForSave, variantsForSave } from "$lib/stock/optionVariants";
 	import StockDressFormFields from "../components/StockDressFormFields.svelte";
 	import StockDressFormLayout from "../components/StockDressFormLayout.svelte";
 
@@ -19,9 +20,8 @@
 	let trackQuantity = $state(true);
 	let quantity = $state(0);
 	let status = $state("active");
-	// No control for this on the form: a new design can be made to order unless
-	// it is changed later. See docs/stock-module-schema.md.
-	const madeToOrder = true;
+	// On by default, as in the database: the same design can be made again.
+	let madeToOrder = $state(true);
 	let weightGrams = $state("");
 	let lengthCm = $state("");
 	let widthCm = $state("");
@@ -62,15 +62,8 @@
 				status: target,
 			},
 			images,
-			// An option with no name carries nothing; drop it rather than save a blank row.
-			options: options
-				.filter(/** @param {any} o */ (o) => o.name.trim())
-				.map(/** @param {any} o */ (o) => ({ name: o.name.trim(), values: o.values })),
-			variants: variants.map(/** @param {any} v */ (v) => ({
-				price_override: v.price_override,
-				quantity: v.quantity,
-				axisValues: v.axisValues ?? [],
-			})),
+			options: optionsForSave(options),
+			variants: variantsForSave(price, options, variants),
 			opening_quantity: Number(quantity) || 0,
 		};
 	}
@@ -94,6 +87,10 @@
 	function handleSubmit(e) {
 		e.preventDefault();
 		if (priceError) return;
+		if (optionIssues(options).some(Boolean)) {
+			error = "Fix the options marked in red first.";
+			return;
+		}
 		// Anything a customer could be quoted from needs a real price. Drafts
 		// are explicitly allowed to be incomplete.
 		if (status !== "draft" && !(Number(price) > 0)) {
@@ -106,6 +103,10 @@
 	function handleSaveDraft() {
 		// A draft is allowed to be incomplete, so it skips the price rule.
 		if (priceError) return;
+		if (optionIssues(options).some(Boolean)) {
+			error = "Fix the options marked in red first.";
+			return;
+		}
 		save("draft");
 	}
 </script>
@@ -126,7 +127,7 @@
 			bind:trackQuantity
 			bind:quantity
 			bind:status
-			{madeToOrder}
+			bind:madeToOrder
 			bind:weightGrams
 			bind:lengthCm
 			bind:widthCm
@@ -137,12 +138,12 @@
 			bind:priceError
 		/>
 
-		{#snippet actions()}
-			<Button variant="outline" size="lg" href="/stock">Cancel</Button>
-			<Button variant="secondary" size="lg" type="button" onclick={handleSaveDraft} disabled={saving}>
+		{#snippet actions(/** @type {boolean} */ compact)}
+			<Button variant="outline" size={compact ? "sm" : "lg"} href="/stock">Cancel</Button>
+			<Button variant="secondary" size={compact ? "sm" : "lg"} type="button" onclick={handleSaveDraft} disabled={saving}>
 				{saving ? "Saving…" : "Save draft"}
 			</Button>
-			<Button size="lg" type="submit" disabled={saving}>{saving ? "Saving…" : "Create dress"}</Button>
+			<Button size={compact ? "sm" : "lg"} type="submit" disabled={saving}>{saving ? "Saving…" : "Create dress"}</Button>
 		{/snippet}
 	</StockDressFormLayout>
 </form>

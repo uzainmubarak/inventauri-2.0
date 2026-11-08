@@ -9,16 +9,13 @@
 	import { Switch } from "$lib/ui/switch";
 	import { Label } from "$lib/ui/label";
 	import { Field } from "$lib/ui/field";
-	import { Button } from "$lib/ui/button";
-	import PlusIcon from "@lucide/svelte/icons/plus";
 	import ChevronDownIcon from "@lucide/svelte/icons/chevron-down";
 	import { computeProfit, computeMargin } from "$lib/stock/pricing";
 	import { normaliseTags } from "$lib/stock/tags";
 	import { availabilityState } from "$lib/stock/availability";
 	import { listGarmentTypes } from "$lib/services/stockDressesService";
 	import FormSection from "./FormSection.svelte";
-	import OptionEditor from "./OptionEditor.svelte";
-	import VariantList from "./VariantList.svelte";
+	import OptionsAndVariants from "./OptionsAndVariants.svelte";
 	import StatusBadge from "./StatusBadge.svelte";
 
 	/**
@@ -26,6 +23,9 @@
 	 * (edit): the cards on the left and the status and summary on the right.
 	 * The parent page owns all the state via bindable props and decides what
 	 * "Save" means.
+	 *
+	 * `madeToOrder` is the dress's own flag: off, a dress with an empty rack reads as
+	 * sold out; on, it stays orderable.
 	 *
 	 * `quantity` is the dress-level count. It only counts when the dress has no
 	 * variants; with variants it is stored and hidden, and the variant
@@ -71,7 +71,7 @@
 		trackQuantity = $bindable(),
 		quantity = $bindable(),
 		status = $bindable(),
-		madeToOrder,
+		madeToOrder = $bindable(),
 		weightGrams = $bindable(),
 		lengthCm = $bindable(),
 		widthCm = $bindable(),
@@ -121,15 +121,6 @@
 			: Number(quantity) || 0,
 	);
 	const shownAs = $derived(availabilityState({ status, made_to_order: madeToOrder }, totalQuantity));
-
-	function addOption() {
-		options = [...options, { name: "", values: [], newValue: "", newAdjustment: "" }];
-	}
-
-	/** @param {number} index */
-	function removeOption(index) {
-		options = options.filter(/** @param {any} _ @param {number} i */ (_, i) => i !== index);
-	}
 
 	/** @param {number | string} value */
 	const money = (value) => Number(value).toLocaleString();
@@ -251,33 +242,40 @@
 
 		<FormSection
 			title="Options and variants"
-			description="Options are choices made when ordering. Variants are what hangs on the rack, such as size and colour."
+			description="Add options like size or colour. Each combination becomes a variant you can count."
 		>
-			<div class="flex flex-col gap-4">
-				<h3 class="text-sm font-semibold">Options</h3>
-				{#each options as option, oi (oi)}
-					<OptionEditor bind:option={options[oi]} index={oi} onRemove={() => removeOption(oi)} />
-				{/each}
-				<Button variant="outline" class="w-fit" onclick={addOption}><PlusIcon />Add option</Button>
-			</div>
-			<div class="border-border-light flex flex-col gap-4 border-t pt-5">
-				<h3 class="text-sm font-semibold">Variants</h3>
-				<VariantList {variants} {trackQuantity} onChange={(v) => (variants = v)} />
-			</div>
+			<OptionsAndVariants bind:options bind:variants {price} {trackQuantity} {editing} />
 		</FormSection>
 
-		<FormSection title="Make to order" description="How long a new piece takes when the rack is empty. Customers see this on the dress. It is not counted as stock.">
-			{#snippet action()}
-				<span class="border-border text-muted-foreground flex h-6 shrink-0 items-center rounded-full border px-2.5 text-xs font-medium">Saved with orders</span>
-			{/snippet}
-			<div class="grid gap-4 @md:grid-cols-2">
-				<Field label="Shortest" for="lead-min">
-					<NumberField id="lead-min" suffix="weeks" placeholder="2" disabled />
-				</Field>
-				<Field label="Longest" for="lead-max">
-					<NumberField id="lead-max" suffix="weeks" placeholder="4" disabled />
-				</Field>
+		<FormSection title="Make to order">
+			<div class="flex items-start gap-3">
+				<Switch id="made-to-order" class="mt-px" bind:checked={madeToOrder} />
+				<div class="flex flex-col gap-0.5">
+					<Label for="made-to-order" class="text-sm">Offer make to order</Label>
+					<p class="text-muted-foreground text-[13px]">
+						{madeToOrder
+							? "When the rack is empty, this design stays orderable instead of showing as sold out."
+							: "When the rack is empty, this design shows as Sold out and cannot be ordered."}
+					</p>
+				</div>
 			</div>
+			{#if madeToOrder}
+				<div class="border-border-light flex flex-col gap-3.5 border-t pt-[18px]">
+					<div class="flex items-center justify-between gap-4">
+						<span class="text-sm font-medium">Lead time</span>
+						<span class="border-border text-muted-foreground flex h-6 shrink-0 items-center rounded-full border px-2.5 text-xs font-medium">Saved with orders</span>
+					</div>
+					<div class="grid gap-4 @md:grid-cols-2">
+						<Field label="Shortest" for="lead-min">
+							<NumberField id="lead-min" suffix="weeks" placeholder="2" disabled />
+						</Field>
+						<Field label="Longest" for="lead-max">
+							<NumberField id="lead-max" suffix="weeks" placeholder="4" disabled />
+						</Field>
+					</div>
+					<p class="text-muted-foreground text-[13px]">How long a new piece takes. Customers will see it on the dress once orders can save it.</p>
+				</div>
+			{/if}
 		</FormSection>
 
 		<section class="bg-card ring-foreground/10 @container rounded-xl ring-1">
@@ -313,7 +311,7 @@
 		</section>
 	</div>
 
-	<aside class="flex flex-col gap-6 xl:sticky xl:top-6">
+	<aside class="flex flex-col gap-6 xl:sticky xl:top-20">
 		<FormSection title="Status" class="p-5">
 			<Field label="Listing" for="dress-status">
 				<Select id="dress-status" bind:value={status}>
