@@ -191,9 +191,6 @@ CREATE TABLE stock_dress_images (
 COMMENT ON COLUMN stock_dress_images.image_url IS
   'Cloudflare R2 public bucket URL — image bytes are never stored in Postgres. TODO(security): unvalidated today and rendered into <img src>; add an https + exact-R2-hostname CHECK once the bucket origin exists. See stockDressImagesService.js.';
 
-CREATE UNIQUE INDEX one_primary_per_dress
-ON stock_dress_images(dress_id)
-WHERE is_primary = true;
 
 
 -- ────────────────────────────────────────────────────────────
@@ -248,14 +245,41 @@ CREATE TABLE stock_dress_variants (
   sku             TEXT UNIQUE,
   barcode         TEXT UNIQUE,
   price_override  NUMERIC(12,2),
+  compare_at_price NUMERIC(12,2),
+  cost            NUMERIC(12,2),
+  track_quantity  BOOLEAN NOT NULL DEFAULT true,
   quantity        INTEGER NOT NULL DEFAULT 0,
+  weight_grams    INTEGER,
+  length_cm       NUMERIC(6,2),
+  width_cm        NUMERIC(6,2),
+  height_cm       NUMERIC(6,2),
   status          variant_status NOT NULL DEFAULT 'active',
   created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Images of a variant's own variant page. Null variant_id = a dress photo.
+ALTER TABLE stock_dress_images
+  ADD COLUMN variant_id UUID REFERENCES stock_dress_variants(id) ON DELETE CASCADE;
+
+CREATE UNIQUE INDEX one_primary_per_dress
+ON stock_dress_images(dress_id)
+WHERE is_primary = true AND variant_id IS NULL;
+
+CREATE UNIQUE INDEX one_primary_per_variant
+ON stock_dress_images(variant_id)
+WHERE is_primary = true AND variant_id IS NOT NULL;
+
 COMMENT ON COLUMN stock_dress_variants.price_override IS
   'Overrides the parent dress price when set; null means use the parent price.';
+COMMENT ON COLUMN stock_dress_variants.compare_at_price IS
+  'Per-variant struck-through price. Null means no compare-at for this variant.';
+COMMENT ON COLUMN stock_dress_variants.cost IS
+  'Per-variant internal cost. Null means use the parent dress cost.';
+COMMENT ON COLUMN stock_dress_variants.track_quantity IS
+  'Per-variant: off means this variant is never counted. Independent of the dress-level flag.';
+COMMENT ON COLUMN stock_dress_variants.weight_grams IS
+  'Per-variant weight for the courier. Null means use the parent dress weight.';
 COMMENT ON COLUMN stock_dress_variants.quantity IS
   'Cached running total. ONLY stock_movements'' trigger writes this — never update it directly, or it will disagree with the ledger.';
 COMMENT ON COLUMN stock_dress_variants.barcode IS
