@@ -18,15 +18,15 @@ but needs the design pass, `new` = to build.
 | Card | have | Dress tile shell |
 | Table | have | Variant table, movement history |
 | Icon | have | Shared icon set |
-| Select / Combobox | new | Category, subcategory, garment type, borrower dropdown |
-| Tag input | new | Tags (chips, add on Enter/comma, dedupe) |
-| Number field with unit | new | Price, cost, weight, dimensions (Rs, g, cm) |
-| Image uploader | new | Image list, set primary, drag to reorder |
-| Drawer / Sheet | new | Read-only dress view |
-| Dialog | new | Confirm archive, confirm loan |
-| Filter bar | new | Search + status/category/size pills |
-| Empty state | new | No dresses, no matches |
-| Toast | new | "Saved", errors |
+| Select / Combobox | have | Category, subcategory, garment type, borrower dropdown |
+| Tag input | have | Tags (chips, add on Enter/comma, dedupe) |
+| Number field with unit | have | Price, cost, weight, dimensions (Rs, g, cm) |
+| Image uploader | have (Upload tile off until storage exists) | Image list, set primary, drag to reorder |
+| Drawer / Sheet | have | Read-only dress view |
+| Dialog | have | Confirm archive, confirm loan |
+| Filter bar | have (`StockDressFilters`) | Search + status/category/size pills |
+| Empty state | have | No dresses, no matches |
+| Toast | new (not built) | "Saved", errors |
 
 ## Feature components (`src/routes/stock/components/`)
 
@@ -97,3 +97,12 @@ Opened by clicking a variant in the Variants list. Same layout idea as Shopify's
 ## Open
 - Editing a dress with no variants can't record a movement yet. Needs a "record movement" action.
 - Form field for dress-level opening stock (no variants) is not built yet.
+
+## Build notes (design chat)
+Built from the canvas boards. Where the boards and the data disagreed, the data won:
+- **Options and axes stay separate.** The form has an Options block (order-time choices with a price adjustment) and a Variants block (size, colour, fabric, other). The board merged them; the schema keeps them apart. Decide which model is right before changing either.
+- **Photos can't be uploaded yet.** The Upload tile is disabled with a hint. Saved photos can be removed, reordered and set primary; that is saved.
+- **Make to order lead time is a disabled placeholder** ("Saved with orders") until the columns exist. The dress still carries `made_to_order`; the form has no control for it and passes it through.
+- **Quantity** is posted as a `received` movement on create and as an `adjustment` movement when edited (dress form and variant page). Nothing writes the column.
+- **Not built:** Toast, bulk Export and Delete (the selection bar only archives; delete would orphan ledger rows), a barcode field on the dress form (it lives on the variant page), a separate PricingPanel, InventoryPanel and ShippingPanel (they are cards inside `StockDressFormFields`).
+- **Currency** reads PKR everywhere, as the rest of the app does. The doc above says Rs.
