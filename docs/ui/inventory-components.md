@@ -86,7 +86,7 @@ Opened by clicking a variant in the Variants list. Same layout idea as Shopify's
 - **Not on the variant page:** channels, catalogs, title, description, options. These stay at dress level.
 - **Options:** kept as they are now. Choices with a price adjustment, no stock, no variant page.
 
-**Schema (added, not built in the UI yet):**
+**Schema:**
 - `stock_dress_variants`: `compare_at_price`, `cost`, `track_quantity`, `weight_grams`, `length_cm`, `width_cm`, `height_cm`.
 - `stock_dress_images`: `variant_id` (null = dress photo, set = that variant's photo). One primary photo per variant.
 - Null on any variant field means the dress value is used.
