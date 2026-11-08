@@ -1,425 +1,307 @@
 <script>
-	import { getStockDressById, archiveStockDress } from "$lib/services/stockDressesService";
-	import VariantList from "./VariantList.svelte";
-	import { availabilityState, availabilityLabel } from "$lib/stock/availability";
+	import * as Sheet from "$lib/ui/sheet";
+	import { Button } from "$lib/ui/button";
+	import ImageIcon from "@lucide/svelte/icons/image";
+	import ChevronRightIcon from "@lucide/svelte/icons/chevron-right";
+	import { getStockDressById } from "$lib/services/stockDressesService";
+	import { listMovementsForDress } from "$lib/services/stockMovementsService";
+	import { summariseDress } from "$lib/stock/dressSummary";
+	import { computeProfit, computeMargin } from "$lib/stock/pricing";
+	import StatusBadge from "./StatusBadge.svelte";
 
-	// Read-only detail view. Editing (including publishing a draft) lives at
-	// its own page, /stock/[id]/edit — see that route and
-	// StockDressFormFields.svelte for why: the edit flow needs the same
-	// scope as create (images, options, variants), which didn't fit in a
-	// 500px side panel.
 	/**
-	 * @type {{
-	 *   dress: any,
-	 *   onClose: () => void,
-	 *   onSaved: () => void
-	 * }}
+	 * Read-only view of one dress. Nothing here edits: photos, price and stock
+	 * are changed from the edit page or a variant's own page, and stock only
+	 * moves through the ledger.
+	 * Props: `dress` (the list row, used for its id) and `onClose`.
+	 * @type {{ dress: any, onClose: () => void }}
 	 */
-	let { dress, onClose, onSaved } = $props();
+	let { dress, onClose } = $props();
 
 	/** @type {any} */
 	let fullDress = $state(null);
+	/** @type {any[]} */
+	let movements = $state([]);
 	let loading = $state(true);
 	/** @type {string | null} */
 	let error = $state(null);
+	let photoIndex = $state(0);
 
-	const activeVariants = $derived(
-		(fullDress?.stock_dress_variants ?? []).filter(
-			/** @param {any} v */ (v) => v.status !== "archived",
-		),
+	const summary = $derived(fullDress ? summariseDress(fullDress) : null);
+	const photos = $derived(
+		(fullDress?.stock_dress_images ?? []).filter(/** @param {any} i */ (i) => !i.variant_id),
 	);
+	const variants = $derived(
+		(fullDress?.stock_dress_variants ?? []).filter(/** @param {any} v */ (v) => v.status !== "archived"),
+	);
+	const profit = $derived(fullDress ? computeProfit(fullDress.price, fullDress.cost) : null);
+	const margin = $derived(fullDress ? computeMargin(fullDress.price, fullDress.cost) : null);
 
-	const totalQuantity = $derived(
-		activeVariants.length > 0
-			? activeVariants.reduce(
-					/** @param {number} sum @param {any} v */ (sum, v) => sum + (v.quantity ?? 0),
-					0,
-				)
-			: (dress.quantity ?? 0),
-	);
-
-	const state = $derived(
-		fullDress ? availabilityState(fullDress, totalQuantity) : null,
-	);
-
-	// Read-only shape for VariantList: it renders every axis, not just size.
-	const variantRows = $derived(
-		activeVariants.map(/** @param {any} v */ (v) => ({
-			id: v.id,
-			sku: v.sku,
-			barcode: v.barcode,
-			quantity: v.quantity,
-			price_override: v.price_override,
-			status: v.status,
-			axisValues: (v.stock_dress_variant_values ?? []).map(
-				/** @param {any} av */ (av) => ({ axis: av.axis, value: av.value }),
-			),
-		})),
-	);
+	// Axes (size, colour...) as the values the variants actually use.
+	const axes = $derived.by(() => {
+		/** @type {Map<string, string[]>} */
+		const byAxis = new Map();
+		for (const v of variants) {
+			for (const av of v.stock_dress_variant_values ?? []) {
+				const values = byAxis.get(av.axis) ?? [];
+				if (!values.includes(av.value)) values.push(av.value);
+				byAxis.set(av.axis, values);
+			}
+		}
+		return [...byAxis].map(([axis, values]) => ({ axis, values }));
+	});
 
 	$effect(() => {
-		loadFullDress(dress.id);
+		load(dress.id);
 	});
 
 	/** @param {string} id */
-	async function loadFullDress(id) {
+	async function load(id) {
 		loading = true;
-		const { data, error: fetchError } = await getStockDressById(id);
+		error = null;
+		const [dressResult, movementResult] = await Promise.all([
+			getStockDressById(id),
+			listMovementsForDress(id),
+		]);
 		loading = false;
-		if (fetchError) {
-			error = fetchError;
+		if (dressResult.error) {
+			error = dressResult.error;
 			return;
 		}
-		fullDress = data;
-	}
-
-	async function handleArchive() {
-		if (!fullDress) return;
-		const { error: archiveError } = await archiveStockDress(fullDress.id);
-		if (archiveError) {
-			error = archiveError;
-			return;
-		}
-		onSaved();
+		fullDress = dressResult.data;
+		movements = movementResult.data ?? [];
+		photoIndex = 0;
 	}
 
 	/** @param {string} value */
-	function formatLabel(value) {
-		return value.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+	const label = (value) => value.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
+	/** The axis is stored as "color"; the studio writes "Colour". */
+	/** @param {string} axis */
+	const axisLabel = (axis) => (axis === "color" ? "Colour" : label(axis));
+	/** @param {number | string} n */
+	const money = (n) => Number(n).toLocaleString();
+
+	/** @param {any} variant */
+	const variantName = (variant) =>
+		(variant.stock_dress_variant_values ?? []).map(/** @param {any} v */ (v) => v.value).join(" · ") || "Custom";
+
+	/** @param {string | null} id */
+	function movementVariant(id) {
+		const match = variants.find(/** @param {any} v */ (v) => v.id === id);
+		return match ? variantName(match) : "";
 	}
+
+	/** @param {string} iso */
+	const shortDate = (iso) => new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+
+	/** @param {number} delta */
+	const signed = (delta) => (delta > 0 ? `+${delta}` : `−${Math.abs(delta)}`);
+
+	const recentMovements = $derived([...movements].reverse().slice(0, 8));
 </script>
 
-<div class="drawer-overlay open" onclick={onClose}></div>
-<div class="detail-drawer open">
-	<div class="drawer-header">
-		<div>
-			{#if fullDress}
-				<div class="drawer-id">{fullDress.sku}</div>
-				<div class="drawer-title">{fullDress.name}</div>
-			{/if}
-		</div>
-		<button type="button" class="drawer-close" onclick={onClose}>×</button>
-	</div>
-
-	<div class="drawer-body">
-		{#if loading}
-			<p>Loading…</p>
-		{:else if error}
-			<p class="error-text">Error: {error}</p>
-		{:else if fullDress}
-			<div class="drawer-images">
-				{#each fullDress.stock_dress_images ?? [] as img}
-					<img src={img.image_url} alt={fullDress.name} />
-				{/each}
-				{#if !fullDress.stock_dress_images?.length}
-					<div class="drawer-image-placeholder">👗</div>
-				{/if}
+<Sheet.Root open onOpenChange={(open) => !open && onClose()}>
+	<Sheet.Content>
+		<Sheet.Header class="flex-row items-start gap-4">
+			<div class="flex min-w-0 flex-1 flex-col gap-2">
+				<Sheet.Title>{fullDress?.name ?? dress.name}</Sheet.Title>
+				<Sheet.Description class="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
+					<span class="font-mono">{fullDress?.sku ?? dress.sku}</span>
+					<span>{dress.garment_type}</span>
+					{#if summary}<StatusBadge state={summary.state} />{/if}
+				</Sheet.Description>
 			</div>
+			<Button variant="outline" href="/stock/{dress.id}/edit">Edit</Button>
+		</Sheet.Header>
 
-			<div class="drawer-info-grid">
-				<div class="info-cell"><span class="info-label">Category</span>{formatLabel(fullDress.category)}{fullDress.subcategory ? ` / ${formatLabel(fullDress.subcategory)}` : ""}</div>
-				<div class="info-cell">
-					<span class="info-label">Availability</span>
-					{state ? availabilityLabel(state) : "—"}
-				</div>
-				<div class="info-cell">
-					<span class="info-label">Price</span>
-					PKR {Number(fullDress.price).toLocaleString()}
-					{#if fullDress.compare_at_price}
-						<span class="compare-at">PKR {Number(fullDress.compare_at_price).toLocaleString()}</span>
+		<div class="flex flex-1 flex-col gap-8 overflow-y-auto px-6 py-6">
+			{#if loading}
+				<p class="text-muted-foreground text-sm">Loading…</p>
+			{:else if error}
+				<p class="text-destructive text-sm">Error: {error}</p>
+			{:else if fullDress && summary}
+				<div class="flex flex-col gap-3">
+					<div class="bg-muted text-text-muted flex h-60 items-center justify-center overflow-hidden rounded-xl">
+						{#if photos[photoIndex]}
+							<img src={photos[photoIndex].image_url} alt={fullDress.name} class="size-full object-cover" />
+						{:else}
+							<ImageIcon class="size-8" />
+						{/if}
+					</div>
+					{#if photos.length > 1}
+						<div class="flex gap-2">
+							{#each photos as photo, i (photo.id)}
+								<button
+									type="button"
+									aria-label="Show photo {i + 1}"
+									aria-pressed={i === photoIndex}
+									class="bg-muted size-16 overflow-hidden rounded-lg {i === photoIndex ? 'ring-primary ring-2' : ''}"
+									onclick={() => (photoIndex = i)}
+								>
+									<img src={photo.image_url} alt="" class="size-full object-cover" />
+								</button>
+							{/each}
+						</div>
 					{/if}
 				</div>
-				<div class="info-cell"><span class="info-label">Garment Type</span>{fullDress.garment_type}</div>
-			</div>
 
-			{#if fullDress.made_to_order}
-				<p class="drawer-flag">Can be made to order — stays orderable when stock runs out.</p>
-			{/if}
-
-			{#if fullDress.tags?.length}
-				<div class="tag-row">
-					{#each fullDress.tags as tag}
-						<span class="tag">{tag}</span>
-					{/each}
+				<div class="grid grid-cols-3 gap-3">
+					<div class="bg-background border-border-light flex flex-col gap-1 rounded-xl border px-4 py-3.5">
+						<span class="text-muted-foreground text-xs">Price</span>
+						<span class="font-mono text-base font-medium">PKR {money(fullDress.price)}</span>
+						{#if fullDress.compare_at_price}
+							<span class="text-muted-foreground font-mono text-xs line-through">PKR {money(fullDress.compare_at_price)}</span>
+						{/if}
+					</div>
+					<div class="bg-background border-border-light flex flex-col gap-1 rounded-xl border px-4 py-3.5">
+						<span class="text-muted-foreground text-xs">Cost</span>
+						<span class="font-mono text-base font-medium">{fullDress.cost == null ? "–" : `PKR ${money(fullDress.cost)}`}</span>
+					</div>
+					<div
+						class="flex flex-col gap-1 rounded-xl px-4 py-3.5 {profit == null
+							? 'bg-background border-border-light border'
+							: profit >= 0
+								? 'bg-green-dim text-green'
+								: 'bg-destructive/10 text-destructive'}"
+					>
+						<span class="text-xs {profit == null ? 'text-muted-foreground' : ''}">
+							Profit{margin == null ? "" : ` · ${(margin * 100).toFixed(1)}%`}
+						</span>
+						<span class="font-mono text-base font-medium">{profit == null ? "–" : `PKR ${money(profit)}`}</span>
+					</div>
 				</div>
-			{/if}
 
-			{#if fullDress.description}
-				<p class="drawer-description">{fullDress.description}</p>
-			{/if}
+				{#if fullDress.description}
+					<section class="flex flex-col gap-2.5">
+						<h2 class="font-serif text-xl font-medium">Description</h2>
+						<p class="text-sm leading-relaxed">{fullDress.description}</p>
+					</section>
+				{/if}
 
-			{#if fullDress.notes}
-				<div class="drawer-section-title">Internal</div>
-				<p class="drawer-notes">{fullDress.notes}</p>
-			{/if}
-
-			{#if fullDress.stock_dress_options?.length}
-				<div class="drawer-section-title">Options</div>
-				<div class="options-list">
-					{#each fullDress.stock_dress_options as option}
-						<div class="option-row">
-							<span class="option-name">{option.name}</span>
-							<span class="option-values">
-								{(option.stock_dress_option_values ?? [])
-								.map(
-									/** @param {any} v */ (v) =>
-										Number(v.price_adjustment)
-											? `${v.value} (+${Number(v.price_adjustment).toLocaleString()})`
-											: v.value,
-								)
-								.join(", ") || "—"}
-							</span>
+				<section class="flex flex-col gap-3">
+					<h2 class="font-serif text-xl font-medium">Inventory</h2>
+					<div class="border-border divide-border-light flex flex-col divide-y overflow-hidden rounded-xl border">
+						<div class="flex items-center justify-between gap-4 px-4 py-3">
+							<span class="text-muted-foreground text-[13px]">On the rack</span>
+							{#if fullDress.track_quantity}
+								<span class="flex flex-col items-end gap-0.5">
+									<span class="font-mono text-sm font-medium">{summary.quantity}</span>
+									<span class="text-muted-foreground text-xs">
+										{summary.variantCount > 0 ? "Sum of the variants" : "Held on the dress"}
+									</span>
+								</span>
+							{:else}
+								<span class="text-sm font-medium">Not tracked</span>
+							{/if}
 						</div>
-					{/each}
-				</div>
+						<div class="flex items-center justify-between gap-4 px-4 py-3">
+							<span class="text-muted-foreground text-[13px]">Make to order</span>
+							<span class="text-sm font-medium">{fullDress.made_to_order ? "Available" : "Not offered"}</span>
+						</div>
+					</div>
+				</section>
+
+				{#if axes.length || fullDress.stock_dress_options?.length}
+					<section class="flex flex-col gap-3">
+						<h2 class="font-serif text-xl font-medium">Options</h2>
+						{#each axes as { axis, values } (axis)}
+							<div class="flex items-center gap-3">
+								<span class="text-muted-foreground w-24 shrink-0 text-[13px]">{axisLabel(axis)}</span>
+								<div class="flex flex-wrap gap-2">
+									{#each values as value (value)}
+										<span class="bg-secondary rounded-full px-3 py-1 text-[13px] font-medium">{value}</span>
+									{/each}
+								</div>
+							</div>
+						{/each}
+						{#each fullDress.stock_dress_options ?? [] as option (option.id)}
+							<div class="flex items-center gap-3">
+								<span class="text-muted-foreground w-24 shrink-0 text-[13px]">{option.name}</span>
+								<div class="flex flex-wrap gap-2">
+									{#each option.stock_dress_option_values ?? [] as v (v.id)}
+										<span class="bg-secondary rounded-full px-3 py-1 text-[13px] font-medium">
+											{v.value}{#if Number(v.price_adjustment)}<span class="text-muted-foreground ml-1.5 font-mono text-xs">+{money(v.price_adjustment)}</span>{/if}
+										</span>
+									{/each}
+								</div>
+							</div>
+						{/each}
+					</section>
+				{/if}
+
+				<section class="flex flex-col gap-3">
+					<div class="flex items-center justify-between">
+						<h2 class="font-serif text-xl font-medium">Variants</h2>
+						{#if fullDress.track_quantity && variants.length}
+							<span class="text-muted-foreground text-[13px]">{summary.quantity} in stock</span>
+						{/if}
+					</div>
+					{#if variants.length === 0}
+						<p class="text-muted-foreground text-sm">No variants. This dress holds its own count.</p>
+					{:else}
+						<div class="border-border divide-border-light flex flex-col divide-y overflow-hidden rounded-xl border">
+							{#each variants as variant (variant.id)}
+								<a
+									href="/stock/{dress.id}/variants/{variant.id}"
+									class="hover:bg-background grid h-14 grid-cols-[1fr_auto_auto] items-center gap-4 px-4"
+								>
+									<span class="flex min-w-0 flex-col gap-0.5">
+										<span class="truncate text-sm font-medium">{variantName(variant)}</span>
+										<span class="text-muted-foreground font-mono text-xs">{variant.sku ?? "No SKU yet"}</span>
+									</span>
+									<span class="font-mono text-[13px]">{fullDress.track_quantity ? variant.quantity : "–"}</span>
+									<ChevronRightIcon class="text-text-muted size-3.5" />
+								</a>
+							{/each}
+						</div>
+						<p class="text-muted-foreground text-[13px]">Open a variant to see its photos, price and stock.</p>
+					{/if}
+				</section>
+
+				<section class="flex flex-col gap-3">
+					<div class="flex flex-col gap-1">
+						<h2 class="font-serif text-xl font-medium">Movements</h2>
+						<p class="text-muted-foreground text-[13px]">Every change is a new entry. Entries are never edited.</p>
+					</div>
+					{#if recentMovements.length === 0}
+						<p class="text-muted-foreground text-sm">No stock movements yet.</p>
+					{:else}
+						<div class="divide-border-light flex flex-col divide-y">
+							{#each recentMovements as m (m.id)}
+								<div class="flex items-center gap-3 py-3">
+									<span class="w-11 font-mono text-[13px] font-medium {m.delta > 0 ? 'text-green' : 'text-destructive'}">{signed(m.delta)}</span>
+									<span class="flex flex-1 flex-col gap-0.5">
+										<span class="text-sm font-medium">{label(m.reason)}</span>
+										{#if movementVariant(m.variant_id) || m.note}
+											<span class="text-muted-foreground text-xs">{[movementVariant(m.variant_id), m.note].filter(Boolean).join(", ")}</span>
+										{/if}
+									</span>
+									<span class="text-muted-foreground text-xs">{shortDate(m.created_at)}</span>
+								</div>
+							{/each}
+						</div>
+					{/if}
+				</section>
+
+				{#if fullDress.tags?.length}
+					<section class="flex flex-col gap-2.5">
+						<h2 class="font-serif text-xl font-medium">Tags</h2>
+						<div class="flex flex-wrap gap-2">
+							{#each fullDress.tags as tag (tag)}
+								<span class="border-border rounded-full border px-2.5 py-1 text-xs font-medium">{tag}</span>
+							{/each}
+						</div>
+					</section>
+				{/if}
+
+				{#if fullDress.notes}
+					<section class="flex flex-col gap-2.5">
+						<h2 class="font-serif text-xl font-medium">Internal notes</h2>
+						<p class="text-muted-foreground text-sm leading-relaxed">{fullDress.notes}</p>
+						<p class="text-muted-foreground text-xs">Staff only, never shown to a client.</p>
+					</section>
+				{/if}
 			{/if}
-
-			<div class="drawer-section-title">Variants</div>
-			<VariantList variants={variantRows} editable={false} />
-
-			<div class="drawer-actions">
-				<a href="/stock/{fullDress.id}/edit" class="btn-secondary">Edit</a>
-				<button type="button" class="btn-danger" onclick={handleArchive}>Archive</button>
-			</div>
-		{/if}
-	</div>
-</div>
-
-<style>
-	.drawer-overlay {
-		position: fixed;
-		inset: 0;
-		background: rgba(0, 0, 0, 0.2);
-		z-index: 200;
-		backdrop-filter: blur(2px);
-	}
-
-	.detail-drawer {
-		position: fixed;
-		top: 0;
-		right: 0;
-		width: 500px;
-		height: 100vh;
-		background: var(--white);
-		border-left: 1px solid var(--border);
-		box-shadow: var(--shadow-lg);
-		z-index: 201;
-		display: flex;
-		flex-direction: column;
-	}
-
-	.drawer-header {
-		padding: 20px 24px;
-		border-bottom: 1px solid var(--border);
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		flex-shrink: 0;
-	}
-
-	.drawer-id {
-		font-family: 'JetBrains Mono', monospace;
-		font-size: 13px;
-		color: var(--gold);
-		font-weight: 500;
-	}
-
-	.drawer-title {
-		font-family: 'Playfair Display', serif;
-		font-size: 18px;
-		font-weight: 500;
-		margin-top: 2px;
-	}
-
-	.drawer-close {
-		width: 28px;
-		height: 28px;
-		border-radius: 8px;
-		border: 1px solid var(--border);
-		background: transparent;
-		cursor: pointer;
-		font-size: 16px;
-		color: var(--text-muted);
-	}
-
-	.drawer-body {
-		flex: 1;
-		overflow-y: auto;
-		padding: 20px 24px;
-	}
-
-	.drawer-images {
-		display: flex;
-		gap: 8px;
-		overflow-x: auto;
-		margin-bottom: 16px;
-	}
-
-	.drawer-images img {
-		width: 120px;
-		height: 120px;
-		object-fit: cover;
-		border-radius: 10px;
-		flex-shrink: 0;
-	}
-
-	.drawer-image-placeholder {
-		width: 100%;
-		height: 160px;
-		background: var(--bg2);
-		border-radius: 10px;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		font-size: 40px;
-	}
-
-	.drawer-info-grid {
-		display: grid;
-		grid-template-columns: 1fr 1fr;
-		border: 1px solid var(--border-light);
-		border-radius: 10px;
-		overflow: hidden;
-		margin-bottom: 20px;
-	}
-
-	.info-cell {
-		padding: 12px;
-		border-bottom: 1px solid var(--border-light);
-		border-right: 1px solid var(--border-light);
-		font-size: 13px;
-	}
-
-	.info-label {
-		display: block;
-		font-size: 10px;
-		color: var(--text-faint);
-		text-transform: uppercase;
-		letter-spacing: 0.06em;
-		margin-bottom: 3px;
-	}
-
-	.drawer-description {
-		font-size: 13px;
-		color: var(--text);
-		margin-bottom: 14px;
-		line-height: 1.5;
-	}
-
-	.drawer-notes {
-		font-size: 12px;
-		color: var(--text-muted);
-		margin-bottom: 16px;
-	}
-
-	.drawer-flag {
-		font-size: 11px;
-		color: #8b6914;
-		background: var(--gold-dim);
-		border-radius: 6px;
-		padding: 7px 9px;
-		margin-bottom: 12px;
-	}
-
-	.compare-at {
-		color: var(--text-faint);
-		text-decoration: line-through;
-		margin-left: 6px;
-		font-size: 11px;
-	}
-
-	.tag-row {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 5px;
-		margin-bottom: 14px;
-	}
-
-	.tag {
-		font-size: 10px;
-		color: var(--text-muted);
-		background: var(--bg2);
-		border-radius: 8px;
-		padding: 3px 8px;
-	}
-
-	.drawer-section-title {
-		font-size: 11px;
-		font-weight: 600;
-		letter-spacing: 0.1em;
-		text-transform: uppercase;
-		color: var(--text-faint);
-		margin-bottom: 10px;
-		margin-top: 20px;
-	}
-
-	.options-list {
-		border: 1px solid var(--border-light);
-		border-radius: 10px;
-		overflow: hidden;
-	}
-
-	.option-row {
-		display: flex;
-		justify-content: space-between;
-		gap: 12px;
-		padding: 10px 12px;
-		font-size: 12px;
-		border-bottom: 1px solid var(--border-light);
-	}
-
-	.option-row:last-child {
-		border-bottom: none;
-	}
-
-	.option-name {
-		font-weight: 500;
-		flex-shrink: 0;
-	}
-
-	.option-values {
-		color: var(--text-muted);
-		text-align: right;
-	}
-
-	.drawer-actions {
-		display: flex;
-		gap: 10px;
-		margin-top: 20px;
-	}
-
-	.btn-secondary {
-		background: var(--white);
-		border: 1px solid var(--border);
-		border-radius: 8px;
-		padding: 9px 16px;
-		font-size: 12px;
-		cursor: pointer;
-		text-decoration: none;
-		color: var(--text);
-		display: inline-flex;
-		align-items: center;
-	}
-
-	.btn-danger {
-		background: var(--error-dim);
-		border: 1px solid rgba(139, 58, 58, 0.18);
-		color: var(--error);
-		border-radius: 8px;
-		padding: 9px 16px;
-		font-size: 12px;
-		cursor: pointer;
-	}
-
-	.error-text {
-		color: var(--error);
-		font-size: 12px;
-	}
-
-	/* Mobile: full-screen instead of a 500px side drawer */
-	@media (max-width: 767px) {
-		.detail-drawer {
-			width: 100%;
-		}
-	}
-</style>
+		</div>
+	</Sheet.Content>
+</Sheet.Root>

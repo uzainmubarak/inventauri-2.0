@@ -1,165 +1,138 @@
 <script>
+	import { Input } from "$lib/ui/input";
+	import { Select } from "$lib/ui/select";
+	import SearchIcon from "@lucide/svelte/icons/search";
+	import ListIcon from "@lucide/svelte/icons/list";
+	import LayoutGridIcon from "@lucide/svelte/icons/layout-grid";
+
 	/**
+	 * Status tabs plus the search and filter row that sit at the top of the
+	 * stock card. `counts` is how many dresses each tab holds, `view` is
+	 * "table" or "gallery".
 	 * @type {{
 	 *   search: string,
 	 *   category: string,
 	 *   subcategory: string,
 	 *   sizeType: string,
 	 *   status: string,
-	 *   onChange: (filters: { search: string, category: string, subcategory: string, sizeType: string, status: string }) => void
+	 *   counts: Record<string, number>,
+	 *   view: string,
+	 *   onChange: (filters: { search: string, category: string, subcategory: string, sizeType: string, status: string }) => void,
+	 *   onViewChange: (view: string) => void
 	 * }}
 	 */
-	let { search, category, subcategory, sizeType, status, onChange } = $props();
+	let { search, category, subcategory, sizeType, status, counts, view, onChange, onViewChange } = $props();
 
 	const CATEGORIES = [
-		{ value: "", label: "All Categories" },
-		{ value: "party_wear", label: "Party Wear" },
+		{ value: "", label: "All categories" },
+		{ value: "party_wear", label: "Party wear" },
 		{ value: "formals", label: "Formals" },
 		{ value: "bridal", label: "Bridal" },
-		{ value: "nikkah_wear", label: "Nikkah Wear" },
+		{ value: "nikkah_wear", label: "Nikkah wear" },
 	];
 
 	const SUBCATEGORIES = [
-		{ value: "", label: "All" },
+		{ value: "", label: "All bridal" },
 		{ value: "mehendi", label: "Mehendi" },
 		{ value: "barat", label: "Barat" },
 		{ value: "walima", label: "Walima" },
 	];
 
 	const SIZE_TYPES = [
-		{ value: "", label: "All Sizes" },
+		{ value: "", label: "All sizing" },
 		{ value: "standard", label: "Standard" },
 		{ value: "custom", label: "Custom" },
 	];
 
-	// product_status in schema v2. 'available'/'reserved'/'sold' are gone —
-	// those described a physical garment, not a design, and are now answered
-	// by quantity and the movement ledger.
-	const STATUSES = [
+	// product_status in schema v2. The empty value means "Active", which is the
+	// everyday view; drafts and archived designs are one tab away.
+	const TABS = [
 		{ value: "", label: "Active" },
 		{ value: "draft", label: "Drafts" },
 		{ value: "archived", label: "Archived" },
 		{ value: "all", label: "All" },
 	];
 
+	/** @param {Partial<{ search: string, category: string, subcategory: string, sizeType: string, status: string }>} patch */
 	function emit(patch) {
 		onChange({ search, category, subcategory, sizeType, status, ...patch });
 	}
 </script>
 
-<div class="controls-row">
-	<div class="search-wrap">
-		<span class="search-icon">🔍</span>
-		<input
-			class="search-input"
-			type="text"
-			placeholder="Search name, garment type, SKU or tag…"
+<div class="flex gap-6 overflow-x-auto border-b px-4" role="tablist" aria-label="Status">
+	{#each TABS as tab (tab.value)}
+		<button
+			type="button"
+			role="tab"
+			aria-selected={status === tab.value}
+			class="-mb-px flex h-12 items-center gap-2 border-b-2 text-sm whitespace-nowrap {status === tab.value
+				? 'border-primary font-semibold'
+				: 'text-muted-foreground border-transparent font-medium'}"
+			onclick={() => emit({ status: tab.value })}
+		>
+			{tab.label}
+			<span class="text-muted-foreground font-mono text-xs">{counts[tab.value === "" ? "active" : tab.value] ?? 0}</span>
+		</button>
+	{/each}
+</div>
+
+<div class="border-border-light flex flex-wrap items-center gap-3 border-b p-4">
+	<div class="relative w-full sm:w-80">
+		<SearchIcon class="text-text-muted pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
+		<Input
+			type="search"
+			aria-label="Search dresses"
+			placeholder="Search name, SKU, type or tag"
+			class="pl-9"
 			value={search}
 			oninput={(e) => emit({ search: e.currentTarget.value })}
 		/>
 	</div>
 
-	<select
-		class="filter-select"
-		value={category}
-		onchange={(e) => emit({ category: e.currentTarget.value, subcategory: "" })}
-	>
-		{#each CATEGORIES as opt}
-			<option value={opt.value}>{opt.label}</option>
-		{/each}
-	</select>
+	<div class="w-44">
+		<Select
+			aria-label="Category"
+			value={category}
+			onchange={(e) => emit({ category: e.currentTarget.value, subcategory: "" })}
+		>
+			{#each CATEGORIES as opt (opt.value)}<option value={opt.value}>{opt.label}</option>{/each}
+		</Select>
+	</div>
 
 	{#if category === "bridal"}
-		<select class="filter-select" value={subcategory} onchange={(e) => emit({ subcategory: e.currentTarget.value })}>
-			{#each SUBCATEGORIES as opt}
-				<option value={opt.value}>{opt.label}</option>
-			{/each}
-		</select>
+		<div class="w-40">
+			<Select aria-label="Bridal occasion" value={subcategory} onchange={(e) => emit({ subcategory: e.currentTarget.value })}>
+				{#each SUBCATEGORIES as opt (opt.value)}<option value={opt.value}>{opt.label}</option>{/each}
+			</Select>
+		</div>
 	{/if}
 
-	<select class="filter-select" value={sizeType} onchange={(e) => emit({ sizeType: e.currentTarget.value })}>
-		{#each SIZE_TYPES as opt}
-			<option value={opt.value}>{opt.label}</option>
-		{/each}
-	</select>
+	<div class="w-36">
+		<Select aria-label="Sizing" value={sizeType} onchange={(e) => emit({ sizeType: e.currentTarget.value })}>
+			{#each SIZE_TYPES as opt (opt.value)}<option value={opt.value}>{opt.label}</option>{/each}
+		</Select>
+	</div>
 
-	<select class="filter-select" value={status} onchange={(e) => emit({ status: e.currentTarget.value })}>
-		{#each STATUSES as opt}
-			<option value={opt.value}>{opt.label}</option>
-		{/each}
-	</select>
+	<div class="flex-1"></div>
+
+	<div class="border-border flex gap-0.5 rounded-lg border p-0.5">
+		<button
+			type="button"
+			aria-label="Table view"
+			aria-pressed={view === "table"}
+			class="flex size-[30px] items-center justify-center rounded-md {view === 'table' ? 'bg-secondary text-foreground' : 'text-muted-foreground'}"
+			onclick={() => onViewChange("table")}
+		>
+			<ListIcon class="size-4" />
+		</button>
+		<button
+			type="button"
+			aria-label="Gallery view"
+			aria-pressed={view === "gallery"}
+			class="flex size-[30px] items-center justify-center rounded-md {view === 'gallery' ? 'bg-secondary text-foreground' : 'text-muted-foreground'}"
+			onclick={() => onViewChange("gallery")}
+		>
+			<LayoutGridIcon class="size-4" />
+		</button>
+	</div>
 </div>
-
-<style>
-	.controls-row {
-		display: flex;
-		align-items: center;
-		gap: 10px;
-		margin-bottom: 16px;
-		flex-wrap: wrap;
-	}
-
-	.search-wrap {
-		flex: 1;
-		max-width: 300px;
-		position: relative;
-	}
-
-	.search-input {
-		width: 100%;
-		padding: 8px 12px 8px 34px;
-		background: var(--white);
-		border: 1px solid var(--border);
-		border-radius: 9px;
-		font-size: 13px;
-		font-family: 'DM Sans', sans-serif;
-		color: var(--text);
-		outline: none;
-		transition: border-color 0.15s;
-	}
-
-	.search-input:focus {
-		border-color: var(--gold);
-	}
-
-	.search-icon {
-		position: absolute;
-		left: 11px;
-		top: 50%;
-		transform: translateY(-50%);
-		font-size: 13px;
-		color: var(--text-faint);
-		pointer-events: none;
-	}
-
-	.filter-select {
-		appearance: none;
-		background: var(--white);
-		border: 1px solid var(--border);
-		border-radius: 8px;
-		padding: 8px 28px 8px 11px;
-		font-size: 12px;
-		color: var(--text);
-		font-family: 'DM Sans', sans-serif;
-		cursor: pointer;
-		background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23B0AAA2' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-		background-repeat: no-repeat;
-		background-position: right 9px center;
-		outline: none;
-	}
-
-	.filter-select:focus {
-		border-color: var(--gold);
-	}
-
-	@media (max-width: 767px) {
-		.controls-row {
-			flex-direction: column;
-			align-items: stretch;
-		}
-
-		.search-wrap {
-			max-width: none;
-		}
-	}
-</style>
