@@ -25,6 +25,7 @@ Tauri 2 + SvelteKit 2 (Svelte 5 runes), static SPA (`ssr = false`), Supabase bac
 
 ## Data rules
 - The stock ledger (`stock_movements`) is append-only. Quantity changes go through movements, never direct writes.
+- SKUs are an input. The frontend generates them from `stock_settings` (`src/lib/stock/sku`) or the user types them. The database never builds a SKU. See `docs/settings.md`.
 - Production RLS is `TO authenticated`. The `supabase/seed.sql` anon policies are local-only and must be removed when Auth ships.
 
 ## Git
