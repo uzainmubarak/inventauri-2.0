@@ -76,13 +76,17 @@ but needs the design pass, `new` = to build.
 - Only units on the rack enter inventory.
 
 ## Variant page (one variant's own fields)
-- Option value (e.g. size "M"): the variant's name
-- Image
-- Price override (falls back to the dress price)
-- Quantity on hand
-- SKU and barcode
-- Status (active or archived)
-- Not per variant: channels, catalogs, title, description. Compare-at, cost and shipping stay at dress level unless we decide otherwise.
+Opened by clicking a variant in the Variants list. Same layout idea as Shopify's variant page: a variant list on the left, the selected variant's sections on the right.
+
+- **Header:** option values (e.g. size "M", fabric "Net"), status (active or archived).
+- **Images:** the variant's own photos. Set one as primary.
+- **Price:** price override (falls back to the dress price), compare-at price, cost.
+- **Inventory:** tracked toggle, quantity on hand, SKU, barcode. No locations, no "sell when out of stock".
+- **Shipping:** weight, packed size (L × W × H), for the courier.
+- **Not on the variant page:** channels, catalogs, title, description, options. These stay at dress level.
+- **Options:** kept as they are now. Choices with a price adjustment, no stock, no variant page.
+
+**Schema needs (not built yet):** per-variant images, compare-at price, cost, weight and packed size. `stock_dress_variants` has sku, barcode, price override, quantity and status today.
 
 ## Resolved
 - Dress with no variants: the dress holds the count. Dress with variants: each variant holds its own count, and the dress-level count is hidden and kept apart from variant stock.
