@@ -11,12 +11,14 @@
 import { supabase } from "$lib/supabaseClient";
 
 /**
- * Record one stock movement. Sign must match the reason; the database
+ * Record one stock movement. `variant_id` is omitted for a dress with no
+ * variants (or for the hidden dress-level count). Sign must match the reason; the database
  * enforces it (received/customer_return/loan_return positive,
  * sold/damaged/lost/loaned_out negative, adjustment either way).
  *
  * @param {{
- *   variant_id: string,
+ *   dress_id: string,
+ *   variant_id?: string | null,
  *   delta: number,
  *   reason: 'received'|'sold'|'customer_return'|'damaged'|'lost'|'adjustment'|'loaned_out'|'loan_return',
  *   borrower_id?: string | null,

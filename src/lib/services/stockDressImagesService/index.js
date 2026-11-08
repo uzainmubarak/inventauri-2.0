@@ -36,7 +36,7 @@ export async function listImagesForDress(dressId) {
  * reject (don't strip) anything else, and mirror it as a CHECK constraint.
  * Deferred because there is no bucket origin configured to allowlist yet.
  *
- * @param {{ dress_id: string, image_url: string, is_primary?: boolean, caption?: string, position?: number }} image
+ * @param {{ dress_id: string, variant_id?: string | null, image_url: string, is_primary?: boolean, caption?: string, position?: number }} image
  * @returns {Promise<{ data: any | null, error: string | null }>}
  */
 export async function addImage(image) {
@@ -55,17 +55,23 @@ export async function addImage(image) {
 
 /**
  * Mark one image as primary. The DB has a unique partial index enforcing
- * only one primary per dress, so the old primary must be cleared first.
+ * one primary per dress photo set and one per variant, so the old primary in
+ * the same scope must be cleared first. `variantId` null means the dress's
+ * own photos; a variant's photos are a separate set.
  * @param {string} dressId
  * @param {string} imageId
+ * @param {string | null} [variantId]
  * @returns {Promise<{ data: any | null, error: string | null }>}
  */
-export async function setPrimaryImage(dressId, imageId) {
-	const { error: clearError } = await supabase
+export async function setPrimaryImage(dressId, imageId, variantId = null) {
+	const clear = supabase
 		.from("stock_dress_images")
 		.update({ is_primary: false })
 		.eq("dress_id", dressId)
 		.eq("is_primary", true);
+	const { error: clearError } = await (variantId
+		? clear.eq("variant_id", variantId)
+		: clear.is("variant_id", null));
 
 	if (clearError) {
 		console.error("setPrimaryImage (clear) failed:", clearError.message);
@@ -84,6 +90,22 @@ export async function setPrimaryImage(dressId, imageId) {
 		return { data: null, error: error.message };
 	}
 	return { data, error: null };
+}
+
+/**
+ * Move a photo to a place in its list (0 is first).
+ * @param {string} imageId
+ * @param {number} position
+ * @returns {Promise<{ data: null, error: string | null }>}
+ */
+export async function setImagePosition(imageId, position) {
+	const { error } = await supabase.from("stock_dress_images").update({ position }).eq("id", imageId);
+
+	if (error) {
+		console.error("setImagePosition failed:", error.message);
+		return { data: null, error: error.message };
+	}
+	return { data: null, error: null };
 }
 
 /**

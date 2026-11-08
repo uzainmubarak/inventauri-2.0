@@ -53,7 +53,8 @@ export async function createVariant(variant) {
 
 /**
  * @param {string} id
- * @param {{ price_override?: number | null, status?: string }} updates
+ * @param {{ price_override?: number | null, compare_at_price?: number | null, cost?: number | null, track_quantity?: boolean, barcode?: string | null, weight_grams?: number | null, length_cm?: number | null, width_cm?: number | null, height_cm?: number | null, status?: string }} updates
+ *   — a null on any price, cost or shipping field means "use the dress value"
  * @returns {Promise<{ data: any | null, error: string | null }>}
  */
 export async function updateVariant(id, updates) {

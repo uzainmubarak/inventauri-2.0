@@ -6,7 +6,12 @@
 // Each function returns { data, error } — same shape Supabase itself uses.
 
 import { supabase } from "$lib/supabaseClient";
-import { addImage, deleteImage } from "$lib/services/stockDressImagesService";
+import {
+	addImage,
+	deleteImage,
+	setImagePosition,
+	setPrimaryImage,
+} from "$lib/services/stockDressImagesService";
 import {
 	createOption,
 	addOptionValue,
@@ -38,6 +43,21 @@ export async function listStockDresses() {
 		return { data: null, error: error.message };
 	}
 	return { data, error: null };
+}
+
+/**
+ * Every garment type already in use, A to Z, for the form's suggestion list.
+ * @returns {Promise<{ data: string[] | null, error: string | null }>}
+ */
+export async function listGarmentTypes() {
+	const { data, error } = await supabase.from("stock_dresses").select("garment_type");
+
+	if (error) {
+		console.error("listGarmentTypes failed:", error.message);
+		return { data: null, error: error.message };
+	}
+	const types = [...new Set(data.map(/** @param {{ garment_type: string }} d */ (d) => d.garment_type))];
+	return { data: types.sort((a, b) => a.localeCompare(b)), error: null };
 }
 
 /**
@@ -254,7 +274,7 @@ export async function createStockDressWithDetails(formData) {
  * @param {string} dressId
  * @param {{
  *   dress: { name: string, garment_type: string, category: string, subcategory?: string | null, description?: string | null, notes?: string | null, tags?: string[], price: number, compare_at_price?: number | null, cost?: number | null, track_quantity?: boolean, made_to_order?: boolean, weight_grams?: number | null, length_cm?: number | null, width_cm?: number | null, height_cm?: number | null, status?: string },
- *   currentImages: { id: string }[],
+ *   currentImages: { id: string, is_primary?: boolean }[],
  *   images: { id?: string, image_url: string, is_primary?: boolean }[],
  *   currentOptions: { id: string }[],
  *   options: { id?: string, name: string, values: { value: string, price_adjustment?: number }[] }[],
@@ -283,6 +303,26 @@ export async function updateStockDressWithDetails(dressId, formData) {
 		const { error } = await addImage({ ...image, dress_id: dress.id });
 		if (error) {
 			return { data: { dress }, error: `Dress saved, but adding an image failed: ${error}` };
+		}
+	}
+
+	// Photos that were already saved keep their place and primary flag. The new
+	// photos above are inserted in list order, so only saved ones need this.
+	// `images` and `currentImages` hold the dress's own photos only; a variant's
+	// photos are managed on its page and must never be passed in here.
+	const savedImages = formData.images.filter((i) => i.id);
+	for (const [position, image] of savedImages.entries()) {
+		const { error } = await setImagePosition(/** @type {string} */ (image.id), position);
+		if (error) {
+			return { data: { dress }, error: `Dress saved, but reordering photos failed: ${error}` };
+		}
+	}
+	const wantedPrimary = savedImages.find((i) => i.is_primary);
+	const currentPrimary = formData.currentImages.find((i) => i.is_primary);
+	if (wantedPrimary && wantedPrimary.id !== currentPrimary?.id) {
+		const { error } = await setPrimaryImage(dress.id, /** @type {string} */ (wantedPrimary.id));
+		if (error) {
+			return { data: { dress }, error: `Dress saved, but changing the primary photo failed: ${error}` };
 		}
 	}
 
