@@ -100,9 +100,11 @@ Opened by clicking a variant in the Variants list. Same layout idea as Shopify's
 
 ## Build notes (design chat)
 Built from the canvas boards. Where the boards and the data disagreed, the data won:
-- **Options and axes stay separate.** The form has an Options block (order-time choices with a price adjustment) and a Variants block (size, colour, fabric, other). The board merged them; the schema keeps them apart. Decide which model is right before changing either.
+- **Options and variants are one thing, as designed.** Each option is an axis and variants follow it (`src/lib/stock/optionVariants`). The name picks the schema axis: Size, Colour (or Color) and Fabric map to their own; any other name is `other`, and only one custom option fits for now. Variants are never added by hand. A renamed value keeps its variant and stock, adding an option gives existing variants its first value, and a saved variant that no longer fits is archived. A value's price adjustment is added to the dress price for the variants that use it; a price typed on a variant wins.
+- **Older dresses.** Variants saved before this show their axes as options, so nothing is archived by opening them. An old order-time option such as "Dupatta style" now counts as the custom axis and will add variants the first time the options are edited. The form says how many will be added or archived before you save.
 - **Photos can't be uploaded yet.** The Upload tile is disabled with a hint. Saved photos can be removed, reordered and set primary; that is saved.
-- **Make to order lead time is a disabled placeholder** ("Saved with orders") until the columns exist. The dress still carries `made_to_order`; the form has no control for it and passes it through.
+- **Make to order is a switch** on the dress (`made_to_order`). Off, an empty rack reads as Sold out; on, the design stays orderable. The lead time fields under it are a disabled placeholder ("Saved with orders") until the columns exist.
+- **No bottom action bar.** The title and the Cancel, Save draft and Save buttons stay at the top and shrink into a slim bar when the page scrolls. Errors show under the header and in the slim bar.
 - **Quantity** is posted as a `received` movement on create and as an `adjustment` movement when edited (dress form and variant page). Nothing writes the column.
 - **Not built:** Toast, bulk Export and Delete (the selection bar only archives; delete would orphan ledger rows), a barcode field on the dress form (it lives on the variant page), a separate PricingPanel, InventoryPanel and ShippingPanel (they are cards inside `StockDressFormFields`).
 - **Currency** reads PKR everywhere, as the rest of the app does. The doc above says Rs.
