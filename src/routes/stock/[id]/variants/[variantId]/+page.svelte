@@ -354,11 +354,11 @@
 				</div>
 			</div>
 
-			{#snippet actions()}
-				<Button variant="outline" size="lg" type="button" disabled={!dirty || saving} onclick={() => load(dress.id, variant.id)}>
+			{#snippet actions(/** @type {boolean} */ compact)}
+				<Button variant="outline" size={compact ? "sm" : "lg"} type="button" disabled={!dirty || saving} onclick={() => load(dress.id, variant.id)}>
 					Discard
 				</Button>
-				<Button size="lg" type="submit" disabled={!dirty || saving}>{saving ? "Saving…" : "Save variant"}</Button>
+				<Button size={compact ? "sm" : "lg"} type="submit" disabled={!dirty || saving}>{saving ? "Saving…" : "Save variant"}</Button>
 			{/snippet}
 		</StockDressFormLayout>
 	</form>
