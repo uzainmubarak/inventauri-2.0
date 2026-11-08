@@ -66,3 +66,12 @@ CREATE POLICY "DEV ONLY: anon can read stock movements"
   ON stock_movements FOR SELECT TO anon USING (true);
 CREATE POLICY "DEV ONLY: anon can record stock movements"
   ON stock_movements FOR INSERT TO anon WITH CHECK (true);
+
+-- Settings: read + update only, mirroring the authenticated policies.
+GRANT SELECT, UPDATE ON stock_settings TO anon;
+GRANT EXECUTE ON FUNCTION next_stock_sku_number() TO anon;
+
+CREATE POLICY "DEV ONLY: anon can read stock settings"
+  ON stock_settings FOR SELECT TO anon USING (true);
+CREATE POLICY "DEV ONLY: anon can update stock settings"
+  ON stock_settings FOR UPDATE TO anon USING (true) WITH CHECK (true);

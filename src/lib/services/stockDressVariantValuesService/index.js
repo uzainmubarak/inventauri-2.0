@@ -1,7 +1,6 @@
-// Service layer for `stock_dress_variant_values` (F17). Inserting/updating/
-// deleting a row here is what triggers refresh_stock_variant_sku() in the
-// database — the parent variant's SKU is recomputed automatically as a side
-// effect. Callers never construct SKU strings themselves.
+// Service layer for `stock_dress_variant_values` (F17). Changing an axis value
+// never changes the variant's SKU: a SKU is set once (typed or generated at
+// creation) and only edited on purpose. See docs/settings.md.
 
 import { supabase } from "$lib/supabaseClient";
 

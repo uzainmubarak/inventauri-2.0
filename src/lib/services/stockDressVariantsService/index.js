@@ -5,12 +5,12 @@
 // stockMovementsService.js. Writing it directly would desync it from the
 // ledger that explains it.
 
-// NOTE: `sku` and `barcode` are likewise database-generated (see
-// refresh_stock_variant_sku() in the migration) —
-// never set it directly here. It starts null and is filled in once axis
-// values are attached via stockDressVariantValuesService.
+// NOTE: `sku` is an input. The user types it or the dress service generates it
+// from the saved format (docs/settings.md); the database never builds one.
+// A blank `barcode` takes the SKU in a database trigger and is then frozen.
 
 import { supabase } from "$lib/supabaseClient";
+import { cleanSku } from "$lib/stock/sku";
 
 /**
  * Fetch all variants for a dress, each with its axis values.
@@ -32,9 +32,8 @@ export async function listVariantsForDress(dressId) {
 }
 
 /**
- * Create a bare variant shell (no axis values yet). SKU stays null until
- * stockDressVariantValuesService.setVariantAxisValue is called at least once.
- * @param {{ dress_id: string, price_override?: number }} variant
+ * Create a bare variant shell (axis values are attached afterwards). `sku` is stored as given.
+ * @param {{ dress_id: string, sku?: string | null, price_override?: number }} variant
  * @returns {Promise<{ data: any | null, error: string | null }>}
  */
 export async function createVariant(variant) {
@@ -53,14 +52,14 @@ export async function createVariant(variant) {
 
 /**
  * @param {string} id
- * @param {{ price_override?: number | null, compare_at_price?: number | null, cost?: number | null, track_quantity?: boolean, barcode?: string | null, weight_grams?: number | null, length_cm?: number | null, width_cm?: number | null, height_cm?: number | null, status?: string }} updates
+ * @param {{ sku?: string | null, price_override?: number | null, compare_at_price?: number | null, cost?: number | null, track_quantity?: boolean, barcode?: string | null, weight_grams?: number | null, length_cm?: number | null, width_cm?: number | null, height_cm?: number | null, status?: string }} updates
  *   — a null on any price, cost or shipping field means "use the dress value"
  * @returns {Promise<{ data: any | null, error: string | null }>}
  */
 export async function updateVariant(id, updates) {
 	const { data, error } = await supabase
 		.from("stock_dress_variants")
-		.update(updates)
+		.update("sku" in updates ? { ...updates, sku: cleanSku(updates.sku) } : updates)
 		.eq("id", id)
 		.select()
 		.single();

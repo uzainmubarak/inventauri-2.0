@@ -1,8 +1,9 @@
 // Integration tests — these hit the LOCAL Supabase stack (see vitest.config.js,
 // which loads .env.local). Requires `supabase start --exclude logflare,vector`.
 // Run `supabase db reset` afterwards to clear the rows they create.
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterEach } from "vitest";
 import {
+	createStockDress,
 	createStockDressWithDetails,
 	getStockDressById,
 	updateStockDressWithDetails,
@@ -10,6 +11,8 @@ import {
 	listStockDresses,
 } from "./index.js";
 import { listMovementsForVariant, listMovementsForDress } from "$lib/services/stockMovementsService";
+import { updateStockSettings } from "$lib/services/stockSettingsService";
+import { updateVariant } from "$lib/services/stockDressVariantsService";
 
 const base = {
 	name: "Test Farshi",
@@ -223,5 +226,68 @@ describe("archiveStockDress", () => {
 		await archiveStockDress(data.dress.id);
 		const { data: after } = await getStockDressById(data.dress.id);
 		expect(after.status).toBe("archived");
+	});
+});
+
+// SKUs are an input. The frontend generates them from stock_settings (or the
+// user types them); the database never does.
+describe("sku generation", () => {
+	const defaults = /** @type {const} */ ({ sku_autogenerate: true, sku_prefix: "GSP", sku_separator: "-", sku_digits: 5 });
+	const unique = () => crypto.randomUUID().slice(0, 8).toUpperCase();
+	const sizeM = { price_override: null, quantity: 0, axisValues: [{ axis: "size", value: "M" }] };
+
+	afterEach(() => updateStockSettings(defaults));
+
+	it("builds the dress and variant sku from the saved format", async () => {
+		await updateStockSettings({ sku_prefix: "TST", sku_separator: "_", sku_digits: 4 });
+		const { data } = await create({ variants: [sizeM] });
+		expect(data.dress.sku).toMatch(/^TST_\d{4,}$/);
+		const { data: full } = await getStockDressById(data.dress.id);
+		expect(full.stock_dress_variants[0].sku).toBe(`${data.dress.sku}_M`);
+	});
+
+	it("keeps a hand-typed dress sku and derives the variants from it", async () => {
+		const sku = `HAND-${unique()}`;
+		const { data } = await create({ dress: { ...base, sku }, variants: [sizeM] });
+		expect(data.dress.sku).toBe(sku);
+		const { data: full } = await getStockDressById(data.dress.id);
+		expect(full.stock_dress_variants[0].sku).toBe(`${sku}-M`);
+	});
+
+	it("generates nothing when autogenerate is off", async () => {
+		await updateStockSettings({ sku_autogenerate: false });
+		const { data } = await create({ variants: [sizeM] });
+		expect(data.dress.sku).toBeNull();
+		const { data: full } = await getStockDressById(data.dress.id);
+		expect(full.stock_dress_variants[0].sku).toBeNull();
+		expect(full.stock_dress_variants[0].barcode).toBeNull();
+	});
+
+	it("keeps hand-typed skus when autogenerate is off", async () => {
+		await updateStockSettings({ sku_autogenerate: false });
+		const sku = `HAND-${unique()}`;
+		const { data } = await create({
+			dress: { ...base, sku },
+			variants: [{ ...sizeM, sku: `${sku}-MED` }],
+		});
+		expect(data.dress.sku).toBe(sku);
+		const { data: full } = await getStockDressById(data.dress.id);
+		expect(full.stock_dress_variants[0].sku).toBe(`${sku}-MED`);
+	});
+
+	it("defaults the barcode to the sku and does not follow a later sku edit", async () => {
+		const { data } = await create({ variants: [sizeM] });
+		const { data: full } = await getStockDressById(data.dress.id);
+		const variant = full.stock_dress_variants[0];
+		expect(variant.barcode).toBe(variant.sku);
+
+		await updateVariant(variant.id, { sku: `RENAMED-${unique()}` });
+		const { data: after } = await getStockDressById(data.dress.id);
+		expect(after.stock_dress_variants[0].barcode).toBe(variant.sku);
+	});
+
+	it("rejects a blank sku at the database", async () => {
+		const { error } = await createStockDress({ ...base, sku: "   " });
+		expect(error).toBeTruthy();
 	});
 });
