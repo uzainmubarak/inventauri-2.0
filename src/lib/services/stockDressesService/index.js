@@ -16,9 +16,12 @@ import {
 	createOption,
 	addOptionValue,
 	deleteOption,
+	deleteOptionValue,
+	updateOption,
+	updateOptionValue,
 } from "$lib/services/stockDressOptionsService";
 import { createVariant, updateVariant, archiveVariant } from "$lib/services/stockDressVariantsService";
-import { setVariantAxisValue } from "$lib/services/stockDressVariantValuesService";
+import { setVariantAxisValue, removeVariantAxisValue } from "$lib/services/stockDressVariantValuesService";
 import { recordMovement } from "$lib/services/stockMovementsService";
 
 /**
@@ -109,7 +112,7 @@ export async function createStockDress(dress) {
  * Update fields on an existing stock dress. Never pass `sku` — it is
  * database-generated and immutable after creation.
  * @param {string} id
- * @param {{ name: string, garment_type: string, category: string, subcategory?: string | null, description?: string | null, notes?: string | null, tags?: string[], price: number, compare_at_price?: number | null, cost?: number | null, track_quantity?: boolean, made_to_order?: boolean, weight_grams?: number | null, length_cm?: number | null, width_cm?: number | null, height_cm?: number | null, status?: string }} updates
+ * @param {Partial<{ name: string, garment_type: string, category: string, subcategory?: string | null, description?: string | null, notes?: string | null, tags?: string[], price: number, compare_at_price?: number | null, cost?: number | null, track_quantity?: boolean, made_to_order?: boolean, weight_grams?: number | null, length_cm?: number | null, width_cm?: number | null, height_cm?: number | null, status?: string }>} updates
  * @returns {Promise<{ data: any | null, error: string | null }>}
  */
 export async function updateStockDress(id, updates) {
@@ -171,10 +174,11 @@ export async function createStockDressWithDetails(formData) {
 		}
 	}
 
-	for (const option of formData.options ?? []) {
+	for (const [optionIndex, option] of (formData.options ?? []).entries()) {
 		const { data: createdOption, error: optionError } = await createOption({
 			dress_id: dress.id,
 			name: option.name,
+			position: optionIndex,
 		});
 		if (optionError) {
 			return {
@@ -182,8 +186,8 @@ export async function createStockDressWithDetails(formData) {
 				error: `Dress created (${dress.sku}), but option "${option.name}" failed: ${optionError}`,
 			};
 		}
-		for (const value of option.values) {
-			const { error } = await addOptionValue({ ...value, option_id: createdOption.id });
+		for (const [valueIndex, value] of option.values.entries()) {
+			const { error } = await addOptionValue({ ...value, position: valueIndex, option_id: createdOption.id });
 			if (error) {
 				return {
 					data: { dress },
@@ -335,16 +339,24 @@ export async function updateStockDressWithDetails(dressId, formData) {
 			}
 		}
 	}
-	for (const option of formData.options.filter((o) => !o.id)) {
+	for (const [optionIndex, option] of formData.options.entries()) {
+		if (option.id) {
+			const error = await syncSavedOption(option, optionIndex, formData.currentOptions);
+			if (error) {
+				return { data: { dress }, error: `Dress saved, but updating option "${option.name}" failed: ${error}` };
+			}
+			continue;
+		}
 		const { data: createdOption, error: optionError } = await createOption({
 			dress_id: dress.id,
 			name: option.name,
+			position: optionIndex,
 		});
 		if (optionError) {
 			return { data: { dress }, error: `Dress saved, but adding option "${option.name}" failed: ${optionError}` };
 		}
-		for (const value of option.values) {
-			const { error } = await addOptionValue({ ...value, option_id: createdOption.id });
+		for (const [valueIndex, value] of option.values.entries()) {
+			const { error } = await addOptionValue({ ...value, position: valueIndex, option_id: createdOption.id });
 			if (error) {
 				return { data: { dress }, error: `Dress saved, but adding an option value failed: ${error}` };
 			}
@@ -370,6 +382,12 @@ export async function updateStockDressWithDetails(dressId, formData) {
 			});
 			if (error) {
 				return { data: { dress }, error: `Dress saved, but updating a variant failed: ${error}` };
+			}
+			// A renamed option value keeps its variant. The new values replace the
+			// old ones, which also refreshes the SKU in the database.
+			const axisError = await syncVariantAxes(variant, formData.currentVariants);
+			if (axisError) {
+				return { data: { dress }, error: `Dress saved, but updating a variant's options failed: ${axisError}` };
 			}
 			continue;
 		}
@@ -403,4 +421,79 @@ export async function updateStockDressWithDetails(dressId, formData) {
 	}
 
 	return { data: { dress }, error: null };
+}
+
+/**
+ * Bring one saved option (its name, place and values) in line with the form.
+ * Values with an id are updated if they changed, values without one are added,
+ * and saved values missing from the form are removed.
+ * @param {{ id?: string, name: string, values: { id?: string, value: string, price_adjustment?: number }[] }} option
+ * @param {number} position
+ * @param {any[]} currentOptions
+ * @returns {Promise<string | null>} an error message, or null
+ */
+async function syncSavedOption(option, position, currentOptions) {
+	const optionId = /** @type {string} */ (option.id);
+	const current = currentOptions.find((o) => o.id === optionId);
+	if (current && (current.name !== option.name || (current.position ?? 0) !== position)) {
+		const { error } = await updateOption(optionId, { name: option.name, position });
+		if (error) return error;
+	}
+
+	/** @type {any[]} */
+	const currentValues = current?.stock_dress_option_values ?? [];
+	const keptValueIds = new Set(option.values.filter((v) => v.id).map((v) => v.id));
+	for (const existing of currentValues) {
+		if (!keptValueIds.has(existing.id)) {
+			const { error } = await deleteOptionValue(existing.id);
+			if (error) return error;
+		}
+	}
+	for (const [valueIndex, value] of option.values.entries()) {
+		const adjustment = value.price_adjustment ?? 0;
+		if (!value.id) {
+			const { error } = await addOptionValue({ option_id: optionId, value: value.value, price_adjustment: adjustment, position: valueIndex });
+			if (error) return error;
+			continue;
+		}
+		const before = currentValues.find((v) => v.id === value.id);
+		const changed =
+			before &&
+			(before.value !== value.value ||
+				Number(before.price_adjustment) !== Number(adjustment) ||
+				(before.position ?? 0) !== valueIndex);
+		if (changed) {
+			const { error } = await updateOptionValue(value.id, { value: value.value, price_adjustment: adjustment, position: valueIndex });
+			if (error) return error;
+		}
+	}
+	return null;
+}
+
+/**
+ * Make a saved variant's axis values match the form: remove axes it no longer
+ * has, and set the ones that are new or changed.
+ * @param {{ id?: string, axisValues: { axis: 'size' | 'color' | 'fabric' | 'other', value: string }[] }} variant
+ * @param {any[]} currentVariants
+ * @returns {Promise<string | null>} an error message, or null
+ */
+async function syncVariantAxes(variant, currentVariants) {
+	const variantId = /** @type {string} */ (variant.id);
+	const current = currentVariants.find((v) => v.id === variantId);
+	const before = new Map((current?.stock_dress_variant_values ?? []).map(/** @param {any} av */ (av) => [av.axis, av.value]));
+	const after = new Map(variant.axisValues.map((av) => [av.axis, av.value]));
+
+	for (const axis of before.keys()) {
+		if (!after.has(axis)) {
+			const { error } = await removeVariantAxisValue(variantId, axis);
+			if (error) return error;
+		}
+	}
+	for (const [axis, value] of after) {
+		if (before.get(axis) !== value) {
+			const { error } = await setVariantAxisValue({ variant_id: variantId, axis, value });
+			if (error) return error;
+		}
+	}
+	return null;
 }

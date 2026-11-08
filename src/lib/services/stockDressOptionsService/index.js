@@ -1,6 +1,6 @@
 // Service layer for `stock_dress_options` and `stock_dress_option_values`
-// (F17). Options are client-facing customization choices at order time
-// (e.g. "Dupatta Style" -> "Plain"/"Painted") — not stocked, not SKU'd.
+// (F17). An option is a name and its values (Size: S, M, L), and each value
+// can add to the price. The values a variant is built from are its axes.
 
 import { supabase } from "$lib/supabaseClient";
 
@@ -85,6 +85,41 @@ export async function deleteOptionValue(optionValueId) {
 
 	if (error) {
 		console.error("deleteOptionValue failed:", error.message);
+		return { data: null, error: error.message };
+	}
+	return { data: null, error: null };
+}
+
+/**
+ * Rename an option or move it in the list.
+ * @param {string} optionId
+ * @param {{ name?: string, position?: number }} updates
+ * @returns {Promise<{ data: null, error: string | null }>}
+ */
+export async function updateOption(optionId, updates) {
+	const { error } = await supabase.from("stock_dress_options").update(updates).eq("id", optionId);
+
+	if (error) {
+		console.error("updateOption failed:", error.message);
+		return { data: null, error: error.message };
+	}
+	return { data: null, error: null };
+}
+
+/**
+ * Rename a value, change what it adds to the price, or move it in the list.
+ * @param {string} optionValueId
+ * @param {{ value?: string, price_adjustment?: number, position?: number }} updates
+ * @returns {Promise<{ data: null, error: string | null }>}
+ */
+export async function updateOptionValue(optionValueId, updates) {
+	const { error } = await supabase
+		.from("stock_dress_option_values")
+		.update(updates)
+		.eq("id", optionValueId);
+
+	if (error) {
+		console.error("updateOptionValue failed:", error.message);
 		return { data: null, error: error.message };
 	}
 	return { data: null, error: null };
