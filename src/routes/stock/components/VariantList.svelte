@@ -237,7 +237,15 @@
 										<span class="font-medium">{describe(variant)}</span>
 									{/if}
 								</Table.Cell>
-								<Table.Cell class="text-muted-foreground px-3 font-mono text-xs">{variant.sku ?? "Set on save"}</Table.Cell>
+								<Table.Cell class="px-3">
+									<Input
+										class="h-8 w-44 font-mono text-xs"
+										aria-label="SKU for {describe(variant)}"
+										placeholder="Auto"
+										value={variant.sku ?? ""}
+										oninput={(e) => updateVariant(i, { sku: e.currentTarget.value })}
+									/>
+								</Table.Cell>
 								<Table.Cell class="px-3">
 									<NumberField
 										class="ml-auto h-8 w-40"
