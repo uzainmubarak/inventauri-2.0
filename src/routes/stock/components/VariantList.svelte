@@ -77,9 +77,22 @@
 		const have = new Set(variants.map((v) => variantSignature(v.axisValues ?? [])));
 
 		// A variant that was removed and is wanted again comes back with its history.
-		const kept = variants.map((v) =>
-			v.status === "archived" && wanted.has(variantSignature(v.axisValues ?? [])) ? { ...v, status: "active" } : v,
-		);
+		const shape = new Set(combinations[0]?.map((av) => av.axis));
+		// A generated row built from different axes (e.g. size only, after colour was added) is
+		// stale: unsaved ones go, saved ones are archived so their history stays.
+		const stale = (/** @type {any} */ v) =>
+			!v.manual &&
+			v.status !== "archived" &&
+			((v.axisValues ?? []).length !== shape.size || (v.axisValues ?? []).some((/** @type {any} */ av) => !shape.has(av.axis)));
+		const kept = variants
+			.filter((v) => !(stale(v) && !v.id))
+			.map((v) =>
+				stale(v)
+					? { ...v, status: "archived" }
+					: v.status === "archived" && wanted.has(variantSignature(v.axisValues ?? []))
+						? { ...v, status: "active" }
+						: v,
+			);
 		const added = combinations
 			.filter((axisValues) => !have.has(variantSignature(axisValues)))
 			.map((axisValues) => ({ key: newUid(), axisValues, quantity: 0, price_override: null, status: "active" }));
@@ -195,7 +208,7 @@
 				{/if}
 				<Button onclick={generate} disabled={!canGenerate}>Generate variants</Button>
 			</div>
-			<p class="text-muted-foreground text-[13px]">Generate adds the combinations that are missing and never removes a variant.</p>
+			<p class="text-muted-foreground text-[13px]">Generate adds the combinations that are missing and replaces rows built from other axes.</p>
 			{#if matrixNotice}
 				<p class="bg-accent text-accent-foreground rounded-lg px-3 py-2 text-[13px]">{matrixNotice}</p>
 			{/if}
