@@ -171,13 +171,16 @@ export async function archiveStockDress(id) {
  * and each variant get a SKU built from the saved format (src/lib/stock/sku). With
  * autogenerate off nothing is generated and a blank SKU stays null.
  *
+ * Opening stock: a variant's `quantity` is recorded as a 'received' movement
+ * (it never writes the column); `opening_quantity` does the same for a dress
+ * with no variants.
+ *
  * @param {{
  *   dress: { sku?: string | null, name: string, garment_type: string, category: string, subcategory?: string | null, description?: string | null, notes?: string | null, tags?: string[], price: number, compare_at_price?: number | null, cost?: number | null, track_quantity?: boolean, made_to_order?: boolean, weight_grams?: number | null, length_cm?: number | null, width_cm?: number | null, height_cm?: number | null, status?: string },
  *   images?: { image_url: string, is_primary?: boolean, caption?: string }[],
  *   options?: { name: string, values: { value: string, price_adjustment?: number }[] }[],
- *   variants?: { sku?: string | null, price_override?: number, quantity?: number, axisValues: { axis: 'size' | 'color' | 'fabric' | 'other', value: string }[] }[]
- *     — `quantity` here is OPENING stock, recorded as a 'received' movement; it never writes the column
- *   opening_quantity?: number — OPENING stock for a dress with no variants; recorded as a movement on the dress
+ *   variants?: { sku?: string | null, price_override?: number, quantity?: number, axisValues: { axis: 'size' | 'color' | 'fabric' | 'other', value: string }[] }[],
+ *   opening_quantity?: number
  * }} formData
  * @returns {Promise<{ data: { dress: any } | null, error: string | null }>}
  */
@@ -312,6 +315,9 @@ export async function createStockDressWithDetails(formData) {
  * failure the returned error says which step failed so the caller can
  * decide whether to retry or investigate the partial state.
  *
+ * A variant's `quantity` is only read for NEW variants (opening stock); on an
+ * existing variant it is ignored, since only the ledger moves it.
+ *
  * @param {string} dressId
  * @param {{
  *   dress: { name: string, garment_type: string, category: string, subcategory?: string | null, description?: string | null, notes?: string | null, tags?: string[], price: number, compare_at_price?: number | null, cost?: number | null, track_quantity?: boolean, made_to_order?: boolean, weight_grams?: number | null, length_cm?: number | null, width_cm?: number | null, height_cm?: number | null, status?: string },
@@ -321,7 +327,6 @@ export async function createStockDressWithDetails(formData) {
  *   options: { id?: string, name: string, values: { value: string, price_adjustment?: number }[] }[],
  *   currentVariants: { id: string }[],
  *   variants: { id?: string, sku?: string | null, price_override?: number, quantity?: number, axisValues: { axis: 'size' | 'color' | 'fabric' | 'other', value: string }[] }[]
- *     — `quantity` is only read for NEW variants (opening stock); on an existing variant it is ignored, since only the ledger moves it
  * }} formData
  * @returns {Promise<{ data: { dress: any } | null, error: string | null }>}
  */
