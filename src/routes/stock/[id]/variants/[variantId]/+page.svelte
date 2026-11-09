@@ -39,6 +39,7 @@
 		cost: /** @type {number | string | null} */ (null),
 		trackQuantity: true,
 		quantity: /** @type {number | string | null} */ (0),
+		sku: "",
 		barcode: "",
 		weight: /** @type {number | string | null} */ (null),
 		length: /** @type {number | string | null} */ (null),
@@ -90,6 +91,7 @@
 			cost: found.cost,
 			trackQuantity: found.track_quantity,
 			quantity: found.quantity ?? 0,
+			sku: found.sku ?? "",
 			barcode: found.barcode ?? "",
 			weight: found.weight_grams,
 			length: found.length_cm,
@@ -132,6 +134,8 @@
 		const barcode = form.barcode.trim();
 		const { error } = await updateVariant(variant.id, {
 			status: form.status,
+			// A blank SKU is allowed (the service stores null).
+			sku: form.sku,
 			price_override: num(form.priceOverride),
 			compare_at_price: num(form.compareAt),
 			cost: num(form.cost),
@@ -323,8 +327,8 @@
 							<Field label="Quantity on hand" for="variant-qty" hint="A change is saved as an adjustment in the stock history.">
 								<NumberField id="variant-qty" min="0" disabled={!form.trackQuantity} bind:value={form.quantity} />
 							</Field>
-							<Field label="SKU" for="variant-sku" hint="Set from the dress and its option values.">
-								<Input id="variant-sku" value={variant.sku ?? ""} readonly class="bg-secondary font-mono text-[13px]" />
+							<Field label="SKU" for="variant-sku" hint="Leave empty for none. Changing it does not change the barcode.">
+								<Input id="variant-sku" bind:value={form.sku} placeholder="No SKU" class="font-mono text-[13px]" />
 							</Field>
 							<Field label="Barcode" for="variant-barcode" hint="Defaults to the SKU. Changing it breaks labels already printed.">
 								<Input id="variant-barcode" bind:value={form.barcode} placeholder="Same as SKU" class="font-mono text-[13px]" />
