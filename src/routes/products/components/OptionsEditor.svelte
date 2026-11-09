@@ -1,13 +1,13 @@
 <script>
 	import { Button } from "$lib/ui/button";
 	import PlusIcon from "@lucide/svelte/icons/plus";
-	import { newUid, optionIssues } from "$lib/stock/options";
+	import { newUid, optionIssues } from "$lib/products/options";
 	import OptionRow from "./OptionRow.svelte";
 
 	/**
 	 * The order-time options of a dress, each edited in place.
 	 * Props: `options` (bindable).
-	 * @type {{ options: import("$lib/stock/options").Option[] }}
+	 * @type {{ options: import("$lib/products/options").Option[] }}
 	 */
 	let { options = $bindable() } = $props();
 

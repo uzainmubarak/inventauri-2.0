@@ -214,12 +214,12 @@
 {:else if loadError}
 	<div class="p-12">
 		<p class="text-destructive text-sm">Error: {loadError}</p>
-		<Button variant="outline" class="mt-4" href="/stock">Back to stock</Button>
+		<Button variant="outline" class="mt-4" href="/products">Back to products</Button>
 	</div>
 {:else if variant && dress}
 	<form class="flex min-h-0 flex-1 flex-col" onsubmit={handleSubmit}>
 		<StockDressFormLayout
-			crumbs={[{ label: dress.name, href: `/stock/${dress.id}/edit` }, { label: nameOf(variant) }]}
+			crumbs={[{ label: dress.name, href: `/products/${dress.id}/edit` }, { label: nameOf(variant) }]}
 			title={nameOf(variant)}
 			error={saveError}
 			note={dirty ? "Unsaved changes" : ""}
@@ -227,7 +227,7 @@
 			<div class="grid items-start gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
 				<aside class="bg-card ring-foreground/10 flex flex-col overflow-hidden rounded-xl ring-1">
 					<a
-						href="/stock/{dress.id}/edit"
+						href="/products/{dress.id}/edit"
 						class="border-border-light hover:bg-background flex items-center gap-2 border-b p-4 text-[13px] font-medium"
 					>
 						<ArrowLeftIcon class="size-3.5" />{dress.name}
@@ -237,7 +237,7 @@
 						{#each siblings as v (v.id)}
 							{@const thumb = thumbOf(v)}
 							<a
-								href="/stock/{dress.id}/variants/{v.id}"
+								href="/products/{dress.id}/variants/{v.id}"
 								aria-current={v.id === variant.id ? "page" : undefined}
 								class="hover:bg-background flex items-center gap-3 px-4 py-2.5 {v.id === variant.id ? 'bg-accent shadow-[inset_2px_0_0_var(--gold)]' : ''}"
 							>

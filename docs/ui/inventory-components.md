@@ -1,6 +1,6 @@
 # Inventory UI — sub-components
 
-Scope: the Stock module (`src/routes/stock/`). Build each one as a primitive or a
+Scope: the Products module (`src/routes/products/`). Build each one as a primitive or a
 feature component, one folder per component. Status: `have` = exists, `restyle` = exists
 but needs the design pass, `new` = to build.
 
@@ -28,7 +28,7 @@ but needs the design pass, `new` = to build.
 | Empty state | have | No dresses, no matches |
 | Toast | new (not built) | "Saved", errors |
 
-## Feature components (`src/routes/stock/components/`)
+## Feature components (`src/routes/products/components/`)
 
 | Component | Status | Used for |
 |---|---|---|

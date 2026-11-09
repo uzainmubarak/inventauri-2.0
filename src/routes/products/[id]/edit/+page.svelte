@@ -4,8 +4,8 @@
 	import { getStockDressById, updateStockDressWithDetails } from "$lib/services/stockDressesService";
 	import { recordMovement } from "$lib/services/stockMovementsService";
 	import { Button } from "$lib/ui/button";
-	import { optionIssues, optionsForSave, optionsFromDress } from "$lib/stock/options";
-	import { findDuplicateVariants, variantsForSave } from "$lib/stock/variantMatrix";
+	import { optionIssues, optionsForSave, optionsFromDress } from "$lib/products/options";
+	import { findDuplicateVariants, variantsForSave } from "$lib/products/variantMatrix";
 	import StockDressFormFields from "../../components/StockDressFormFields.svelte";
 	import StockDressFormLayout from "../../components/StockDressFormLayout.svelte";
 
@@ -189,7 +189,7 @@
 		}
 
 		saving = false;
-		goto("/stock");
+		goto("/products");
 	}
 
 	/** @param {SubmitEvent} e */
@@ -257,7 +257,7 @@
 			/>
 
 			{#snippet actions(/** @type {boolean} */ compact)}
-				<Button variant="outline" size={compact ? "sm" : "lg"} href="/stock">Cancel</Button>
+				<Button variant="outline" size={compact ? "sm" : "lg"} href="/products">Cancel</Button>
 				{#if originalStatus === "draft"}
 					<Button variant="secondary" size={compact ? "sm" : "lg"} type="button" onclick={handleSaveDraft} disabled={saving}>
 						{saving ? "Saving…" : "Save draft"}

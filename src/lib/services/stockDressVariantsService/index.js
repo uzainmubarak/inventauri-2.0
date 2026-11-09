@@ -10,7 +10,7 @@
 // A blank `barcode` takes the SKU in a database trigger and is then frozen.
 
 import { supabase } from "$lib/supabaseClient";
-import { cleanSku } from "$lib/stock/sku";
+import { cleanSku } from "$lib/products/sku";
 
 /**
  * Fetch all variants for a dress, each with its axis values.

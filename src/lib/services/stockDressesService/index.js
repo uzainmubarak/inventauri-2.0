@@ -24,7 +24,7 @@ import { createVariant, updateVariant, archiveVariant } from "$lib/services/stoc
 import { removeVariantAxisValue, setVariantAxisValue } from "$lib/services/stockDressVariantValuesService";
 import { recordMovement } from "$lib/services/stockMovementsService";
 import { getStockSettings, nextSkuNumber } from "$lib/services/stockSettingsService";
-import { cleanSku, formatDressSku, formatVariantSku } from "$lib/stock/sku";
+import { cleanSku, formatDressSku, formatVariantSku } from "$lib/products/sku";
 
 /**
  * SKU for a new variant: what the user typed, else (with autogenerate on) the dress
@@ -168,7 +168,7 @@ export async function archiveStockDress(id) {
  * clean up manually if needed.
  *
  * SKUs: what the user typed is kept. Otherwise, when Settings has autogenerate on, the dress
- * and each variant get a SKU built from the saved format (src/lib/stock/sku). With
+ * and each variant get a SKU built from the saved format (src/lib/products/sku). With
  * autogenerate off nothing is generated and a blank SKU stays null.
  *
  * Opening stock: a variant's `quantity` is recorded as a 'received' movement

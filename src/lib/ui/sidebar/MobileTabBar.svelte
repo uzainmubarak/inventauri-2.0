@@ -4,7 +4,7 @@
 	const TABS = [
 		{ name: "Dashboard", link: "/", icon: "📊" },
 		{ name: "Orders", link: "/orders", icon: "🛒" },
-		{ name: "Stock", link: "/stock", icon: "👗" },
+		{ name: "Products", link: "/products", icon: "👗" },
 		{ name: "Karigar", link: "/karigar-dashboard", icon: "🙍‍♂️" },
 	];
 

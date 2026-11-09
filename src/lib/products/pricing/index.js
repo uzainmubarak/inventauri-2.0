@@ -1,5 +1,5 @@
 /**
- * Pricing arithmetic for the Stock module.
+ * Pricing arithmetic for the Products module.
  *
  * profit and margin are deliberately NOT database columns — they are derived
  * from price and cost, and a stored copy would go stale the moment either

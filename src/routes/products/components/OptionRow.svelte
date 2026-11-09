@@ -7,7 +7,7 @@
 	import TrashIcon from "@lucide/svelte/icons/trash-2";
 	import XIcon from "@lucide/svelte/icons/x";
 	import ImageIcon from "@lucide/svelte/icons/image";
-	import { newUid } from "$lib/stock/options";
+	import { newUid } from "$lib/products/options";
 
 	/**
 	 * One option, such as Dupatta style. Closed it reads as a name and its
@@ -20,7 +20,7 @@
 	 * Props: `option` (bindable), `issue` (what is wrong with it, if anything),
 	 * `onRemove`.
 	 * @type {{
-	 *   option: import("$lib/stock/options").Option,
+	 *   option: import("$lib/products/options").Option,
 	 *   issue: string | null,
 	 *   onRemove: () => void
 	 * }}
@@ -86,7 +86,7 @@
 	}
 </script>
 
-{#snippet photo(/** @type {import("$lib/stock/options").OptionValue} */ value)}
+{#snippet photo(/** @type {import("$lib/products/options").OptionValue} */ value)}
 	{#if value.image_url}
 		<span class="relative inline-flex size-10 shrink-0">
 			<img src={value.image_url} alt="" class="ring-border size-10 rounded-[10px] object-cover ring-1" />

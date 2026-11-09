@@ -2,8 +2,8 @@
 	import { goto } from "$app/navigation";
 	import { createStockDressWithDetails } from "$lib/services/stockDressesService";
 	import { Button } from "$lib/ui/button";
-	import { optionIssues, optionsForSave } from "$lib/stock/options";
-	import { findDuplicateVariants, variantsForSave } from "$lib/stock/variantMatrix";
+	import { optionIssues, optionsForSave } from "$lib/products/options";
+	import { findDuplicateVariants, variantsForSave } from "$lib/products/variantMatrix";
 	import StockDressFormFields from "../components/StockDressFormFields.svelte";
 	import StockDressFormLayout from "../components/StockDressFormLayout.svelte";
 
@@ -89,7 +89,7 @@
 			error = createError;
 			return;
 		}
-		goto("/stock");
+		goto("/products");
 	}
 
 	/** @param {SubmitEvent} e */
@@ -150,7 +150,7 @@
 		/>
 
 		{#snippet actions(/** @type {boolean} */ compact)}
-			<Button variant="outline" size={compact ? "sm" : "lg"} href="/stock">Cancel</Button>
+			<Button variant="outline" size={compact ? "sm" : "lg"} href="/products">Cancel</Button>
 			<Button variant="secondary" size={compact ? "sm" : "lg"} type="button" onclick={handleSaveDraft} disabled={saving}>
 				{saving ? "Saving…" : "Save draft"}
 			</Button>

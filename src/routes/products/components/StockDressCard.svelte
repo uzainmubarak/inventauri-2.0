@@ -1,6 +1,6 @@
 <script>
-	import { effectivePrice } from "$lib/stock/pricing";
-	import { availabilityState, availabilityLabel } from "$lib/stock/availability";
+	import { effectivePrice } from "$lib/products/pricing";
+	import { availabilityState, availabilityLabel } from "$lib/products/availability";
 
 	/** @type {{ dress: any, onSelect: (dress: any) => void }} */
 	let { dress, onSelect } = $props();

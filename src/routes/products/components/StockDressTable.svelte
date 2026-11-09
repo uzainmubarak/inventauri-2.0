@@ -173,7 +173,7 @@
 							</DropdownMenu.Trigger>
 							<DropdownMenu.Content>
 								<DropdownMenu.Item onSelect={() => onOpen(dress)}>View details</DropdownMenu.Item>
-								<DropdownMenu.Item onSelect={() => goto(`/stock/${dress.id}/edit`)}>Edit</DropdownMenu.Item>
+								<DropdownMenu.Item onSelect={() => goto(`/products/${dress.id}/edit`)}>Edit</DropdownMenu.Item>
 								<DropdownMenu.Item
 									variant="destructive"
 									disabled={dress.status === "archived"}

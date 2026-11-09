@@ -48,7 +48,7 @@ Show a live preview under the fields, worked out from what is typed (not saved u
 ### What is already built
 - Table `stock_settings`, one row: `sku_autogenerate`, `sku_prefix`, `sku_separator`, `sku_digits`.
 - `src/lib/services/stockSettingsService`: `getStockSettings`, `updateStockSettings`, `nextSkuNumber`. The page reads with the first and saves with the second, sending only the fields that changed.
-- `src/lib/stock/sku`: builds the strings. The dress form's save (`createStockDressWithDetails`, `updateStockDressWithDetails`) applies it.
+- `src/lib/products/sku`: builds the strings. The dress form's save (`createStockDressWithDetails`, `updateStockDressWithDetails`) applies it.
 - The database never builds a SKU. It only hands out the next number (`next_stock_sku_number()`).
 - Any signed-in user can change this today. Restrict it to admins when roles exist.
 

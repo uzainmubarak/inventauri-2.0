@@ -9,13 +9,13 @@
 	import PlusIcon from "@lucide/svelte/icons/plus";
 	import XIcon from "@lucide/svelte/icons/x";
 	import { getStockSettings } from "$lib/services/stockSettingsService";
-	import { newUid } from "$lib/stock/options";
+	import { newUid } from "$lib/products/options";
 	import {
 		axesOfVariants,
 		findDuplicateVariants,
 		generateVariantMatrix,
 		variantSignature,
-	} from "$lib/stock/variantMatrix";
+	} from "$lib/products/variantMatrix";
 
 	/**
 	 * Variants are what hangs on the rack: each one is counted and gets its own
@@ -331,7 +331,7 @@
 							<Table.Row class="h-14">
 								<Table.Cell class="px-3">
 									{#if variant.id && dressId}
-										<a class="font-medium underline-offset-4 hover:underline" href="/stock/{dressId}/variants/{variant.id}">{describe(variant)}</a>
+										<a class="font-medium underline-offset-4 hover:underline" href="/products/{dressId}/variants/{variant.id}">{describe(variant)}</a>
 									{:else}
 										<span class="font-medium">{describe(variant)}</span>
 									{/if}

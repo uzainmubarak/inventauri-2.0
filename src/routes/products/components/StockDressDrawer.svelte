@@ -5,8 +5,8 @@
 	import ChevronRightIcon from "@lucide/svelte/icons/chevron-right";
 	import { getStockDressById } from "$lib/services/stockDressesService";
 	import { listMovementsForDress } from "$lib/services/stockMovementsService";
-	import { summariseDress } from "$lib/stock/dressSummary";
-	import { computeProfit, computeMargin } from "$lib/stock/pricing";
+	import { summariseDress } from "$lib/products/dressSummary";
+	import { computeProfit, computeMargin } from "$lib/products/pricing";
 	import StatusBadge from "./StatusBadge.svelte";
 
 	/**
@@ -94,7 +94,7 @@
 					{#if summary}<StatusBadge state={summary.state} />{/if}
 				</Sheet.Description>
 			</div>
-			<Button variant="outline" href="/stock/{dress.id}/edit">Edit</Button>
+			<Button variant="outline" href="/products/{dress.id}/edit">Edit</Button>
 		</Sheet.Header>
 
 		<div class="flex flex-1 flex-col gap-8 overflow-y-auto px-6 py-6">
@@ -216,7 +216,7 @@
 						<div class="border-border divide-border-light flex flex-col divide-y overflow-hidden rounded-xl border">
 							{#each variants as variant (variant.id)}
 								<a
-									href="/stock/{dress.id}/variants/{variant.id}"
+									href="/products/{dress.id}/variants/{variant.id}"
 									class="hover:bg-background grid h-14 grid-cols-[1fr_auto_auto] items-center gap-4 px-4"
 								>
 									<span class="flex min-w-0 flex-col gap-0.5">

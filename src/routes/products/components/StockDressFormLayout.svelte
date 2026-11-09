@@ -75,7 +75,7 @@
 			<div class="flex min-w-0 flex-col gap-2">
 				<nav aria-label="Breadcrumb" class="text-muted-foreground text-[13px]">
 					<ol class="flex flex-wrap items-center gap-x-1.5">
-						{#each [{ label: "Stock", href: "/stock" }, ...crumbs] as item, i (i)}
+						{#each [{ label: "Stock", href: "/products" }, ...crumbs] as item, i (i)}
 							{#if i > 0}<li aria-hidden="true">/</li>{/if}
 							<li>
 								{#if item.href}

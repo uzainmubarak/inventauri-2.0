@@ -24,13 +24,13 @@
 		</div>
 
 		<div class="summary-card">
-			<div class="sc-label">Stock Dresses</div>
+			<div class="sc-label">Products</div>
 			<div class="sc-value">{dressCount ?? "—"}</div>
 		</div>
 
 		<p class="placeholder-note">
 			Full dashboard (order summary, production overview) is a future module.
-			<a href="/stock">Go to Stock Dresses →</a>
+			<a href="/products">Go to Products →</a>
 		</p>
 	</div>
 </div>

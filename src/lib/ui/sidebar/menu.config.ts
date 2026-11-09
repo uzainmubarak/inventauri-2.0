@@ -33,9 +33,9 @@ export const MENU_CONFIG: MenuSection[] = [
     ],
   },
   {
-    label: "Stock",
+    label: "Products",
     items: [
-      { name: "Stock", link: "/stock", icon: "📦" },
+      { name: "Products", link: "/products", icon: "📦" },
     ],
   },
   {

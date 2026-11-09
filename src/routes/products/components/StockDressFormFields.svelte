@@ -10,9 +10,9 @@
 	import { Label } from "$lib/ui/label";
 	import { Field } from "$lib/ui/field";
 	import ChevronDownIcon from "@lucide/svelte/icons/chevron-down";
-	import { computeProfit, computeMargin } from "$lib/stock/pricing";
-	import { normaliseTags } from "$lib/stock/tags";
-	import { availabilityState } from "$lib/stock/availability";
+	import { computeProfit, computeMargin } from "$lib/products/pricing";
+	import { normaliseTags } from "$lib/products/tags";
+	import { availabilityState } from "$lib/products/availability";
 	import { listGarmentTypes } from "$lib/services/stockDressesService";
 	import FormSection from "./FormSection.svelte";
 	import OptionsEditor from "./OptionsEditor.svelte";
@@ -20,7 +20,7 @@
 	import StatusBadge from "./StatusBadge.svelte";
 
 	/**
-	 * Shared field markup for both /stock/new (create) and /stock/[id]/edit
+	 * Shared field markup for both /products/new (create) and /products/[id]/edit
 	 * (edit): the cards on the left and the status and summary on the right.
 	 * The parent page owns all the state via bindable props and decides what
 	 * "Save" means.

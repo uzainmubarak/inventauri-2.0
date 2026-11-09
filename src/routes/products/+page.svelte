@@ -1,6 +1,6 @@
 <script>
 	import { listStockDresses, archiveStockDress } from "$lib/services/stockDressesService";
-	import { summariseDress } from "$lib/stock/dressSummary";
+	import { summariseDress } from "$lib/products/dressSummary";
 	import { Button } from "$lib/ui/button";
 	import * as Dialog from "$lib/ui/dialog";
 	import { EmptyState } from "$lib/ui/empty-state";
@@ -165,10 +165,10 @@
 <div class="flex-1 overflow-y-auto px-4 py-6 pb-20 md:px-12 md:py-10 md:pb-10">
 	<div class="mb-7 flex flex-wrap items-end justify-between gap-4">
 		<div class="flex flex-col gap-1.5">
-			<h1 class="font-serif text-4xl leading-tight font-semibold">Stock</h1>
+			<h1 class="font-serif text-4xl leading-tight font-semibold">Products</h1>
 			<p class="text-muted-foreground text-sm">Designs ready on the rack or made to order.</p>
 		</div>
-		<Button href="/stock/new" size="lg"><PlusIcon />Add dress</Button>
+		<Button href="/products/new" size="lg"><PlusIcon />Add dress</Button>
 	</div>
 
 	<div class="bg-card ring-foreground/10 overflow-hidden rounded-xl ring-1">
@@ -201,7 +201,7 @@
 		{:else if allDresses.length === 0}
 			<EmptyState title="No dresses yet" description="Add your first dress and it will show up here.">
 				{#snippet icon()}<PackageIcon class="size-5" />{/snippet}
-				<Button href="/stock/new"><PlusIcon />Add dress</Button>
+				<Button href="/products/new"><PlusIcon />Add dress</Button>
 			</EmptyState>
 		{:else if filteredDresses.length === 0}
 			<EmptyState title="No dresses match" description="Try a different search, or clear a filter." />

@@ -1,11 +1,11 @@
 <script>
 	import { Badge } from "$lib/ui/badge";
-	import { availabilityLabel } from "$lib/stock/availability";
+	import { availabilityLabel } from "$lib/products/availability";
 
 	/**
 	 * Availability pill: a dot and a label, tinted by state. Never colour alone.
 	 * Props: `state` — what availabilityState() returned.
-	 * @type {{ state: import("$lib/stock/availability").AvailabilityState }}
+	 * @type {{ state: import("$lib/products/availability").AvailabilityState }}
 	 */
 	let { state } = $props();
 

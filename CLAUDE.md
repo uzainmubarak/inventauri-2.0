@@ -10,13 +10,13 @@ Tauri 2 + SvelteKit 2 (Svelte 5 runes), static SPA (`ssr = false`), Supabase bac
 
 ## Layout
 - One folder per module, code and test together, with an `index.js` entry:
-  `src/lib/stock/availability/index.js` + `availability.test.js`.
+  `src/lib/products/availability/index.js` + `availability.test.js`.
 - Services: one folder per table in `src/lib/services/`. Every function returns `{ data, error }`.
 - UI primitives: `src/lib/ui/<component>/` (shadcn-svelte). Feature screens under `src/routes/`.
 
 ## Who owns what
 - **Design chat:** `src/lib/ui/*` components and their styling. Pushes design changes as code.
-- **Code chat:** services, `src/lib/stock/*`, schema, routes, logic.
+- **Code chat:** services, `src/lib/products/*`, schema, routes, logic.
 - Both follow the same folder and naming rules above.
 
 ## Styling
@@ -25,7 +25,7 @@ Tauri 2 + SvelteKit 2 (Svelte 5 runes), static SPA (`ssr = false`), Supabase bac
 
 ## Data rules
 - The stock ledger (`stock_movements`) is append-only. Quantity changes go through movements, never direct writes.
-- SKUs are an input. The frontend generates them from `stock_settings` (`src/lib/stock/sku`) or the user types them. The database never builds a SKU. See `docs/settings.md`.
+- SKUs are an input. The frontend generates them from `stock_settings` (`src/lib/products/sku`) or the user types them. The database never builds a SKU. See `docs/settings.md`.
 - Production RLS is `TO authenticated`. The `supabase/seed.sql` anon policies are local-only and must be removed when Auth ships.
 
 ## Git

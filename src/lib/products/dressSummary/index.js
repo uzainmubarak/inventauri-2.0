@@ -7,8 +7,8 @@
  * dress photo.
  */
 
-import { effectivePrice } from "$lib/stock/pricing";
-import { availabilityState } from "$lib/stock/availability";
+import { effectivePrice } from "$lib/products/pricing";
+import { availabilityState } from "$lib/products/availability";
 
 /**
  * @param {any} dress - a stock_dresses row with its images and variants embedded
