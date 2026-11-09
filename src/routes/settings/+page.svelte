@@ -1,13 +1,16 @@
 <script>
+    import { getTheme, setTheme } from '$lib/theme';
     let activeTab = 'general';
 
     const settings = {
         storeName: 'Golden Studio',
         currency: 'PKR',
         language: 'English',
-        notifications: true,
-        darkMode: false
+        notifications: true
     };
+    let theme = $state(getTheme());
+    /** @type {[import('$lib/theme').Theme, string][]} */
+    const themes = [['light', 'Light'], ['dark', 'Dark'], ['system', 'System']];
 </script>
 
 <div class="topbar">
@@ -59,10 +62,20 @@
                 </div>
                 <div class="form-group toggle-group">
                     <div>
-                        <div class="label">Dark Mode</div>
-                        <div class="sub-label">Use a darker color theme for the interface</div>
+                        <div class="label">Appearance</div>
+                        <div class="sub-label">Light, dark, or follow your device</div>
                     </div>
-                    <input type="checkbox" bind:checked={settings.darkMode}>
+                    <div class="segmented" role="radiogroup" aria-label="Appearance">
+                        {#each themes as [value, label] (value)}
+                            <button
+                                type="button"
+                                role="radio"
+                                aria-checked={theme === value}
+                                class:on={theme === value}
+                                onclick={() => { theme = value; setTheme(value); }}
+                            >{label}</button>
+                        {/each}
+                    </div>
                 </div>
             </div>
         </div>
@@ -70,6 +83,10 @@
 </div>
 
 <style>
+    .segmented { display: inline-flex; padding: 3px; gap: 2px; border-radius: 10px; background: var(--bg2); border: 1px solid var(--border); }
+    .segmented button { border: 0; background: transparent; color: var(--text-muted); font: inherit; font-size: 13px; font-weight: 500; padding: 6px 14px; border-radius: 7px; cursor: pointer; }
+    .segmented button.on { background: var(--white); color: var(--text); box-shadow: var(--shadow); }
+    .segmented button:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
     .topbar {
         background: var(--bg);
         border-bottom: 1px solid var(--border);

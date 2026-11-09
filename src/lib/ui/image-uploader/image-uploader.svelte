@@ -93,7 +93,7 @@
 				<button
 					type="button"
 					aria-label="Move photo {i + 1} (arrow keys)"
-					class="text-muted-foreground absolute bottom-1.5 left-1.5 flex size-6 cursor-grab items-center justify-center rounded-md bg-white/85"
+					class="text-muted-foreground absolute bottom-1.5 left-1.5 flex size-6 cursor-grab items-center justify-center rounded-md bg-card/85"
 					onkeydown={(e) => onGripKey(e, i)}
 				>
 					<GripIcon class="size-3.5" />
@@ -101,7 +101,7 @@
 				<button
 					type="button"
 					aria-label="Remove photo {i + 1}"
-					class="text-muted-foreground hover:text-destructive absolute top-1.5 right-1.5 flex size-6 items-center justify-center rounded-md bg-white/85"
+					class="text-muted-foreground hover:text-destructive absolute top-1.5 right-1.5 flex size-6 items-center justify-center rounded-md bg-card/85"
 					onclick={() => remove(i)}
 				>
 					<XIcon class="size-3.5" />

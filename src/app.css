@@ -53,18 +53,7 @@
 }
 
 
-/*@media (prefers-color-scheme: dark) {
-    :root {
-        --bg-dark: oklch(0 0 0);
-        --bg: oklch(0.05 0 0);
-        --bg-light: oklch(0.1 0 0);
 
-        --text: oklch(0.95 0 0);
-        --text-muted: oklch(0.7 0 0);
-
-        background-color: oklch(0 0 0);
-    }
-}*/
 
 /* ──────────────────────────────────────────────────────────────
    shadcn / Tailwind bridge
@@ -94,6 +83,24 @@
   --destructive-foreground: #ffffff;
   --input: var(--border);
   --ring: var(--gold);
+}
+
+/* Dark theme: same names, darker values. Applied by the `dark` class on <html>
+   (src/lib/theme). The bridge below picks these up through var(). */
+.dark {
+  color-scheme: dark;
+  --bg:#161513; --bg2:#1F1D1A; --bg3:#272420;
+  --gold-dim:rgba(201,169,97,0.16); --gold-mid:rgba(201,169,97,0.30); --gold-text:#D9BE7E;
+  --error:#D98080; --error-dim:rgba(217,128,128,0.14);
+  --green:#7CC092; --green-dim:rgba(124,192,146,0.14);
+  --blue:#9DB0DA; --blue-dim:rgba(157,176,218,0.12);
+  --text:#F2EFEA; --text-muted:#A8A39B; --text-faint:#6F6A63;
+  --border:#34312C; --border-light:#2A2723;
+  --sidebar-bg:#0F0E0D; --sidebar-text:#C8C3BB;
+  --white:#1F1D1A;
+  --shadow:0 1px 3px rgba(0,0,0,0.4),0 4px 12px rgba(0,0,0,0.3);
+  --shadow-lg:0 8px 32px rgba(0,0,0,0.5);
+  --accent-foreground:#E3C887;
 }
 
 @theme inline {
