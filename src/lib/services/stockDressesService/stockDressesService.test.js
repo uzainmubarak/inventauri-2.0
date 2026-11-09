@@ -184,7 +184,7 @@ describe("updateStockDressWithDetails", () => {
 		expect(after.stock_dress_variants[0].status).toBe("archived");
 	});
 
-	it("ignores a quantity submitted on save — only the ledger moves it", async () => {
+	it("posts a changed variant quantity to the ledger and saves price, SKU and axis values", async () => {
 		const { data } = await create({
 			variants: [{ price_override: null, quantity: 5, axisValues: [{ axis: "size", value: "L" }] }],
 		});
@@ -196,16 +196,19 @@ describe("updateStockDressWithDetails", () => {
 			currentOptions: [],
 			options: [],
 			currentVariants: full.stock_dress_variants,
-			// Deliberately conflicting: the form says 99, the ledger says 5.
+			// The form says 99 and the ledger says 5: an adjustment of +94 is posted.
 			variants: full.stock_dress_variants.map((v) => ({
 				id: v.id,
+				sku: "MY-SKU",
 				price_override: 80000,
 				quantity: 99,
-				axisValues: [{ axis: "size", value: "L" }],
+				axisValues: [{ axis: "size", value: "L" }, { axis: "color", value: "Red" }],
 			})),
 		});
 		const { data: after } = await getStockDressById(data.dress.id);
-		expect(after.stock_dress_variants[0].quantity).toBe(5);
+		expect(after.stock_dress_variants[0].quantity).toBe(99);
+		expect(after.stock_dress_variants[0].sku).toBe("MY-SKU");
+		expect(after.stock_dress_variants[0].stock_dress_variant_values).toHaveLength(2);
 		expect(Number(after.stock_dress_variants[0].price_override)).toBe(80000);
 	});
 });

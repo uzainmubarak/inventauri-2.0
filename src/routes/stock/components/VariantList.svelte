@@ -99,25 +99,34 @@
 			{ max: MAX_VARIANTS },
 		);
 		const wanted = new Set(combinations.map(variantSignature));
-		const have = new Set(variants.map((v) => variantSignature(v.axisValues ?? [])));
-
-		// A variant that was removed and is wanted again comes back with its history.
 		const shape = new Set(combinations[0]?.map((av) => av.axis));
-		// A generated row built from different axes (e.g. size only, after colour was added) is
-		// stale: unsaved ones go, saved ones are archived so their history stays.
-		const stale = (/** @type {any} */ v) =>
-			!v.manual &&
-			v.status !== "archived" &&
-			((v.axisValues ?? []).length !== shape.size || (v.axisValues ?? []).some((/** @type {any} */ av) => !shape.has(av.axis)));
-		const kept = variants
-			.filter((v) => !(stale(v) && !v.id))
-			.map((v) =>
-				stale(v)
-					? { ...v, status: "archived" }
-					: v.status === "archived" && wanted.has(variantSignature(v.axisValues ?? []))
-						? { ...v, status: "active" }
-						: v,
-			);
+		const sameShape = (/** @type {any} */ v) =>
+			(v.axisValues ?? []).length === shape.size && (v.axisValues ?? []).every((/** @type {any} */ av) => shape.has(av.axis));
+		const isStale = (/** @type {any} */ v) => !v.manual && v.status !== "archived" && !sameShape(v);
+		const claimed = new Set(variants.filter((v) => !isStale(v)).map((v) => variantSignature(v.axisValues ?? [])));
+
+		// A row built from other axes (one was added or removed) moves onto the first free
+		// combination that agrees with it, so it keeps its price, SKU and stock. Only when none
+		// fits is it stale: unsaved ones go, saved ones are archived so their history stays.
+		const kept = variants.flatMap((v) => {
+			if (!isStale(v)) {
+				return [v.status === "archived" && wanted.has(variantSignature(v.axisValues ?? [])) ? { ...v, status: "active" } : v];
+			}
+			const shared = (v.axisValues ?? []).filter((/** @type {any} */ av) => shape.has(av.axis));
+			const target = shared.length
+				? combinations.find(
+						(c) =>
+							!claimed.has(variantSignature(c)) &&
+							shared.every((/** @type {any} */ s) => c.some((x) => x.axis === s.axis && x.value === s.value)),
+					)
+				: undefined;
+			if (target) {
+				claimed.add(variantSignature(target));
+				return [{ ...v, axisValues: target }];
+			}
+			return v.id ? [{ ...v, status: "archived" }] : [];
+		});
+		const have = new Set(kept.map((v) => variantSignature(v.axisValues ?? [])));
 		const added = combinations
 			.filter((axisValues) => !have.has(variantSignature(axisValues)))
 			.map((axisValues) => ({ key: newUid(), axisValues, quantity: 0, price_override: null, status: "active" }));
@@ -255,8 +264,8 @@
 					<Table.Header>
 						<Table.Row class="h-10 hover:bg-transparent">
 							<Table.Head>Variant</Table.Head>
-							<Table.Head>SKU</Table.Head>
-							<Table.Head class="w-44 text-right">Price override</Table.Head>
+							<Table.Head class="w-64">SKU</Table.Head>
+							<Table.Head class="w-52">Price</Table.Head>
 							{#if trackQuantity}<Table.Head class="w-28 text-right">Quantity</Table.Head>{/if}
 							<Table.Head class="w-12"><span class="sr-only">Remove</span></Table.Head>
 						</Table.Row>
@@ -287,7 +296,7 @@
 								</Table.Cell>
 								<Table.Cell class="px-3">
 									<Input
-										class="h-8 w-44 font-mono text-xs"
+										class="h-8 w-full font-mono text-xs"
 										aria-label="SKU for {describe(variant)}"
 										placeholder="Auto"
 										value={variant.sku ?? ""}
@@ -296,11 +305,11 @@
 								</Table.Cell>
 								<Table.Cell class="px-3">
 									<NumberField
-										class="ml-auto h-8 w-40"
+										class="h-8 w-40"
 										prefix="PKR"
 										min="0"
 										step="0.01"
-										aria-label="Price override for {describe(variant)}"
+										aria-label="Price of {describe(variant)}"
 										placeholder="Dress price"
 										value={variant.price_override}
 										oninput={(e) =>
@@ -309,17 +318,13 @@
 								</Table.Cell>
 								{#if trackQuantity}
 									<Table.Cell class="px-3 text-right">
-										{#if !variant.id}
-											<NumberField
-												class="ml-auto h-8 w-24"
-												min="0"
-												aria-label="Quantity of {describe(variant)}"
-												value={variant.quantity ?? 0}
-												oninput={(e) => updateVariant(i, { quantity: e.currentTarget.value ? Number(e.currentTarget.value) : 0 })}
-											/>
-										{:else}
-											<span class="font-mono text-[13px]" title="Change it from the variant's own page">{variant.quantity ?? 0}</span>
-										{/if}
+										<NumberField
+										class="ml-auto h-8 w-24"
+										min="0"
+										aria-label="Quantity of {describe(variant)}"
+										value={variant.quantity ?? 0}
+										oninput={(e) => updateVariant(i, { quantity: e.currentTarget.value ? Number(e.currentTarget.value) : 0 })}
+									/>
 									</Table.Cell>
 								{/if}
 								<Table.Cell class="px-1">

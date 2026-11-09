@@ -21,7 +21,7 @@ import {
 	updateOptionValue,
 } from "$lib/services/stockDressOptionsService";
 import { createVariant, updateVariant, archiveVariant } from "$lib/services/stockDressVariantsService";
-import { setVariantAxisValue } from "$lib/services/stockDressVariantValuesService";
+import { removeVariantAxisValue, setVariantAxisValue } from "$lib/services/stockDressVariantValuesService";
 import { recordMovement } from "$lib/services/stockMovementsService";
 import { getStockSettings, nextSkuNumber } from "$lib/services/stockSettingsService";
 import { cleanSku, formatDressSku, formatVariantSku } from "$lib/stock/sku";
@@ -325,7 +325,7 @@ export async function createStockDressWithDetails(formData) {
  *   images: { id?: string, image_url: string, is_primary?: boolean }[],
  *   currentOptions: { id: string }[],
  *   options: { id?: string, name: string, values: { value: string, price_adjustment?: number }[] }[],
- *   currentVariants: { id: string }[],
+ *   currentVariants: { id: string, quantity?: number, stock_dress_variant_values?: { axis: string }[] }[],
  *   variants: { id?: string, sku?: string | null, price_override?: number, quantity?: number, axisValues: { axis: 'size' | 'color' | 'fabric' | 'other', value: string }[] }[]
  * }} formData
  * @returns {Promise<{ data: { dress: any } | null, error: string | null }>}
@@ -423,12 +423,34 @@ export async function updateStockDressWithDetails(dressId, formData) {
 	}
 	for (const variant of formData.variants) {
 		if (variant.id) {
-			// quantity is deliberately absent: only stock_movements moves it.
+			// quantity is never written: a change is posted to the ledger below.
 			const { error } = await updateVariant(variant.id, {
 				price_override: variant.price_override,
+				sku: cleanSku(variant.sku),
 			});
 			if (error) {
 				return { data: { dress }, error: `Dress saved, but updating a variant failed: ${error}` };
+			}
+			const saved = formData.currentVariants.find((c) => c.id === variant.id);
+			for (const axisValue of variant.axisValues) {
+				const { error: axisError } = await setVariantAxisValue({ ...axisValue, variant_id: variant.id });
+				if (axisError) return { data: { dress }, error: `Dress saved, but a variant's axis value failed: ${axisError}` };
+			}
+			for (const old of saved?.stock_dress_variant_values ?? []) {
+				if (variant.axisValues.some((av) => av.axis === old.axis)) continue;
+				const { error: axisError } = await removeVariantAxisValue(variant.id, /** @type {any} */ (old.axis));
+				if (axisError) return { data: { dress }, error: `Dress saved, but a variant's axis value failed: ${axisError}` };
+			}
+			const delta = trackQuantity && saved ? (Number(variant.quantity) || 0) - (Number(saved.quantity) || 0) : 0;
+			if (delta !== 0) {
+				const { error: moveError } = await recordMovement({
+					dress_id: dress.id,
+					variant_id: variant.id,
+					delta,
+					reason: "adjustment",
+					note: "Count corrected on the edit page",
+				});
+				if (moveError) return { data: { dress }, error: `Dress saved, but recording the quantity change failed: ${moveError}` };
 			}
 			continue;
 		}
