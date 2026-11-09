@@ -188,6 +188,7 @@ describe("updateStockDressWithDetails", () => {
 		const { data } = await create({
 			variants: [{ price_override: null, quantity: 5, axisValues: [{ axis: "size", value: "L" }] }],
 		});
+		const mySku = `T-${Date.now()}`;
 		const { data: full } = await getStockDressById(data.dress.id);
 		await updateStockDressWithDetails(data.dress.id, {
 			dress: { ...base, name: "Renamed" },
@@ -199,7 +200,7 @@ describe("updateStockDressWithDetails", () => {
 			// The form says 99 and the ledger says 5: an adjustment of +94 is posted.
 			variants: full.stock_dress_variants.map((v) => ({
 				id: v.id,
-				sku: "MY-SKU",
+				sku: mySku,
 				price_override: 80000,
 				quantity: 99,
 				axisValues: [{ axis: "size", value: "L" }, { axis: "color", value: "Red" }],
@@ -207,7 +208,7 @@ describe("updateStockDressWithDetails", () => {
 		});
 		const { data: after } = await getStockDressById(data.dress.id);
 		expect(after.stock_dress_variants[0].quantity).toBe(99);
-		expect(after.stock_dress_variants[0].sku).toBe("MY-SKU");
+		expect(after.stock_dress_variants[0].sku).toBe(mySku);
 		expect(after.stock_dress_variants[0].stock_dress_variant_values).toHaveLength(2);
 		expect(Number(after.stock_dress_variants[0].price_override)).toBe(80000);
 	});
