@@ -60,6 +60,7 @@
 	/** @param {string} axis */
 	function addAxis(axis) {
 		if (axes.some((a) => a.axis === axis)) return;
+		undoState = null;
 		axes = [...axes, { axis, values: [] }];
 	}
 
@@ -88,7 +89,7 @@
 	}
 
 	function generate() {
-		remember("Generated variants");
+		undoState = null;
 		reconcile();
 	}
 
@@ -144,7 +145,6 @@
 	/** @param {number} index */
 	function removeVariant(index) {
 		const variant = variants[index];
-		remember(`Removed ${describe(variant)}`);
 		// A saved variant may already have movements behind it, and
 		// stock_movements.variant_id is ON DELETE RESTRICT. Archiving is both
 		// what the schema allows and what preserves the history.
