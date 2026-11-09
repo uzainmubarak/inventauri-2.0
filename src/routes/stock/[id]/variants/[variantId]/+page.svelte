@@ -33,7 +33,6 @@
 	let saveError = $state(null);
 
 	const blank = () => ({
-		status: "active",
 		priceOverride: /** @type {number | string | null} */ (null),
 		compareAt: /** @type {number | string | null} */ (null),
 		cost: /** @type {number | string | null} */ (null),
@@ -85,7 +84,6 @@
 			.sort(/** @param {any} a @param {any} b */ (a, b) => (a.position ?? 0) - (b.position ?? 0));
 
 		form = {
-			status: found.status,
 			priceOverride: found.price_override,
 			compareAt: found.compare_at_price,
 			cost: found.cost,
@@ -133,7 +131,6 @@
 
 		const barcode = form.barcode.trim();
 		const { error } = await updateVariant(variant.id, {
-			status: form.status,
 			// A blank SKU is allowed (the service stores null).
 			sku: form.sku,
 			price_override: num(form.priceOverride),
@@ -260,14 +257,6 @@
 
 				<div class="flex min-w-0 flex-col gap-6">
 					<FormSection title="Variant">
-						{#snippet action()}
-							<div class="w-40">
-								<Select aria-label="Status" bind:value={form.status}>
-									<option value="active">Active</option>
-									<option value="archived">Archived</option>
-								</Select>
-							</div>
-						{/snippet}
 						<div class="flex flex-wrap gap-2">
 							{#each variant.stock_dress_variant_values ?? [] as v (v.id)}
 								<span class="bg-secondary flex h-7 items-center gap-1.5 rounded-full px-3 text-[13px]">
