@@ -8,6 +8,7 @@
 	import TrashIcon from "@lucide/svelte/icons/trash-2";
 	import PlusIcon from "@lucide/svelte/icons/plus";
 	import XIcon from "@lucide/svelte/icons/x";
+	import { getStockSettings } from "$lib/services/stockSettingsService";
 	import { newUid } from "$lib/stock/options";
 	import {
 		axesOfVariants,
@@ -32,6 +33,14 @@
 	 * }}
 	 */
 	let { variants, trackQuantity = true, dressId, onChange } = $props();
+
+	// Placeholder rule from docs/settings.md: says where a blank SKU will come from.
+	let autogenerate = $state(true);
+	$effect(() => {
+		getStockSettings().then(({ data }) => {
+			if (data) autogenerate = data.sku_autogenerate;
+		});
+	});
 
 	const AXES = ["size", "color", "fabric", "other"];
 	const MAX_VARIANTS = 100;
@@ -331,7 +340,7 @@
 									<Input
 										class="h-8 w-full font-mono text-xs"
 										aria-label="SKU for {describe(variant)}"
-										placeholder="Auto"
+										placeholder={autogenerate ? "Generated when you save" : "Optional"}
 										value={variant.sku ?? ""}
 										oninput={(e) => updateVariant(i, { sku: e.currentTarget.value })}
 									/>
