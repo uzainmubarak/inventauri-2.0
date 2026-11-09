@@ -19,7 +19,7 @@
 	/**
 	 * Variants are what hangs on the rack: each one is counted and gets its own
 	 * SKU. They are built from axes (size, colour, fabric, other). Generate adds
-	 * the combinations that are missing and never removes a variant; Add variant
+	 * the combinations that are missing and replaces rows built from other axes; Add variant
 	 * adds one. Anything a customer only chooses when ordering is an Option.
 	 * See docs/stock-module-schema.md.
 	 *
@@ -63,12 +63,36 @@
 		axes = [...axes, { axis, values: [] }];
 	}
 
-	/** @param {number} index */
+	// One step of undo: what the last destructive action replaced.
+	/** @type {{ label: string, axes: { axis: string, values: string[] }[], variants: any[] } | null} */
+	let undoState = $state(null);
+
+	/** @param {string} label */
+	function remember(label) {
+		undoState = { label, axes: axes.map((a) => ({ axis: a.axis, values: [...a.values] })), variants: variants.map((v) => ({ ...v })) };
+	}
+
+	function undo() {
+		if (!undoState) return;
+		axes = undoState.axes;
+		emit(undoState.variants);
+		matrixNotice = null;
+		undoState = null;
+	}
+
+	/** Removing an axis removes its values from the variants too. @param {number} index */
 	function removeAxis(index) {
+		remember(`Removed ${axisLabel(axes[index].axis)}`);
 		axes = axes.filter((_, i) => i !== index);
+		reconcile();
 	}
 
 	function generate() {
+		remember("Generated variants");
+		reconcile();
+	}
+
+	function reconcile() {
 		const { variants: combinations, truncated, total } = generateVariantMatrix(
 			axes.filter((a) => a.values.length).map((a) => ({ axis: a.axis, values: a.values })),
 			{ max: MAX_VARIANTS },
@@ -120,6 +144,7 @@
 	/** @param {number} index */
 	function removeVariant(index) {
 		const variant = variants[index];
+		remember(`Removed ${describe(variant)}`);
 		// A saved variant may already have movements behind it, and
 		// stock_movements.variant_id is ON DELETE RESTRICT. Archiving is both
 		// what the schema allows and what preserves the history.
@@ -165,6 +190,16 @@
 </script>
 
 <div class="flex flex-col gap-4">
+	{#if undoState}
+		<div class="bg-accent text-accent-foreground flex items-center justify-between gap-3 rounded-lg px-3 py-2 text-[13px]">
+			<span>{undoState.label}.</span>
+			<span class="flex gap-1">
+				<Button variant="ghost" size="sm" onclick={undo}>Undo</Button>
+				<Button variant="ghost" size="icon-sm" aria-label="Dismiss" onclick={() => (undoState = null)}><XIcon /></Button>
+			</span>
+		</div>
+	{/if}
+
 	{#if axes.length === 0}
 		<div class="border-text-muted flex flex-col items-center gap-3 rounded-xl border border-dashed px-6 py-7 text-center">
 			<div class="text-sm font-semibold">No variants</div>
