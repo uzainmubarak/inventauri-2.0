@@ -7,12 +7,12 @@
 	 * and smaller buttons takes its place and stays at the top. The bar sits
 	 * over the page without taking room, so showing it moves nothing.
 	 *
-	 * Props: `crumb` (last breadcrumb), `title`, `error` (shown under the
+	 * Props: `crumbs` (the breadcrumb trail after Stock; every item with an `href` is a link, the last is the page itself), `title`, `error` (shown under the
 	 * header, and in the slim bar too), `note` (quiet text next to the buttons,
 	 * such as "Unsaved changes"), `children` (the fields), `actions` (the
 	 * buttons; called with `true` for the slim bar so they can shrink).
 	 * @type {{
-	 *   crumb: string,
+	 *   crumbs: { label: string, href?: string }[],
 	 *   title: string,
 	 *   error?: string | null,
 	 *   note?: string,
@@ -20,7 +20,7 @@
 	 *   actions: import("svelte").Snippet<[boolean]>
 	 * }}
 	 */
-	let { crumb, title, error = null, note = "", children, actions } = $props();
+	let { crumbs, title, error = null, note = "", children, actions } = $props();
 
 	/** @type {HTMLElement | undefined} */
 	let scroller = $state();
@@ -74,7 +74,18 @@
 		<div bind:this={header} class="flex flex-wrap items-end justify-between gap-4">
 			<div class="flex min-w-0 flex-col gap-2">
 				<nav aria-label="Breadcrumb" class="text-muted-foreground text-[13px]">
-					<a href="/stock" class="hover:text-foreground">Stock</a> / {crumb}
+					<ol class="flex flex-wrap items-center gap-x-1.5">
+						{#each [{ label: "Stock", href: "/stock" }, ...crumbs] as item, i (i)}
+							{#if i > 0}<li aria-hidden="true">/</li>{/if}
+							<li>
+								{#if item.href}
+									<a href={item.href} class="hover:text-foreground underline-offset-2 hover:underline">{item.label}</a>
+								{:else}
+									<span aria-current="page" class="text-foreground">{item.label}</span>
+								{/if}
+							</li>
+						{/each}
+					</ol>
 				</nav>
 				<h1 class="font-serif text-4xl leading-tight font-semibold">{title}</h1>
 			</div>

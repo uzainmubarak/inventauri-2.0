@@ -219,7 +219,7 @@
 {:else if variant && dress}
 	<form class="flex min-h-0 flex-1 flex-col" onsubmit={handleSubmit}>
 		<StockDressFormLayout
-			crumb="{dress.name} / {nameOf(variant)}"
+			crumbs={[{ label: dress.name, href: `/stock/${dress.id}/edit` }, { label: nameOf(variant) }]}
 			title={nameOf(variant)}
 			error={saveError}
 			note={dirty ? "Unsaved changes" : ""}

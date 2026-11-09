@@ -228,7 +228,7 @@
 	<p class="text-destructive p-12 text-sm">Error: {loadError}</p>
 {:else}
 	<form class="flex min-h-0 flex-1 flex-col" onsubmit={handleSubmit}>
-		<StockDressFormLayout crumb="Edit" title={name || "Edit dress"} error={saveError}>
+		<StockDressFormLayout crumbs={[{ label: "Edit" }]} title={name || "Edit dress"} error={saveError}>
 			<StockDressFormFields
 				bind:name
 				bind:garmentType

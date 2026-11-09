@@ -123,7 +123,7 @@
 </script>
 
 <form class="flex min-h-0 flex-1 flex-col" onsubmit={handleSubmit}>
-	<StockDressFormLayout crumb="Add dress" title="Add dress" {error}>
+	<StockDressFormLayout crumbs={[{ label: "Add dress" }]} title="Add dress" {error}>
 		<StockDressFormFields
 			bind:name
 			bind:garmentType
