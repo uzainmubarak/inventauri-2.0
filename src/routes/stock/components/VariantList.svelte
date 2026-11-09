@@ -23,14 +23,15 @@
 	 * See docs/stock-module-schema.md.
 	 *
 	 * Props: `variants` (rows), `trackQuantity` (shows the Quantity column),
-	 * `onChange(next)`.
+	 * `onChange(next)`, `dressId` (saved variants link to their own page).
 	 * @type {{
 	 *   variants: any[],
 	 *   trackQuantity?: boolean,
+	 *   dressId?: string,
 	 *   onChange?: (variants: any[]) => void
 	 * }}
 	 */
-	let { variants, trackQuantity = true, onChange } = $props();
+	let { variants, trackQuantity = true, dressId, onChange } = $props();
 
 	const AXES = ["size", "color", "fabric", "other"];
 	const MAX_VARIANTS = 100;
@@ -320,7 +321,11 @@
 							{@const i = indexOf(variant)}
 							<Table.Row class="h-14">
 								<Table.Cell class="px-3">
-									<span class="font-medium">{describe(variant)}</span>
+									{#if variant.id && dressId}
+										<a class="font-medium underline-offset-4 hover:underline" href="/stock/{dressId}/variants/{variant.id}">{describe(variant)}</a>
+									{:else}
+										<span class="font-medium">{describe(variant)}</span>
+									{/if}
 								</Table.Cell>
 								<Table.Cell class="px-3">
 									<Input

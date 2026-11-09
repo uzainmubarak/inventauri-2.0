@@ -253,6 +253,7 @@
 				bind:variants
 				bind:priceError
 				editing
+				{dressId}
 			/>
 
 			{#snippet actions(/** @type {boolean} */ compact)}

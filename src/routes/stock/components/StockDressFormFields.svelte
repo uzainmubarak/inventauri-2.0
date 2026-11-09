@@ -55,6 +55,7 @@
 	 *   options: any[],
 	 *   variants: any[],
 	 *   editing?: boolean,
+ *   dressId?: string,
 	 *   priceError?: string | null,
 	 * }}
 	 */
@@ -81,6 +82,7 @@
 		options = $bindable(),
 		variants = $bindable(),
 		editing = false,
+		dressId,
 		priceError = $bindable(),
 	} = $props();
 
@@ -252,7 +254,7 @@
 			title="Variants"
 			description="What hangs on the rack, such as size and colour. Each version is counted and gets its own SKU and barcode."
 		>
-			<VariantList {variants} {trackQuantity} onChange={(v) => (variants = v)} />
+			<VariantList {variants} {trackQuantity} {dressId} onChange={(v) => (variants = v)} />
 		</FormSection>
 
 		<FormSection title="Make to order">
