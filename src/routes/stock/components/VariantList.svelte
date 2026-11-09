@@ -5,7 +5,7 @@
 	import { Input } from "$lib/ui/input";
 	import { Select } from "$lib/ui/select";
 	import { NumberField } from "$lib/ui/number-field";
-	import { TagInput } from "$lib/ui/tag-input";
+	import TrashIcon from "@lucide/svelte/icons/trash-2";
 	import PlusIcon from "@lucide/svelte/icons/plus";
 	import XIcon from "@lucide/svelte/icons/x";
 	import { newUid } from "$lib/stock/options";
@@ -19,8 +19,7 @@
 	/**
 	 * Variants are what hangs on the rack: each one is counted and gets its own
 	 * SKU. They are built from axes (size, colour, fabric, other). Generate adds
-	 * the combinations that are missing and replaces rows built from other axes; Add variant
-	 * adds one. Anything a customer only chooses when ordering is an Option.
+	 * the combinations that are missing and replaces rows built from other axes. Anything a customer only chooses when ordering is an Option.
 	 * See docs/stock-module-schema.md.
 	 *
 	 * Props: `variants` (rows), `trackQuantity` (shows the Quantity column),
@@ -55,6 +54,25 @@
 	/** @param {any[]} next */
 	function emit(next) {
 		onChange?.(next);
+	}
+
+	/** @type {Record<string, string>} */
+	let drafts = $state({});
+
+	/** @param {{ axis: string, values: string[] }} axis @param {string} text */
+	function addValues(axis, text) {
+		const have = new Set(axis.values.map((v) => v.trim().toLowerCase()));
+		const added = text
+			.split(/[,\n]/)
+			.map((t) => t.trim())
+			.filter((t) => t && !have.has(t.toLowerCase()) && have.add(t.toLowerCase()));
+		axis.values = [...axis.values, ...added];
+	}
+
+	/** @param {{ axis: string, values: string[] }} axis */
+	function commitDraft(axis) {
+		if (drafts[axis.axis]?.trim()) addValues(axis, drafts[axis.axis]);
+		drafts[axis.axis] = "";
 	}
 
 	/** @param {string} axis */
@@ -95,7 +113,9 @@
 
 	function reconcile() {
 		const { variants: combinations, truncated, total } = generateVariantMatrix(
-			axes.filter((a) => a.values.length).map((a) => ({ axis: a.axis, values: a.values })),
+			axes
+				.map((a) => ({ axis: a.axis, values: a.values.map((v) => v.trim()).filter(Boolean) }))
+				.filter((a) => a.values.length),
 			{ max: MAX_VARIANTS },
 		);
 		const wanted = new Set(combinations.map(variantSignature));
@@ -137,20 +157,6 @@
 		emit([...kept, ...added]);
 	}
 
-	function addVariant() {
-		emit([
-			...variants,
-			{
-				key: newUid(),
-				manual: true,
-				axisValues: axes.map((a) => ({ axis: a.axis, value: "" })),
-				quantity: 0,
-				price_override: null,
-				status: "active",
-			},
-		]);
-	}
-
 	/** @param {number} index */
 	function removeVariant(index) {
 		const variant = variants[index];
@@ -187,7 +193,7 @@
 	}
 
 	const visibleVariants = $derived(variants.filter(/** @param {any} v */ (v) => v.status !== "archived"));
-	const canGenerate = $derived(axes.some((a) => a.values.length > 0));
+	const canGenerate = $derived(axes.some((a) => a.values.some((v) => v.trim())));
 	const duplicates = $derived(findDuplicateVariants(variants));
 
 	/** @param {any} variant */
@@ -226,18 +232,57 @@
 	{:else}
 		<div class="flex flex-col gap-3">
 			{#each axes as axis, ai (axis.axis)}
-				<div class="flex items-center gap-3">
-					<span class="w-[72px] shrink-0 text-sm font-medium">{axisLabel(axis.axis)}</span>
-					<TagInput
-						class="flex-1"
-						bind:value={axis.values}
-						placeholder={axis.axis === "size" ? "Add a size, e.g. M" : `Add a ${axisLabel(axis.axis).toLowerCase()}`}
+				<div class="border-border flex flex-col gap-2 rounded-xl border p-4" role="group" aria-label="{axisLabel(axis.axis)} values">
+					<div class="flex items-center justify-between">
+						<span class="text-sm font-semibold">{axisLabel(axis.axis)}</span>
+						<Button variant="ghost" size="sm" class="text-destructive" aria-label="Remove {axisLabel(axis.axis)}" onclick={() => removeAxis(ai)}>
+							<TrashIcon />Remove
+						</Button>
+					</div>
+					{#each axis.values as value, vi (vi)}
+						<div class="flex items-center gap-2">
+							<Input
+								aria-label="{axisLabel(axis.axis)} value {vi + 1}"
+								value={value}
+								oninput={(e) => (axis.values[vi] = e.currentTarget.value)}
+								onkeydown={(e) => {
+									if (e.key === "Enter") {
+										e.preventDefault();
+										document.getElementById(`axis-draft-${axis.axis}`)?.focus();
+									}
+								}}
+							/>
+							<Button variant="ghost" size="icon" aria-label="Remove {value || 'this value'}" onclick={() => (axis.values = axis.values.filter((_, i) => i !== vi))}>
+								<XIcon />
+							</Button>
+						</div>
+					{/each}
+					<Input
+						id="axis-draft-{axis.axis}"
+						aria-label="Add another {axisLabel(axis.axis).toLowerCase()} value"
+						placeholder={axis.axis === "size" ? "Add another value, e.g. M" : "Add another value"}
+						value={drafts[axis.axis] ?? ""}
+						oninput={(e) => (drafts[axis.axis] = e.currentTarget.value)}
+						onkeydown={(e) => {
+							if (e.key === "Enter") {
+								e.preventDefault();
+								commitDraft(axis);
+							}
+						}}
+						onpaste={(e) => {
+							const text = e.clipboardData?.getData("text") ?? "";
+							if (/[,\n]/.test(text)) {
+								e.preventDefault();
+								addValues(axis, text);
+							}
+						}}
+						onblur={() => commitDraft(axis)}
 					/>
-					<Button variant="ghost" size="icon" aria-label="Remove {axisLabel(axis.axis)}" onclick={() => removeAxis(ai)}>
-						<XIcon />
-					</Button>
 				</div>
 			{/each}
+			<p class="text-muted-foreground text-[13px]">
+				Press Enter to add the next value. Paste a list like “S, M, L” to add several at once.
+			</p>
 
 			<div class="flex flex-wrap items-center gap-2">
 				{#if freeAxes.length}
@@ -273,26 +318,9 @@
 					<Table.Body>
 						{#each visibleVariants as variant (rowKey(variant))}
 							{@const i = indexOf(variant)}
-							<Table.Row class="h-14 {variant.manual ? 'bg-background' : ''}">
+							<Table.Row class="h-14">
 								<Table.Cell class="px-3">
-									{#if variant.manual}
-										<div class="flex gap-2">
-											{#each variant.axisValues as av (av.axis)}
-												<Input
-													class="h-8 w-24 text-[13px]"
-													aria-label="{axisLabel(av.axis)} of the new variant"
-													placeholder={axisLabel(av.axis)}
-													value={av.value}
-													oninput={(e) => {
-														const value = e.currentTarget.value;
-														updateVariant(i, (/** @type {any} */ current) => ({ axisValues: setAxisValue(current, av.axis, value) }));
-													}}
-												/>
-											{/each}
-										</div>
-									{:else}
-										<span class="font-medium">{describe(variant)}</span>
-									{/if}
+									<span class="font-medium">{describe(variant)}</span>
 								</Table.Cell>
 								<Table.Cell class="px-3">
 									<Input
@@ -347,12 +375,9 @@
 			</p>
 		{/if}
 
-		<div class="flex flex-wrap items-center justify-between gap-3">
-			<Button variant="outline" onclick={addVariant}><PlusIcon />Add variant</Button>
-			<span class="text-muted-foreground text-[13px]">
-				{#if trackQuantity}A new variant's quantity is its opening stock; change it later from the variant's page.{/if}
-				Leave the price override empty to use the dress price.
-			</span>
-		</div>
+		<p class="text-muted-foreground text-[13px]">
+			{#if trackQuantity}A new variant's quantity is its opening stock; on a saved variant, a change is recorded as an adjustment.{/if}
+			Leave the price empty to use the dress price.
+		</p>
 	{/if}
 </div>
