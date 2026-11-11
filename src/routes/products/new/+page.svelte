@@ -82,14 +82,15 @@
 		saving = true;
 		error = null;
 
-		const { error: createError } = await createStockDressWithDetails(buildFormData(target));
+		const { data: created, error: createError } = await createStockDressWithDetails(buildFormData(target));
 
 		saving = false;
 		if (createError) {
 			error = createError;
 			return;
 		}
-		goto("/products");
+		// Stay on the dress: the same form, now editing the saved record.
+		goto(`/products/${created?.dress.id}/edit`, { replaceState: true });
 	}
 
 	/** @param {SubmitEvent} e */

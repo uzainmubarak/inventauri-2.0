@@ -1,7 +1,6 @@
 <script>
 	import { page } from "$app/state";
-	import { goto } from "$app/navigation";
-	import { getStockDressById, updateStockDressWithDetails } from "$lib/services/stockDressesService";
+		import { getStockDressById, updateStockDressWithDetails } from "$lib/services/stockDressesService";
 	import { recordMovement } from "$lib/services/stockMovementsService";
 	import { Button } from "$lib/ui/button";
 	import { optionIssues, optionsForSave, optionsFromDress } from "$lib/products/options";
@@ -56,6 +55,7 @@
 	let currentVariants = $state([]);
 
 	let saving = $state(false);
+	let saved = $state(false);
 	/** @type {string | null} */
 	let saveError = $state(null);
 
@@ -63,8 +63,9 @@
 		load();
 	});
 
-	async function load() {
-		loading = true;
+	/** @param {boolean} [silent] reload after a save without hiding the form */
+	async function load(silent = false) {
+		if (!silent) loading = true;
 		loadError = null;
 		const { data, error } = await getStockDressById(dressId ?? "");
 		loading = false;
@@ -170,6 +171,7 @@
 	/** @param {string} target */
 	async function save(target) {
 		saving = true;
+		saved = false;
 		saveError = null;
 
 		const { error } = await updateStockDressWithDetails(dressId ?? "", buildFormData(target));
@@ -196,8 +198,10 @@
 			}
 		}
 
+		await load(true);
 		saving = false;
-		goto("/products");
+		saved = true;
+		setTimeout(() => (saved = false), 3000);
 	}
 
 	/** @param {SubmitEvent} e */
@@ -236,7 +240,7 @@
 	<p class="text-destructive p-12 text-sm">Error: {loadError}</p>
 {:else}
 	<form class="flex min-h-0 flex-1 flex-col" onsubmit={handleSubmit}>
-		<StockDressFormLayout crumbs={[{ label: "Edit" }]} title={name || "Edit dress"} error={saveError}>
+		<StockDressFormLayout crumbs={[{ label: "Edit" }]} title={name || "Edit dress"} error={saveError} note={saved ? "Saved" : ""}>
 			<StockDressFormFields
 				bind:name
 				bind:garmentType
