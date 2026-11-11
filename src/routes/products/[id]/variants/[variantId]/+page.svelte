@@ -16,6 +16,7 @@
 	import ArrowLeftIcon from "@lucide/svelte/icons/arrow-left";
 	import FormSection from "../../../components/FormSection.svelte";
 	import StockDressFormLayout from "../../../components/StockDressFormLayout.svelte";
+	import UnsavedGuard from "../../../components/UnsavedGuard.svelte";
 
 	// One variant's own fields: photos, price, stock and shipping. Anything left
 	// empty falls back to the dress value. Option values, title and description
@@ -31,6 +32,8 @@
 	let saving = $state(false);
 	/** @type {string | null} */
 	let saveError = $state(null);
+	// Bumped to shake the save pill when a move inside this dress is blocked.
+	let nudge = $state(0);
 
 	const blank = () => ({
 		priceOverride: /** @type {number | string | null} */ (null),
@@ -220,6 +223,26 @@
 		return null;
 	}
 
+	/**
+	 * Back to the dress or over to another variant stays inside this dress but
+	 * would drop the unsaved changes, so it does not leave or ask: it shakes
+	 * the save pill. Leaving for anywhere else gets the leave dialog.
+	 * @param {MouseEvent} e
+	 */
+	function guardDressLinks(e) {
+		if (!dirty || !dress || !(e.target instanceof Element)) return;
+		if (!e.target.closest(`a[href^="/products/${dress.id}/"]`)) return;
+		e.preventDefault();
+		e.stopPropagation();
+		nudge += 1;
+	}
+
+	/** For the leave dialog: save, then report whether it worked. */
+	async function saveAndLeave() {
+		await save();
+		return !saveError;
+	}
+
 	/** @param {SubmitEvent} e */
 	function handleSubmit(e) {
 		e.preventDefault();
@@ -235,13 +258,15 @@
 		<Button variant="outline" class="mt-4" href="/products">Back to products</Button>
 	</div>
 {:else if variant && dress}
-	<form class="flex min-h-0 flex-1 flex-col" onsubmit={handleSubmit}>
+	<form class="flex min-h-0 flex-1 flex-col" onsubmit={handleSubmit} onclickcapture={guardDressLinks}>
+		<UnsavedGuard {dirty} onsave={saveAndLeave} />
 		<StockDressFormLayout
 			crumbs={[{ label: dress.name, href: `/products/${dress.id}/edit` }, { label: nameOf(variant) }]}
 			title={nameOf(variant)}
 			error={saveError}
 			{dirty}
 			{saving}
+			{nudge}
 			saveLabel="Save variant"
 			ondiscard={() => load(dress.id, variant.id)}
 		>

@@ -80,7 +80,7 @@
 			</div>
 			{/key}
 		</div>
-		<span class="sr-only" role="status">{nudge ? "Save your changes before opening a variant." : ""}</span>
+		<span class="sr-only" role="status">{nudge ? "Save your changes before moving on." : ""}</span>
 	</div>
 
 	<div class="px-4 pt-6 md:px-12 md:pt-10">
