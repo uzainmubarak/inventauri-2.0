@@ -217,9 +217,9 @@
 					<button
 						type="button"
 						aria-label="Delete {g.file_name ?? 'photo'}"
-						title={isUsed ? "In use. Remove it from the dress or option first." : "Delete from the gallery and storage"}
+						title={isUsed ? "In use, so it can't be deleted. Remove it from the dress or option first." : "Delete from the gallery and storage"}
 						disabled={isUsed}
-						class="text-muted-foreground hover:text-destructive bg-card/90 absolute top-1.5 left-1.5 flex size-6 items-center justify-center rounded-md opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 disabled:hidden"
+						class="text-muted-foreground hover:text-destructive bg-card/90 absolute top-1.5 left-1.5 flex size-6 items-center justify-center rounded-md opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:text-muted-foreground"
 						onclick={() => (toDelete = g)}
 					>
 						<TrashIcon class="size-3.5" />
