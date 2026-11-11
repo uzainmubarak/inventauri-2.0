@@ -29,8 +29,6 @@
 	/** @type {string | null} */
 	let loadError = $state(null);
 	let saving = $state(false);
-	/** Read-only until Edit is pressed, so opening a variant can never change it. */
-	let editing = $state(false);
 	/** @type {string | null} */
 	let saveError = $state(null);
 
@@ -66,7 +64,6 @@
 		loading = true;
 		loadError = null;
 		saveError = null;
-		editing = false;
 		const { data, error } = await getStockDressById(dressId);
 		if (error) {
 			loading = false;
@@ -108,11 +105,6 @@
 	const num = (value) => (value === "" || value === null || value === undefined ? null : Number(value));
 	/** @param {number | string} n */
 	const money = (n) => Number(n).toLocaleString();
-	/** Own value, else the dress value marked as inherited, else a dash. @param {number | string | null | undefined} own @param {number | string | null | undefined} fallback @param {string} [unit] */
-	const shown = (own, fallback, unit = "") => {
-		if (own != null && own !== "") return `${money(own)}${unit}`;
-		return fallback != null && fallback !== "" ? `${money(fallback)}${unit} (dress)` : "–";
-	};
 	/** @param {string} axis */
 	const axisLabel = (axis) => (axis === "color" ? "Colour" : axis.replace(/^\w/, (c) => c.toUpperCase()));
 
@@ -232,7 +224,7 @@
 	/** @param {SubmitEvent} e */
 	function handleSubmit(e) {
 		e.preventDefault();
-		if (editing && dirty) save();
+		if (dirty) save();
 	}
 </script>
 
@@ -244,22 +236,12 @@
 		<Button variant="outline" class="mt-4" href="/products">Back to products</Button>
 	</div>
 {:else if variant && dress}
-	{#snippet facts(/** @type {[string, string][]} */ rows)}
-		<dl class="grid grid-cols-2 gap-4 @lg:grid-cols-4">
-			{#each rows as [label, value] (label)}
-				<div class="flex flex-col gap-1">
-					<dt class="text-muted-foreground text-xs font-medium">{label}</dt>
-					<dd class="text-sm">{value}</dd>
-				</div>
-			{/each}
-		</dl>
-	{/snippet}
 	<form class="flex min-h-0 flex-1 flex-col" onsubmit={handleSubmit}>
 		<StockDressFormLayout
 			crumbs={[{ label: dress.name, href: `/products/${dress.id}/edit` }, { label: nameOf(variant) }]}
 			title={nameOf(variant)}
 			error={saveError}
-			dirty={editing && dirty}
+			{dirty}
 			{saving}
 			saveLabel="Save variant"
 			ondiscard={() => load(dress.id, variant.id)}
@@ -312,7 +294,6 @@
 						</p>
 					</FormSection>
 
-					{#if editing}
 					<FormSection title="Images" description="Photos of this variant only. One is the primary.">
 						<ImageUploader bind:images={form.images} />
 					</FormSection>
@@ -381,54 +362,8 @@
 							Weight and packed size for the courier. An empty field uses the dress value.
 						</p>
 					</FormSection>
-					{:else}
-						<FormSection title="Images">
-							{#if loadedImages.length}
-								<div class="flex flex-wrap gap-3">
-									{#each loadedImages as photo (photo.id)}
-										<img src={photo.image_url} alt="" class="aspect-[3/4] h-32 rounded-lg object-cover {photo.is_primary ? 'ring-2 ring-[var(--gold)]' : ''}" />
-									{/each}
-								</div>
-							{:else}
-								<p class="text-muted-foreground text-sm">No photos of this variant.</p>
-							{/if}
-						</FormSection>
-
-						<FormSection title="Price">
-							{@render facts([
-								["Price", `PKR ${money(variant.price_override ?? dress.price)}${variant.price_override == null ? " (dress)" : ""}`],
-								["Compare-at price", variant.compare_at_price == null ? "–" : `PKR ${money(variant.compare_at_price)}`],
-								["Cost", variant.cost == null ? (dress.cost == null ? "–" : `PKR ${money(dress.cost)} (dress)`) : `PKR ${money(variant.cost)}`],
-							])}
-						</FormSection>
-
-						<FormSection title="Inventory">
-							{@render facts([
-								["Quantity on hand", variant.track_quantity ? String(variant.quantity ?? 0) : "Not tracked"],
-								["SKU", variant.sku || "No SKU"],
-								["Barcode", variant.barcode || "–"],
-							])}
-						</FormSection>
-
-						<FormSection title="Shipping">
-							{@render facts([
-								["Weight", shown(variant.weight_grams, dress.weight_grams, " g")],
-								["Length", shown(variant.length_cm, dress.length_cm, " cm")],
-								["Width", shown(variant.width_cm, dress.width_cm, " cm")],
-								["Height", shown(variant.height_cm, dress.height_cm, " cm")],
-							])}
-						</FormSection>
-					{/if}
 				</div>
 			</div>
-
-			{#snippet actions()}
-				{#if editing}
-					<Button variant="outline" size="lg" type="button" disabled={saving} onclick={() => load(dress.id, variant.id)}>Cancel</Button>
-				{:else}
-					<Button size="lg" type="button" onclick={() => (editing = true)}>Edit</Button>
-				{/if}
-			{/snippet}
 		</StockDressFormLayout>
 	</form>
 {/if}
