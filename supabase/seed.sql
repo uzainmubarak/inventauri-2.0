@@ -23,13 +23,19 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON
   stock_dress_variants,
   stock_dress_variant_values,
   stock_borrowers,
-  stock_movements
+  stock_movements,
+  uploaded_images
 TO anon;
 
 CREATE POLICY "DEV ONLY: anon can read stock dresses"
   ON stock_dresses FOR SELECT TO anon USING (true);
 CREATE POLICY "DEV ONLY: anon can write stock dresses"
   ON stock_dresses FOR ALL TO anon USING (true) WITH CHECK (true);
+
+CREATE POLICY "DEV ONLY: anon can read uploaded images"
+  ON uploaded_images FOR SELECT TO anon USING (true);
+CREATE POLICY "DEV ONLY: anon can write uploaded images"
+  ON uploaded_images FOR ALL TO anon USING (true) WITH CHECK (true);
 
 CREATE POLICY "DEV ONLY: anon can read stock dress images"
   ON stock_dress_images FOR SELECT TO anon USING (true);

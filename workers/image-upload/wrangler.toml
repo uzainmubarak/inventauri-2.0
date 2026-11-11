@@ -1,0 +1,12 @@
+name = "inventauri-images"
+main = "index.js"
+compatibility_date = "2026-11-01"
+
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "inventauri-images"
+
+[vars]
+PUBLIC_URL = "https://pub-2c13bbf4ec214d19befe1c5afe0ba69a.r2.dev"
+# Comma-separated origins allowed to call this Worker (dev server, Tauri webview).
+ALLOWED_ORIGINS = "http://localhost:1420,tauri://localhost,http://tauri.localhost"
