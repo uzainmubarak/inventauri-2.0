@@ -174,11 +174,7 @@
 		</FormSection>
 
 		<FormSection title="Images" description="The first photo is the primary one. Drag to reorder.">
-			<ImageUploader
-				bind:images
-				uploadDisabled
-				uploadHint="Photo upload is not available yet. It arrives once storage is set up."
-			/>
+			<ImageUploader bind:images />
 		</FormSection>
 
 		<FormSection title="Pricing">

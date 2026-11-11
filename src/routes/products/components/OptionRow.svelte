@@ -8,6 +8,7 @@
 	import XIcon from "@lucide/svelte/icons/x";
 	import ImageIcon from "@lucide/svelte/icons/image";
 	import { newUid } from "$lib/products/options";
+	import { ImagePicker } from "$lib/ui/image-picker";
 
 	/**
 	 * One option, such as Dupatta style. Closed it reads as a name and its
@@ -27,9 +28,8 @@
 	 */
 	let { option = $bindable(), issue, onRemove } = $props();
 
-	// shortcut: photos can be shown and removed but not added, because there is no
-	// storage to upload to yet. Turn this on and wire the file picker when there is.
-	const canUpload = false;
+	// The value whose photo is being chosen; one gallery dialog serves every value.
+	let pickingFor = $state(/** @type {import("$lib/products/options").OptionValue | null} */ (null));
 
 	let draft = $state("");
 	let nameError = $state(false);
@@ -102,10 +102,9 @@
 	{:else}
 		<button
 			type="button"
-			disabled={!canUpload}
-			title={canUpload ? undefined : "Photo upload is not available yet. It arrives once storage is set up."}
 			aria-label="Add a photo for {value.value || 'this value'}"
-			class="border-text-muted text-muted-foreground flex size-10 shrink-0 items-center justify-center rounded-[10px] border border-dashed disabled:cursor-not-allowed disabled:opacity-50"
+			class="border-text-muted text-muted-foreground hover:bg-muted flex size-10 shrink-0 items-center justify-center rounded-[10px] border border-dashed"
+			onclick={() => (pickingFor = value)}
 		>
 			<ImageIcon class="size-4" />
 		</button>
@@ -204,7 +203,6 @@
 		<p class="text-muted-foreground text-[13px]">
 			Press Enter to add the next value. Paste a list like “Full, Half” to add several at once. A photo shows the
 			customer what the choice looks like.
-			{#if !canUpload}Photo upload is not available yet.{/if}
 		</p>
 
 		<div class="flex items-center justify-between">
@@ -239,3 +237,11 @@
 		<span class="flex h-8 items-center gap-1.5 px-2.5 text-sm font-medium"><PencilIcon class="size-4" />Edit</span>
 	</button>
 {/if}
+
+<ImagePicker
+	bind:open={() => pickingFor !== null, (o) => { if (!o) pickingFor = null; }}
+	multiple={false}
+	onSelect={([picked]) => {
+		if (pickingFor && picked) pickingFor.image_url = picked.url;
+	}}
+/>

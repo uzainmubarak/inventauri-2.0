@@ -21,7 +21,8 @@ but needs the design pass, `new` = to build.
 | Select / Combobox | have | Category, subcategory, garment type, borrower dropdown |
 | Tag input | have | Tags (chips, add on Enter/comma, dedupe) |
 | Number field with unit | have | Price, cost, weight, dimensions (Rs, g, cm) |
-| Image uploader | have (Upload tile off until storage exists) | Image list, set primary, drag to reorder |
+| Image uploader | have | Image list, set primary, drag to reorder. Its Add photos tile opens the Image picker |
+| Image picker | have | The photo gallery dialog: upload, pick from what is already in R2, delete |
 | Drawer / Sheet | have | Read-only dress view |
 | Dialog | have | Confirm archive, confirm loan |
 | Filter bar | have (`StockDressFilters`) | Search + status/category/size pills |
@@ -103,9 +104,10 @@ Opened by clicking a variant in the Variants list. Same layout idea as Shopify's
 
 ## Build notes (design chat)
 Built from the canvas boards. Where the boards and the data disagreed, the data won:
-- **Options and variants are separate cards.** Options are order-time choices, each value with a photo slot and an optional price adjustment, all edited in place (`OptionRow`). Variants are built from axes: Generate adds the combinations that are missing and never removes one, Add variant adds a single row, and removing a saved variant archives it. A saved dress opens with the axes its variants already use. Two variants with the same values are flagged before saving.
-- **Option value photos.** `stock_dress_option_values.image_url` is new (run `supabase db reset`; the migration is edited in place). Photos show in the form and the drawer and can be removed, but not added until there is storage to upload to.
-- **Photos can't be uploaded yet.** The Upload tile is disabled with a hint. Saved photos can be removed, reordered and set primary; that is saved.
+- **Options and variants are separate cards.** Options are order-time choices, each value with a photo slot and an optional price adjustment, all edited in place (`OptionRow`). Variants are built from axes. Each axis is a card where values are typed like option values (Enter adds the next, paste “S, M, L” to add several). Generate then makes the combinations: rows built from other axes are moved onto the new ones, keeping price, SKU and stock, and an unsaved row that can't move is dropped. Removing an axis offers Undo. Saved rows have an editable SKU, price and quantity (a changed quantity is posted as an adjustment). Removing a saved variant archives it. Two variants with the same values are flagged before saving.
+- **Photos live in Cloudflare R2.** `uploaded_images` is the gallery: one row per file, with a SHA-256 `content_hash` that is unique, so the same picture is never stored twice whatever its name. The picker hashes a file first and, if the hash is already there, selects the existing image instead of uploading. Uploads and deletes go through the Worker in `workers/image-upload/`, which holds the R2 binding (the browser never has keys). Deleting from the gallery removes the R2 object too, and is refused while a dress photo or option value still uses it. `stock_dress_images.image_url` and `stock_dress_option_values.image_url` hold the public URL.
+- **Set up storage:** create the bucket, then from `workers/image-upload/` run `wrangler login` and `wrangler deploy`, and put the Worker URL in `.env.local` as `PUBLIC_IMAGE_WORKER_URL`. The Worker has no login check yet (see the note in its code): add Supabase JWT verification before real data goes through it. `image_url` is still free text in the other tables; restrict it to https plus the R2 host.
+- **Upload progress** is an indeterminate bar, not a percentage (fetch can't report upload progress).
 - **Make to order is a switch** on the dress (`made_to_order`). Off, an empty rack reads as Sold out; on, the design stays orderable. The lead time fields under it are a disabled placeholder ("Saved with orders") until the columns exist.
 - **No bottom action bar.** The title and the Cancel, Save draft and Save buttons stay at the top and shrink into a slim bar when the page scrolls. Errors show under the header and in the slim bar.
 - **Quantity** is posted as a `received` movement on create and as an `adjustment` movement when edited (dress form and variant page). Nothing writes the column.

@@ -4,31 +4,26 @@
 	import UploadIcon from "@lucide/svelte/icons/upload";
 	import XIcon from "@lucide/svelte/icons/x";
 	import { cn } from "$lib/utils.js";
+	import { ImagePicker } from "$lib/ui/image-picker";
 
 	type Img = { id?: string; image_url: string; is_primary?: boolean };
 
 	/**
 	 * Photo tiles with a primary marker, "Set primary", remove, and reordering
 	 * (drag a tile, or focus its grip and press the left/right arrow keys).
-	 * Props: `images` (bindable), `onFiles` (called with chosen files),
-	 * `uploadDisabled` + `uploadHint` (turn the Upload tile off and say why).
+	 * The Upload tile opens the photo gallery (`ImagePicker`), where photos are uploaded
+	 * or picked from what is already stored. Props: `images` (bindable).
 	 * The first image is always the primary one unless another is chosen.
 	 */
 	let {
 		images = $bindable([]),
-		onFiles,
-		uploadDisabled = false,
-		uploadHint,
 		class: className,
 	}: {
 		images?: Img[];
-		onFiles?: (files: File[]) => void;
-		uploadDisabled?: boolean;
-		uploadHint?: string;
 		class?: string;
 	} = $props();
 
-	let fileInput: HTMLInputElement | undefined = $state();
+	let picking = $state(false);
 	let dragFrom: number | null = $state(null);
 
 	function move(from: number, to: number) {
@@ -46,6 +41,15 @@
 		const removedPrimary = images[index].is_primary;
 		const next = images.filter((_, i) => i !== index);
 		if (removedPrimary && next.length) next[0] = { ...next[0], is_primary: true };
+		images = next;
+	}
+
+	function addPicked(picked: { url: string }[]) {
+		const have = new Set(images.map((i) => i.image_url));
+		const added: Img[] = picked.filter((p) => !have.has(p.url)).map((p) => ({ image_url: p.url }));
+		if (!added.length) return;
+		const next = [...images, ...added];
+		if (!next.some((i) => i.is_primary)) next[0] = { ...next[0], is_primary: true };
 		images = next;
 	}
 
@@ -121,26 +125,11 @@
 
 	<button
 		type="button"
-		disabled={uploadDisabled}
-		title={uploadDisabled ? uploadHint : undefined}
-		class="border-text-muted text-muted-foreground hover:bg-muted flex size-28 flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed text-xs font-medium disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
-		onclick={() => fileInput?.click()}
+		class="border-text-muted text-muted-foreground hover:bg-muted flex size-28 flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed text-xs font-medium"
+		onclick={() => (picking = true)}
 	>
 		<UploadIcon class="size-5" />
-		Upload
+		Add photos
 	</button>
-	<input
-		bind:this={fileInput}
-		type="file"
-		accept="image/*"
-		multiple
-		hidden
-		onchange={(e) => {
-			onFiles?.(Array.from(e.currentTarget.files ?? []));
-			e.currentTarget.value = "";
-		}}
-	/>
+	<ImagePicker bind:open={picking} onSelect={addPicked} />
 </div>
-{#if uploadDisabled && uploadHint}
-	<p class="text-muted-foreground mt-2 text-[13px]">{uploadHint}</p>
-{/if}

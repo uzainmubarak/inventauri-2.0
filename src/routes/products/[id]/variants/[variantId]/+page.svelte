@@ -273,11 +273,7 @@
 					</FormSection>
 
 					<FormSection title="Images" description="Photos of this variant only. One is the primary.">
-						<ImageUploader
-							bind:images={form.images}
-							uploadDisabled
-							uploadHint="Photo upload is not available yet. It arrives once storage is set up."
-						/>
+						<ImageUploader bind:images={form.images} />
 					</FormSection>
 
 					<FormSection title="Price">

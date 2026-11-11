@@ -111,6 +111,20 @@ export async function countImageUses(url) {
 }
 
 /**
+ * Every photo URL a dress, variant or option value currently uses.
+ * @returns {Promise<{ data: Set<string> | null, error: string | null }>}
+ */
+export async function listUsedImageUrls() {
+	const [a, b] = await Promise.all([
+		supabase.from("stock_dress_images").select("image_url"),
+		supabase.from("stock_dress_option_values").select("image_url").not("image_url", "is", null),
+	]);
+	const error = a.error ?? b.error;
+	if (error) return { data: null, error: error.message };
+	return { data: new Set([...(a.data ?? []), ...(b.data ?? [])].map((r) => r.image_url)), error: null };
+}
+
+/**
  * Delete a photo from the gallery and from the R2 bucket. Refuses while a dress or
  * option still uses it. The file goes first: if that fails, the row stays.
  * @param {{ id: string, r2_key: string, url: string }} image
