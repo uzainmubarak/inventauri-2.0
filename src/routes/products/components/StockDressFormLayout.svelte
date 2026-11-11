@@ -1,6 +1,7 @@
 <script>
+	import { Button } from "$lib/ui/button";
 	/**
-	 * The page frame around a form: breadcrumb and title with the actions at the
+	 * The page frame around a form: breadcrumb and title at the
 	 * top, then the fields.
 	 *
 	 * Once the big header scrolls out of view, a slim bar with a smaller title
@@ -8,19 +9,22 @@
 	 * over the page without taking room, so showing it moves nothing.
 	 *
 	 * Props: `crumbs` (the breadcrumb trail after Stock; every item with an `href` is a link, the last is the page itself), `title`, `error` (shown under the
-	 * header, and in the slim bar too), `note` (quiet text next to the buttons,
-	 * such as "Unsaved changes"), `children` (the fields), `actions` (the
-	 * buttons; called with `true` for the slim bar so they can shrink).
+	 * header), `dirty` (true while there are unsaved changes: a save bar with
+	 * Discard and Save slides in at the top and stays until one is chosen),
+	 * `saving`, `saveLabel`, `ondiscard`, `children` (the fields). Save submits
+	 * the surrounding form.
 	 * @type {{
 	 *   crumbs: { label: string, href?: string }[],
 	 *   title: string,
 	 *   error?: string | null,
-	 *   note?: string,
-	 *   children: import("svelte").Snippet,
-	 *   actions: import("svelte").Snippet<[boolean]>
+	 *   dirty?: boolean,
+	 *   saving?: boolean,
+	 *   saveLabel?: string,
+	 *   ondiscard: () => void,
+	 *   children: import("svelte").Snippet
 	 * }}
 	 */
-	let { crumbs, title, error = null, note = "", children, actions } = $props();
+	let { crumbs, title, error = null, dirty = false, saving = false, saveLabel = "Save", ondiscard, children } = $props();
 
 	/** @type {HTMLElement | undefined} */
 	let scroller = $state();
@@ -38,13 +42,6 @@
 	});
 </script>
 
-{#snippet noteText()}
-	{#if note}
-		<span class="text-muted-foreground hidden items-center gap-1.5 text-sm sm:flex">
-			<span class="bg-primary size-1.5 rounded-full"></span>{note}
-		</span>
-	{/if}
-{/snippet}
 
 <div bind:this={scroller} class="relative flex-1 overflow-y-auto">
 	<div class="sticky top-0 z-20 h-0">
@@ -57,16 +54,25 @@
 		>
 			<div class="flex items-center justify-between gap-3">
 				<span class="min-w-0 truncate font-serif text-xl leading-tight font-semibold">{title}</span>
-				<div class="flex shrink-0 items-center gap-2">
-					{@render noteText()}
-					{@render actions(true)}
-				</div>
 			</div>
 			{#if error}
 				<p role={compact ? "alert" : undefined} class="bg-destructive/10 text-destructive mt-2 rounded-lg px-3 py-1.5 text-sm">
 					Error: {error}
 				</p>
 			{/if}
+		</div>
+		<div
+			class="bg-foreground text-background absolute inset-x-0 top-0 z-10 flex items-center justify-between gap-3 px-4 py-2.5 shadow-md transition duration-200 md:px-12 {dirty
+				? 'translate-y-0 opacity-100'
+				: 'pointer-events-none -translate-y-full opacity-0'}"
+			aria-hidden={!dirty}
+			inert={!dirty}
+		>
+			<span class="flex items-center gap-2 text-sm font-medium"><span class="bg-primary size-2 rounded-full"></span>Unsaved changes</span>
+			<div class="flex items-center gap-2">
+				<Button variant="outline" size="sm" type="button" onclick={ondiscard} disabled={saving}>Discard</Button>
+				<Button size="sm" type="submit" disabled={saving}>{saving ? "Saving…" : saveLabel}</Button>
+			</div>
 		</div>
 	</div>
 
@@ -88,10 +94,6 @@
 					</ol>
 				</nav>
 				<h1 class="font-serif text-4xl leading-tight font-semibold">{title}</h1>
-			</div>
-			<div class="flex items-center gap-3">
-				{@render noteText()}
-				{@render actions(false)}
 			</div>
 		</div>
 		{#if error}

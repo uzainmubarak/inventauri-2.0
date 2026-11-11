@@ -1,11 +1,11 @@
 <script>
 	import { goto } from "$app/navigation";
 	import { createStockDressWithDetails } from "$lib/services/stockDressesService";
-	import { Button } from "$lib/ui/button";
-	import { optionIssues, optionsForSave } from "$lib/products/options";
+		import { optionIssues, optionsForSave } from "$lib/products/options";
 	import { findDuplicateVariants, variantsForSave } from "$lib/products/variantMatrix";
 	import StockDressFormFields from "../components/StockDressFormFields.svelte";
 	import StockDressFormLayout from "../components/StockDressFormLayout.svelte";
+	import UnsavedGuard from "../components/UnsavedGuard.svelte";
 
 	let name = $state("");
 	let garmentType = $state("");
@@ -20,7 +20,8 @@
 	let cost = $state("");
 	let trackQuantity = $state(false);
 	let quantity = $state(0);
-	let status = $state("active");
+	// Only the name is required. A dress with no price yet is a draft until it has one.
+	let status = $state("draft");
 	// On by default, as in the database: the same design can be made again.
 	let madeToOrder = $state(false);
 	let weightGrams = $state("");
@@ -40,8 +41,29 @@
 	/** @type {string | null} */
 	let error = $state(null);
 
+	const snapshot = () =>
+		JSON.stringify([name, garmentType, category, subcategory, description, notes, tags, price, compareAtPrice, cost, trackQuantity, quantity, status, madeToOrder, weightGrams, lengthCm, widthCm, heightCm, images, options, variants]);
+	// The form is unsaved while it differs from how it started.
+	let baseline = $state(snapshot());
+	const dirty = $derived(snapshot() !== baseline);
+
+	function discard() {
+		name = garmentType = subcategory = description = notes = price = compareAtPrice = cost = "";
+		weightGrams = lengthCm = widthCm = heightCm = "";
+		category = "party_wear";
+		tags = [];
+		trackQuantity = madeToOrder = false;
+		quantity = 0;
+		status = "draft";
+		images = [];
+		options = [];
+		variants = [];
+		error = null;
+	}
+
 	/** What stops the form from being saved, or null. */
 	function formProblem() {
+		if (!name.trim()) return "Give the dress a name.";
 		if (optionIssues(options).some(Boolean)) return "Fix the options marked in red first.";
 		const duplicates = findDuplicateVariants(variants);
 		if (duplicates.length) return `${duplicates.join(", ")} is listed more than once among the variants.`;
@@ -89,6 +111,7 @@
 			error = createError;
 			return;
 		}
+		baseline = snapshot();
 		// Stay on the dress: the same form, now editing the saved record.
 		goto(`/products/${created?.dress.id}/edit`, { replaceState: true });
 	}
@@ -105,26 +128,24 @@
 		// Anything a customer could be quoted from needs a real price. Drafts
 		// are explicitly allowed to be incomplete.
 		if (status !== "draft" && !(Number(price) > 0)) {
-			error = "Set a price above zero before creating this dress, or save it as a draft.";
+			error = "Set a price above zero before setting this dress to Active.";
 			return;
 		}
 		save(status);
 	}
-
-	function handleSaveDraft() {
-		// A draft is allowed to be incomplete, so it skips the price rule.
-		if (priceError) return;
-		const problem = formProblem();
-		if (problem) {
-			error = problem;
-			return;
-		}
-		save("draft");
-	}
 </script>
 
 <form class="flex min-h-0 flex-1 flex-col" onsubmit={handleSubmit}>
-	<StockDressFormLayout crumbs={[{ label: "Add dress" }]} title="Add dress" {error}>
+	<UnsavedGuard {dirty} />
+	<StockDressFormLayout
+		crumbs={[{ label: "Add dress" }]}
+		title="Add dress"
+		{error}
+		{dirty}
+		{saving}
+		saveLabel={status === "draft" ? "Save" : "Create dress"}
+		ondiscard={discard}
+	>
 		<StockDressFormFields
 			bind:name
 			bind:garmentType
@@ -150,12 +171,5 @@
 			bind:priceError
 		/>
 
-		{#snippet actions(/** @type {boolean} */ compact)}
-			<Button variant="outline" size={compact ? "sm" : "lg"} href="/products">Cancel</Button>
-			<Button variant="secondary" size={compact ? "sm" : "lg"} type="button" onclick={handleSaveDraft} disabled={saving}>
-				{saving ? "Saving…" : "Save draft"}
-			</Button>
-			<Button size={compact ? "sm" : "lg"} type="submit" disabled={saving}>{saving ? "Saving…" : "Create dress"}</Button>
-		{/snippet}
 	</StockDressFormLayout>
 </form>

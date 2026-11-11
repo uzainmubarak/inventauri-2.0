@@ -2,11 +2,11 @@
 	import { page } from "$app/state";
 		import { getStockDressById, updateStockDressWithDetails } from "$lib/services/stockDressesService";
 	import { recordMovement } from "$lib/services/stockMovementsService";
-	import { Button } from "$lib/ui/button";
-	import { optionIssues, optionsForSave, optionsFromDress } from "$lib/products/options";
+		import { optionIssues, optionsForSave, optionsFromDress } from "$lib/products/options";
 	import { findDuplicateVariants, variantsForSave } from "$lib/products/variantMatrix";
 	import StockDressFormFields from "../../components/StockDressFormFields.svelte";
 	import StockDressFormLayout from "../../components/StockDressFormLayout.svelte";
+	import UnsavedGuard from "../../components/UnsavedGuard.svelte";
 
 	const dressId = page.params.id;
 
@@ -55,7 +55,13 @@
 	let currentVariants = $state([]);
 
 	let saving = $state(false);
-	let saved = $state(false);
+
+	// Everything the form edits, as text. The form is unsaved while it differs
+	// from the text taken when it was loaded or last saved.
+	const snapshot = () =>
+		JSON.stringify([name, garmentType, category, subcategory, description, notes, tags, price, compareAtPrice, cost, trackQuantity, quantity, status, madeToOrder, weightGrams, lengthCm, widthCm, heightCm, images, options, variants]);
+	let baseline = $state("");
+	const dirty = $derived(!loading && snapshot() !== baseline);
 	/** @type {string | null} */
 	let saveError = $state(null);
 
@@ -121,6 +127,7 @@
 			image_url: ownPhoto(data, v.id),
 			status: v.status,
 		}));
+		baseline = snapshot();
 	}
 
 	/** @param {any} data @param {string} variantId */
@@ -131,6 +138,7 @@
 
 	/** What stops the form from being saved, or null. */
 	function formProblem() {
+		if (!name.trim()) return "Give the dress a name.";
 		if (optionIssues(options).some(Boolean)) return "Fix the options marked in red first.";
 		const duplicates = findDuplicateVariants(variants);
 		if (duplicates.length) return `${duplicates.join(", ")} is listed more than once among the variants.`;
@@ -171,7 +179,6 @@
 	/** @param {string} target */
 	async function save(target) {
 		saving = true;
-		saved = false;
 		saveError = null;
 
 		const { error } = await updateStockDressWithDetails(dressId ?? "", buildFormData(target));
@@ -200,8 +207,6 @@
 
 		await load(true);
 		saving = false;
-		saved = true;
-		setTimeout(() => (saved = false), 3000);
 	}
 
 	/** @param {SubmitEvent} e */
@@ -222,16 +227,6 @@
 		}
 		save(status);
 	}
-
-	function handleSaveDraft() {
-		if (priceError) return;
-		const problem = formProblem();
-		if (problem) {
-			saveError = problem;
-			return;
-		}
-		save("draft");
-	}
 </script>
 
 {#if loading}
@@ -240,7 +235,16 @@
 	<p class="text-destructive p-12 text-sm">Error: {loadError}</p>
 {:else}
 	<form class="flex min-h-0 flex-1 flex-col" onsubmit={handleSubmit}>
-		<StockDressFormLayout crumbs={[{ label: "Edit" }]} title={name || "Edit dress"} error={saveError} note={saved ? "Saved" : ""}>
+		<UnsavedGuard {dirty} />
+		<StockDressFormLayout
+			crumbs={[{ label: "Edit" }]}
+			title={name || "Edit dress"}
+			error={saveError}
+			{dirty}
+			{saving}
+			saveLabel={originalStatus === "draft" && status === "active" ? "Publish" : "Save"}
+			ondiscard={() => load(true)}
+		>
 			<StockDressFormFields
 				bind:name
 				bind:garmentType
@@ -268,17 +272,6 @@
 				{dressId}
 			/>
 
-			{#snippet actions(/** @type {boolean} */ compact)}
-				<Button variant="outline" size={compact ? "sm" : "lg"} href="/products">Cancel</Button>
-				{#if originalStatus === "draft"}
-					<Button variant="secondary" size={compact ? "sm" : "lg"} type="button" onclick={handleSaveDraft} disabled={saving}>
-						{saving ? "Saving…" : "Save draft"}
-					</Button>
-				{/if}
-				<Button size={compact ? "sm" : "lg"} type="submit" disabled={saving}>
-					{saving ? "Saving…" : originalStatus === "draft" && status === "active" ? "Publish" : "Save changes"}
-				</Button>
-			{/snippet}
 		</StockDressFormLayout>
 	</form>
 {/if}
