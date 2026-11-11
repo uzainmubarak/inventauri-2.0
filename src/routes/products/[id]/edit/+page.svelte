@@ -116,8 +116,16 @@
 			),
 			quantity: v.quantity,
 			price_override: v.price_override,
+			// The variant's own primary photo (the first one if none is marked).
+			image_url: ownPhoto(data, v.id),
 			status: v.status,
 		}));
+	}
+
+	/** @param {any} data @param {string} variantId */
+	function ownPhoto(data, variantId) {
+		const own = (data.stock_dress_images ?? []).filter(/** @param {any} i */ (i) => i.variant_id === variantId);
+		return (own.find(/** @param {any} i */ (i) => i.is_primary) ?? own[0])?.image_url ?? null;
 	}
 
 	/** What stops the form from being saved, or null. */

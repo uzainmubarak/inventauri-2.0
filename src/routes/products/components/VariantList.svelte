@@ -8,6 +8,8 @@
 	import TrashIcon from "@lucide/svelte/icons/trash-2";
 	import PlusIcon from "@lucide/svelte/icons/plus";
 	import XIcon from "@lucide/svelte/icons/x";
+	import ImageIcon from "@lucide/svelte/icons/image";
+	import { ImagePicker } from "$lib/ui/image-picker";
 	import { getStockSettings } from "$lib/services/stockSettingsService";
 	import { newUid } from "$lib/products/options";
 	import {
@@ -24,15 +26,21 @@
 	 * See docs/stock-module-schema.md.
 	 *
 	 * Props: `variants` (rows), `trackQuantity` (shows the Quantity column),
-	 * `onChange(next)`, `dressId` (saved variants link to their own page).
+	 * `onChange(next)`, `dressId` (saved variants link to their own page),
+	 * `dressPhoto` (shown faded on a variant with no photo of its own).
+	 * A row's `image_url` is its own photo, picked from the gallery.
 	 * @type {{
 	 *   variants: any[],
 	 *   trackQuantity?: boolean,
 	 *   dressId?: string,
+	 *   dressPhoto?: string | null,
 	 *   onChange?: (variants: any[]) => void
 	 * }}
 	 */
-	let { variants, trackQuantity = true, dressId, onChange } = $props();
+	let { variants, trackQuantity = true, dressId, dressPhoto = null, onChange } = $props();
+
+	/** Index of the row whose photo is being chosen; one gallery dialog serves every row. */
+	let pickingFor = $state(/** @type {number | null} */ (null));
 
 	// Placeholder rule from docs/settings.md: says where a blank SKU will come from.
 	let autogenerate = $state(true);
@@ -318,6 +326,7 @@
 				<Table.Root aria-label="Variants">
 					<Table.Header>
 						<Table.Row class="h-10 hover:bg-transparent">
+							<Table.Head class="w-16">Photo</Table.Head>
 							<Table.Head>Variant</Table.Head>
 							<Table.Head class="w-64">SKU</Table.Head>
 							<Table.Head class="w-52">Price</Table.Head>
@@ -329,6 +338,35 @@
 						{#each visibleVariants as variant (rowKey(variant))}
 							{@const i = indexOf(variant)}
 							<Table.Row class="h-14">
+								<Table.Cell class="px-3">
+									{#if variant.image_url}
+										<span class="relative inline-flex size-10">
+											<img src={variant.image_url} alt="" class="ring-border size-10 rounded-[10px] object-cover ring-1" />
+											<button
+												type="button"
+												aria-label="Remove the photo of {describe(variant)}"
+												class="absolute -top-1.5 -right-1.5 flex size-[18px] items-center justify-center rounded-full bg-[var(--sidebar-bg)] text-white"
+												onclick={() => updateVariant(i, { image_url: null })}
+											>
+												<XIcon class="size-2.5" />
+											</button>
+										</span>
+									{:else}
+										<button
+											type="button"
+											aria-label="Add a photo for {describe(variant)}"
+											title={dressPhoto ? "Showing the dress photo. Click to pick one for this variant." : undefined}
+											class="border-text-muted text-muted-foreground hover:bg-muted flex size-10 items-center justify-center overflow-hidden rounded-[10px] border border-dashed"
+											onclick={() => (pickingFor = i)}
+										>
+											{#if dressPhoto}
+												<img src={dressPhoto} alt="" class="size-full object-cover opacity-50" />
+											{:else}
+												<ImageIcon class="size-4" />
+											{/if}
+										</button>
+									{/if}
+								</Table.Cell>
 								<Table.Cell class="px-3">
 									{#if variant.id && dressId}
 										<a class="font-medium underline-offset-4 hover:underline" href="/products/{dressId}/variants/{variant.id}">{describe(variant)}</a>
@@ -391,7 +429,15 @@
 
 		<p class="text-muted-foreground text-[13px]">
 			{#if trackQuantity}A new variant's quantity is its opening stock; on a saved variant, a change is recorded as an adjustment.{/if}
-			Leave the price empty to use the dress price.
+			A photo picked here belongs to that variant. A faded photo is the dress photo, shown until you pick one. Leave the price empty to use the dress price.
 		</p>
 	{/if}
 </div>
+
+<ImagePicker
+	bind:open={() => pickingFor !== null, (o) => { if (!o) pickingFor = null; }}
+	multiple={false}
+	onSelect={([picked]) => {
+		if (pickingFor !== null && picked) updateVariant(pickingFor, { image_url: picked.url });
+	}}
+/>

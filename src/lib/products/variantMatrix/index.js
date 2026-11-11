@@ -110,7 +110,7 @@ export function findDuplicateVariants(variants) {
  * Variants as the services take them. Archived rows are left out: on an edit,
  * leaving a saved variant out is what archives it. Blank values are dropped,
  * and a new row with no values at all carries nothing, so it is left out too.
- * @param {{ id?: string, sku?: string | null, status?: string, quantity?: number | null, price_override?: number | null, axisValues?: AxisValue[] }[]} variants
+ * @param {{ id?: string, sku?: string | null, status?: string, quantity?: number | null, price_override?: number | null, image_url?: string | null, axisValues?: AxisValue[] }[]} variants
  */
 export function variantsForSave(variants) {
 	return variants
@@ -120,6 +120,7 @@ export function variantsForSave(variants) {
 			sku: v.sku ?? null,
 			price_override: v.price_override ?? null,
 			quantity: v.quantity ?? 0,
+			image_url: v.image_url ?? null,
 			axisValues: (v.axisValues ?? [])
 				.filter((av) => av.value.trim())
 				.map((av) => ({ axis: av.axis, value: av.value.trim() })),

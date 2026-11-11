@@ -9,6 +9,7 @@ import { supabase } from "$lib/supabaseClient";
 import {
 	addImage,
 	deleteImage,
+	listImagesForDress,
 	setImagePosition,
 	setPrimaryImage,
 } from "$lib/services/stockDressImagesService";
@@ -158,6 +159,27 @@ export async function archiveStockDress(id) {
 }
 
 /**
+ * Give a variant exactly one own photo, or none. `existing` is the variant's saved
+ * photo rows. Nothing happens when the wanted URL is already its photo.
+ * @param {string} dressId
+ * @param {string} variantId
+ * @param {string | null | undefined} wantedUrl  undefined leaves the photos alone
+ * @param {{ id: string, image_url: string }[]} [existing]
+ * @returns {Promise<string | null>} an error message, or null
+ */
+async function syncVariantPhoto(dressId, variantId, wantedUrl, existing = []) {
+	if (wantedUrl === undefined) return null;
+	if (existing.length === 1 && existing[0].image_url === wantedUrl) return null;
+	for (const old of existing) {
+		const { error } = await deleteImage(old.id);
+		if (error) return error;
+	}
+	if (!wantedUrl) return null;
+	const { error } = await addImage({ dress_id: dressId, variant_id: variantId, image_url: wantedUrl, is_primary: true });
+	return error;
+}
+
+/**
  * Create a stock dress along with its images, options, and variants in one
  * call. Inserts run in dependency order (dress -> images -> options ->
  * option values -> variant shells -> variant axis values). If any step
@@ -179,7 +201,7 @@ export async function archiveStockDress(id) {
  *   dress: { sku?: string | null, name: string, garment_type: string, category: string, subcategory?: string | null, description?: string | null, notes?: string | null, tags?: string[], price: number, compare_at_price?: number | null, cost?: number | null, track_quantity?: boolean, made_to_order?: boolean, weight_grams?: number | null, length_cm?: number | null, width_cm?: number | null, height_cm?: number | null, status?: string },
  *   images?: { image_url: string, is_primary?: boolean, caption?: string }[],
  *   options?: { name: string, values: { value: string, price_adjustment?: number }[] }[],
- *   variants?: { sku?: string | null, price_override?: number, quantity?: number, axisValues: { axis: 'size' | 'color' | 'fabric' | 'other', value: string }[] }[],
+ *   variants?: { sku?: string | null, price_override?: number, quantity?: number, image_url?: string | null, axisValues: { axis: 'size' | 'color' | 'fabric' | 'other', value: string }[] }[],
  *   opening_quantity?: number
  * }} formData
  * @returns {Promise<{ data: { dress: any } | null, error: string | null }>}
@@ -273,6 +295,9 @@ export async function createStockDressWithDetails(formData) {
 			}
 		}
 
+		const photoError = await syncVariantPhoto(dress.id, createdVariant.id, variant.image_url);
+		if (photoError) return { data: { dress }, error: `Dress created (${dress.sku}), but a variant photo failed: ${photoError}` };
+
 		// Opening stock is a ledger entry, not a column write. Writing quantity
 		// directly would leave the variant holding a number with no history
 		// behind it — the exact hole the ledger exists to prevent.
@@ -326,7 +351,7 @@ export async function createStockDressWithDetails(formData) {
  *   currentOptions: { id: string }[],
  *   options: { id?: string, name: string, values: { value: string, price_adjustment?: number }[] }[],
  *   currentVariants: { id: string, quantity?: number, stock_dress_variant_values?: { axis: string }[] }[],
- *   variants: { id?: string, sku?: string | null, price_override?: number, quantity?: number, axisValues: { axis: 'size' | 'color' | 'fabric' | 'other', value: string }[] }[]
+ *   variants: { id?: string, sku?: string | null, price_override?: number, quantity?: number, image_url?: string | null, axisValues: { axis: 'size' | 'color' | 'fabric' | 'other', value: string }[] }[]
  * }} formData
  * @returns {Promise<{ data: { dress: any } | null, error: string | null }>}
  */
@@ -421,6 +446,8 @@ export async function updateStockDressWithDetails(dressId, formData) {
 			}
 		}
 	}
+	/** @type {any[] | undefined} */
+	let allImages;
 	for (const variant of formData.variants) {
 		if (variant.id) {
 			// quantity is never written: a change is posted to the ledger below.
@@ -440,6 +467,12 @@ export async function updateStockDressWithDetails(dressId, formData) {
 				if (variant.axisValues.some((av) => av.axis === old.axis)) continue;
 				const { error: axisError } = await removeVariantAxisValue(variant.id, /** @type {any} */ (old.axis));
 				if (axisError) return { data: { dress }, error: `Dress saved, but a variant's axis value failed: ${axisError}` };
+			}
+			if (variant.image_url !== undefined) {
+				allImages ??= (await listImagesForDress(dress.id)).data ?? [];
+				const own = allImages.filter((i) => i.variant_id === variant.id);
+				const photoError = await syncVariantPhoto(dress.id, variant.id, variant.image_url, own);
+				if (photoError) return { data: { dress }, error: `Dress saved, but a variant's photo failed: ${photoError}` };
 			}
 			const delta = trackQuantity && saved ? (Number(variant.quantity) || 0) - (Number(saved.quantity) || 0) : 0;
 			if (delta !== 0) {
@@ -468,6 +501,9 @@ export async function updateStockDressWithDetails(dressId, formData) {
 				return { data: { dress }, error: `Dress saved, but a new variant's axis value failed: ${error}` };
 			}
 		}
+
+		const photoError = await syncVariantPhoto(dress.id, createdVariant.id, variant.image_url);
+		if (photoError) return { data: { dress }, error: `Dress saved, but a new variant's photo failed: ${photoError}` };
 
 		const opening = trackQuantity ? Number(variant.quantity) || 0 : 0;
 		if (opening > 0) {

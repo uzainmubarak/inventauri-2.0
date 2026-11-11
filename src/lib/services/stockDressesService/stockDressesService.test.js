@@ -212,6 +212,43 @@ describe("updateStockDressWithDetails", () => {
 		expect(after.stock_dress_variants[0].stock_dress_variant_values).toHaveLength(2);
 		expect(Number(after.stock_dress_variants[0].price_override)).toBe(80000);
 	});
+
+	it("saves a variant's own photo on create, swaps it and removes it on edit", async () => {
+		const own = (/** @type {any} */ d) => d.stock_dress_images.filter((/** @type {any} */ i) => i.variant_id);
+		const { data } = await create({
+			variants: [{ quantity: 0, image_url: "https://cdn.test/a.png", axisValues: [{ axis: "size", value: "S" }] }],
+		});
+		let { data: full } = await getStockDressById(data.dress.id);
+		expect(own(full).map((/** @type {any} */ i) => i.image_url)).toEqual(["https://cdn.test/a.png"]);
+
+		const edit = (/** @type {string | null | undefined} */ image_url) =>
+			updateStockDressWithDetails(data.dress.id, {
+				dress: { ...base },
+				currentImages: [],
+				images: [],
+				currentOptions: [],
+				options: [],
+				currentVariants: full.stock_dress_variants,
+				variants: full.stock_dress_variants.map((/** @type {any} */ v) => ({
+					id: v.id,
+					quantity: v.quantity,
+					image_url,
+					axisValues: [{ axis: "size", value: "S" }],
+				})),
+			});
+
+		await edit("https://cdn.test/b.png");
+		({ data: full } = await getStockDressById(data.dress.id));
+		expect(own(full).map((/** @type {any} */ i) => i.image_url)).toEqual(["https://cdn.test/b.png"]);
+
+		await edit(undefined); // not sent: photos stay
+		({ data: full } = await getStockDressById(data.dress.id));
+		expect(own(full)).toHaveLength(1);
+
+		await edit(null);
+		({ data: full } = await getStockDressById(data.dress.id));
+		expect(own(full)).toHaveLength(0);
+	});
 });
 
 describe("listStockDresses", () => {
