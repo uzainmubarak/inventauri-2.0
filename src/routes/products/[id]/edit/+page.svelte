@@ -4,11 +4,15 @@
 	import { recordMovement } from "$lib/services/stockMovementsService";
 		import { optionIssues, optionsForSave, optionsFromDress } from "$lib/products/options";
 	import { findDuplicateVariants, variantsForSave } from "$lib/products/variantMatrix";
+	import { Button } from "$lib/ui/button";
+	import StockDressDetails from "../../components/StockDressDetails.svelte";
 	import StockDressFormFields from "../../components/StockDressFormFields.svelte";
 	import StockDressFormLayout from "../../components/StockDressFormLayout.svelte";
 	import UnsavedGuard from "../../components/UnsavedGuard.svelte";
 
 	const dressId = page.params.id;
+	// Opens read-only; the Edit button (or ?edit, from the drawer) switches to the form.
+	let isEditing = $state(page.url.searchParams.has("edit"));
 
 	let loading = $state(true);
 	/** @type {string | null} */
@@ -207,6 +211,7 @@
 
 		await load(true);
 		saving = false;
+		isEditing = false;
 	}
 
 	/** @param {SubmitEvent} e */
@@ -237,7 +242,7 @@
 	<form class="flex min-h-0 flex-1 flex-col" onsubmit={handleSubmit}>
 		<UnsavedGuard {dirty} />
 		<StockDressFormLayout
-			crumbs={[{ label: "Edit" }]}
+			crumbs={[{ label: isEditing ? "Edit" : "Details" }]}
 			title={name || "Edit dress"}
 			error={saveError}
 			{dirty}
@@ -245,6 +250,9 @@
 			saveLabel={originalStatus === "draft" && status === "active" ? "Publish" : "Save"}
 			ondiscard={() => load(true)}
 		>
+			{#if !isEditing}
+				<StockDressDetails dressId={dressId ?? ""} />
+			{:else}
 			<StockDressFormFields
 				bind:name
 				bind:garmentType
@@ -271,7 +279,15 @@
 				editing
 				{dressId}
 			/>
+			{/if}
 
+			{#snippet actions()}
+				{#if isEditing}
+					<Button variant="outline" size="lg" type="button" disabled={saving} onclick={async () => { await load(true); isEditing = false; }}>Cancel</Button>
+				{:else}
+					<Button size="lg" type="button" onclick={() => (isEditing = true)}>Edit</Button>
+				{/if}
+			{/snippet}
 		</StockDressFormLayout>
 	</form>
 {/if}

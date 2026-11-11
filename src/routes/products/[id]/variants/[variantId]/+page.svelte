@@ -259,7 +259,10 @@
 			crumbs={[{ label: dress.name, href: `/products/${dress.id}/edit` }, { label: nameOf(variant) }]}
 			title={nameOf(variant)}
 			error={saveError}
-			note={editing && dirty ? "Unsaved changes" : ""}
+			dirty={editing && dirty}
+			{saving}
+			saveLabel="Save variant"
+			ondiscard={() => load(dress.id, variant.id)}
 		>
 			<div class="grid items-start gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
 				<aside class="bg-card ring-foreground/10 flex flex-col overflow-hidden rounded-xl ring-1">
@@ -419,14 +422,11 @@
 				</div>
 			</div>
 
-			{#snippet actions(/** @type {boolean} */ compact)}
+			{#snippet actions()}
 				{#if editing}
-					<Button variant="outline" size={compact ? "sm" : "lg"} type="button" disabled={saving} onclick={() => load(dress.id, variant.id)}>
-						Cancel
-					</Button>
-					<Button size={compact ? "sm" : "lg"} type="submit" disabled={!dirty || saving}>{saving ? "Saving…" : "Save variant"}</Button>
+					<Button variant="outline" size="lg" type="button" disabled={saving} onclick={() => load(dress.id, variant.id)}>Cancel</Button>
 				{:else}
-					<Button size={compact ? "sm" : "lg"} type="button" onclick={() => (editing = true)}>Edit</Button>
+					<Button size="lg" type="button" onclick={() => (editing = true)}>Edit</Button>
 				{/if}
 			{/snippet}
 		</StockDressFormLayout>

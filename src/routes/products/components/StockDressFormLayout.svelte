@@ -11,7 +11,8 @@
 	 * Props: `crumbs` (the breadcrumb trail after Stock; every item with an `href` is a link, the last is the page itself), `title`, `error` (shown under the
 	 * header), `dirty` (true while there are unsaved changes: a save bar with
 	 * Discard and Save slides in at the top and stays until one is chosen),
-	 * `saving`, `saveLabel`, `ondiscard`, `children` (the fields). Save submits
+	 * `saving`, `saveLabel`, `ondiscard`, `actions` (optional buttons at the
+	 * right of the title, e.g. Edit), `children` (the fields). Save submits
 	 * the surrounding form.
 	 * @type {{
 	 *   crumbs: { label: string, href?: string }[],
@@ -21,10 +22,11 @@
 	 *   saving?: boolean,
 	 *   saveLabel?: string,
 	 *   ondiscard: () => void,
+	 *   actions?: import("svelte").Snippet,
 	 *   children: import("svelte").Snippet
 	 * }}
 	 */
-	let { crumbs, title, error = null, dirty = false, saving = false, saveLabel = "Save", ondiscard, children } = $props();
+	let { crumbs, title, error = null, dirty = false, saving = false, saveLabel = "Save", ondiscard, actions, children } = $props();
 
 	/** @type {HTMLElement | undefined} */
 	let scroller = $state();
@@ -62,16 +64,18 @@
 			{/if}
 		</div>
 		<div
-			class="bg-foreground text-background absolute inset-x-0 top-0 z-10 flex items-center justify-between gap-3 px-4 py-2.5 shadow-md transition duration-200 md:px-12 {dirty
+			class="pointer-events-none absolute inset-x-0 top-3 z-10 flex justify-center px-4 transition duration-200 {dirty
 				? 'translate-y-0 opacity-100'
-				: 'pointer-events-none -translate-y-full opacity-0'}"
+				: '-translate-y-4 opacity-0'}"
 			aria-hidden={!dirty}
 			inert={!dirty}
 		>
-			<span class="flex items-center gap-2 text-sm font-medium"><span class="bg-primary size-2 rounded-full"></span>Unsaved changes</span>
-			<div class="flex items-center gap-2">
-				<Button variant="outline" size="sm" type="button" onclick={ondiscard} disabled={saving}>Discard</Button>
-				<Button size="sm" type="submit" disabled={saving}>{saving ? "Saving…" : saveLabel}</Button>
+			<div class="bg-card text-foreground border-border pointer-events-auto flex items-center gap-4 rounded-full border py-1.5 pr-1.5 pl-4 shadow-lg">
+				<span class="flex items-center gap-2 text-sm font-medium"><span class="bg-primary size-2 rounded-full"></span>Unsaved changes</span>
+				<div class="flex items-center gap-1.5">
+					<Button variant="ghost" size="sm" class="rounded-full" type="button" onclick={ondiscard} disabled={saving}>Discard</Button>
+					<Button size="sm" class="rounded-full" type="submit" disabled={saving}>{saving ? "Saving…" : saveLabel}</Button>
+				</div>
 			</div>
 		</div>
 	</div>
@@ -95,6 +99,7 @@
 				</nav>
 				<h1 class="font-serif text-4xl leading-tight font-semibold">{title}</h1>
 			</div>
+			{#if actions}<div class="flex items-center gap-2">{@render actions()}</div>{/if}
 		</div>
 		{#if error}
 			<p role={compact ? undefined : "alert"} class="bg-destructive/10 text-destructive mt-4 rounded-lg px-3 py-2 text-sm">
