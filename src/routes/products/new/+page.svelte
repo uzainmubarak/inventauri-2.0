@@ -18,11 +18,11 @@
 	let price = $state("");
 	let compareAtPrice = $state("");
 	let cost = $state("");
-	let trackQuantity = $state(true);
+	let trackQuantity = $state(false);
 	let quantity = $state(0);
 	let status = $state("active");
 	// On by default, as in the database: the same design can be made again.
-	let madeToOrder = $state(true);
+	let madeToOrder = $state(false);
 	let weightGrams = $state("");
 	let lengthCm = $state("");
 	let widthCm = $state("");
