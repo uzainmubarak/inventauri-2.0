@@ -2,7 +2,7 @@
 	import { page } from "$app/state";
 	import { getStockDressById } from "$lib/services/stockDressesService";
 	import { updateVariant } from "$lib/services/stockDressVariantsService";
-	import { deleteImage, setPrimaryImage, setImagePosition } from "$lib/services/stockDressImagesService";
+	import { addImage, deleteImage, setPrimaryImage, setImagePosition } from "$lib/services/stockDressImagesService";
 	import { recordMovement } from "$lib/services/stockMovementsService";
 	import { Button } from "$lib/ui/button";
 	import { Input } from "$lib/ui/input";
@@ -180,7 +180,7 @@
 		await load(dress.id, variant.id);
 	}
 
-	/** Removed photos, new order and primary. Returns an error message or null. */
+	/** Added and removed photos, new order and primary. Returns an error message or null. */
 	async function savePhotos() {
 		const keptIds = new Set(form.images.map(/** @param {any} i */ (i) => i.id));
 		for (const photo of loadedImages) {
@@ -188,12 +188,31 @@
 			const { error } = await deleteImage(photo.id);
 			if (error) return error;
 		}
+		// New photos are inserted first so they have ids for the order and primary steps.
+		const photos = [];
+		const justAdded = new Set();
 		for (const [position, photo] of form.images.entries()) {
+			if (photo.id) {
+				photos.push(photo);
+				continue;
+			}
+			const { data, error } = await addImage({
+				dress_id: dress.id,
+				variant_id: variant.id,
+				image_url: photo.image_url,
+				position,
+			});
+			if (error) return error;
+			justAdded.add(data.id);
+			photos.push({ ...photo, id: data.id });
+		}
+		for (const [position, photo] of photos.entries()) {
+			if (justAdded.has(photo.id)) continue;
 			if ((loadedImages.find((l) => l.id === photo.id)?.position ?? 0) === position) continue;
 			const { error } = await setImagePosition(photo.id, position);
 			if (error) return error;
 		}
-		const wanted = form.images.find(/** @param {any} i */ (i) => i.is_primary);
+		const wanted = photos.find(/** @param {any} i */ (i) => i.is_primary);
 		const was = loadedImages.find((i) => i.is_primary);
 		if (wanted && wanted.id !== was?.id) {
 			const { error } = await setPrimaryImage(dress.id, wanted.id, variant.id);
