@@ -11,8 +11,9 @@
 	 * Props: `crumbs` (the breadcrumb trail after Stock; every item with an `href` is a link, the last is the page itself), `title`, `error` (shown under the
 	 * header), `dirty` (true while there are unsaved changes: a save bar with
 	 * Discard and Save slides in at the top and stays until one is chosen),
-	 * `saving`, `saveLabel`, `ondiscard`, `children` (the fields). Save submits
-	 * the surrounding form.
+	 * `saving`, `saveLabel`, `ondiscard`, `nudge` (bump the number to shake the
+	 * save pill once, e.g. when something is blocked until the form is saved),
+	 * `children` (the fields). Save submits the surrounding form.
 	 * @type {{
 	 *   crumbs: { label: string, href?: string }[],
 	 *   title: string,
@@ -21,10 +22,11 @@
 	 *   saving?: boolean,
 	 *   saveLabel?: string,
 	 *   ondiscard: () => void,
+	 *   nudge?: number,
 	 *   children: import("svelte").Snippet
 	 * }}
 	 */
-	let { crumbs, title, error = null, dirty = false, saving = false, saveLabel = "Save", ondiscard, children } = $props();
+	let { crumbs, title, error = null, dirty = false, saving = false, saveLabel = "Save", ondiscard, nudge = 0, children } = $props();
 
 	/** @type {HTMLElement | undefined} */
 	let scroller = $state();
@@ -68,14 +70,17 @@
 			aria-hidden={!dirty}
 			inert={!dirty}
 		>
-			<div class="bg-card text-foreground border-border pointer-events-auto flex items-center gap-4 rounded-full border py-1.5 pr-1.5 pl-4 shadow-lg">
+			{#key nudge}
+			<div class="bg-card text-foreground border-border pointer-events-auto flex items-center gap-4 rounded-full border py-1.5 pr-1.5 pl-4 shadow-lg {nudge ? 'nudge' : ''}">
 				<span class="flex items-center gap-2 text-sm font-medium"><span class="bg-primary size-2 rounded-full"></span>Unsaved changes</span>
 				<div class="flex items-center gap-1.5">
 					<Button variant="ghost" size="sm" class="rounded-full" type="button" onclick={ondiscard} disabled={saving}>Discard</Button>
 					<Button size="sm" class="rounded-full" type="submit" disabled={saving}>{saving ? "Saving…" : saveLabel}</Button>
 				</div>
 			</div>
+			{/key}
 		</div>
+		<span class="sr-only" role="status">{nudge ? "Save your changes before opening a variant." : ""}</span>
 	</div>
 
 	<div class="px-4 pt-6 md:px-12 md:pt-10">
@@ -109,3 +114,24 @@
 		{@render children()}
 	</div>
 </div>
+
+<style>
+	/* Shake once and light the border: "save first". Reduced motion gets the border only. */
+	.nudge {
+		animation: nudge 0.45s ease-in-out, nudge-border 1.2s ease-out;
+	}
+	@keyframes nudge {
+		0%, 100% { transform: translateX(0); }
+		20% { transform: translateX(-8px); }
+		40% { transform: translateX(7px); }
+		60% { transform: translateX(-5px); }
+		80% { transform: translateX(3px); }
+	}
+	@keyframes nudge-border {
+		0% { border-color: var(--gold); }
+		100% { border-color: var(--border); }
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.nudge { animation: nudge-border 1.2s ease-out; }
+	}
+</style>

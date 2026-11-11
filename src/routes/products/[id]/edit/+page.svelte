@@ -64,6 +64,8 @@
 	const dirty = $derived(!loading && snapshot() !== baseline);
 	/** @type {string | null} */
 	let saveError = $state(null);
+	// Bumped to shake the save pill when a variant link is blocked.
+	let nudge = $state(0);
 
 	$effect(() => {
 		load();
@@ -232,6 +234,20 @@
 		save(status);
 	}
 
+	/**
+	 * A variant opens on its own page, but the form's changes live only here.
+	 * So a click on a variant link with unsaved changes does not leave or ask:
+	 * it shakes the save pill instead.
+	 * @param {MouseEvent} e
+	 */
+	function guardVariantLinks(e) {
+		if (!dirty || !(e.target instanceof Element)) return;
+		if (!e.target.closest('a[href*="/variants/"]')) return;
+		e.preventDefault();
+		e.stopPropagation();
+		nudge += 1;
+	}
+
 	/** For the leave dialog: save, then report whether it worked. */
 	async function saveAndLeave() {
 		if (priceError) return false;
@@ -251,7 +267,7 @@
 {:else if loadError}
 	<p class="text-destructive p-12 text-sm">Error: {loadError}</p>
 {:else}
-	<form class="flex min-h-0 flex-1 flex-col" onsubmit={handleSubmit}>
+	<form class="flex min-h-0 flex-1 flex-col" onsubmit={handleSubmit} onclickcapture={guardVariantLinks}>
 		<UnsavedGuard {dirty} onsave={saveAndLeave} />
 		<StockDressFormLayout
 			crumbs={[{ label: "Edit" }]}
@@ -259,6 +275,7 @@
 			error={saveError}
 			{dirty}
 			{saving}
+			{nudge}
 			saveLabel={originalStatus === "draft" && status === "active" ? "Publish" : "Save"}
 			ondiscard={() => load(true)}
 		>
