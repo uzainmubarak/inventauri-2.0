@@ -102,8 +102,9 @@
 			{:else if error}
 				<p class="text-destructive text-sm">Error: {error}</p>
 			{:else if fullDress && summary}
-				<div class="flex flex-col gap-3">
-					<div class="bg-muted text-text-muted flex aspect-[3/4] w-64 items-center justify-center overflow-hidden rounded-xl">
+				<div class="flex items-start gap-4">
+				<div class="flex shrink-0 flex-col gap-3">
+					<div class="bg-muted text-text-muted flex aspect-[3/4] w-60 items-center justify-center overflow-hidden rounded-xl">
 						{#if photos[photoIndex]}
 							<img src={photos[photoIndex].image_url} alt={fullDress.name} class="size-full object-cover" />
 						{:else}
@@ -126,8 +127,7 @@
 						</div>
 					{/if}
 				</div>
-
-				<div class="grid grid-cols-3 gap-3">
+				<div class="flex min-w-0 flex-1 flex-col gap-3">
 					<div class="bg-background border-border-light flex flex-col gap-1 rounded-xl border px-4 py-3.5">
 						<span class="text-muted-foreground text-xs">Price</span>
 						<span class="font-mono text-base font-medium">PKR {money(fullDress.price)}</span>
@@ -151,6 +151,7 @@
 						</span>
 						<span class="font-mono text-base font-medium">{profit == null ? "–" : `PKR ${money(profit)}`}</span>
 					</div>
+				</div>
 				</div>
 
 				{#if fullDress.description}

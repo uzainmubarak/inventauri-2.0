@@ -250,7 +250,7 @@
 			title="Variants"
 			description="What hangs on the rack, such as size and colour. Each version is counted and gets its own SKU and barcode."
 		>
-			<VariantList {variants} {trackQuantity} {dressId} dressPhoto={images[0]?.image_url ?? null} onChange={(v) => (variants = v)} />
+			<VariantList {variants} {trackQuantity} {dressId} onChange={(v) => (variants = v)} />
 		</FormSection>
 
 		<FormSection title="Make to order">

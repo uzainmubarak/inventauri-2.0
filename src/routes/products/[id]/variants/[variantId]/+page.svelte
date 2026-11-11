@@ -119,9 +119,8 @@
 	/** @param {any} v */
 	function thumbOf(v) {
 		const photos = (dress?.stock_dress_images ?? []).filter(/** @param {any} i */ (i) => i.variant_id === v.id);
-		const dressPhotos = (dress?.stock_dress_images ?? []).filter(/** @param {any} i */ (i) => !i.variant_id);
 		const pick = (/** @type {any[]} */ list) => list.find((i) => i.is_primary) ?? list[0];
-		return (pick(photos) ?? pick(dressPhotos))?.image_url ?? null;
+		return pick(photos)?.image_url ?? null;
 	}
 
 	async function save() {

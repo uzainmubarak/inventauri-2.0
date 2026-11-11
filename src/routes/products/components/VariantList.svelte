@@ -27,17 +27,15 @@
 	 *
 	 * Props: `variants` (rows), `trackQuantity` (shows the Quantity column),
 	 * `onChange(next)`, `dressId` (saved variants link to their own page),
-	 * `dressPhoto` (shown faded on a variant with no photo of its own).
 	 * A row's `image_url` is its own photo, picked from the gallery.
 	 * @type {{
 	 *   variants: any[],
 	 *   trackQuantity?: boolean,
 	 *   dressId?: string,
-	 *   dressPhoto?: string | null,
 	 *   onChange?: (variants: any[]) => void
 	 * }}
 	 */
-	let { variants, trackQuantity = true, dressId, dressPhoto = null, onChange } = $props();
+	let { variants, trackQuantity = true, dressId, onChange } = $props();
 
 	/** Index of the row whose photo is being chosen; one gallery dialog serves every row. */
 	let pickingFor = $state(/** @type {number | null} */ (null));
@@ -355,15 +353,10 @@
 										<button
 											type="button"
 											aria-label="Add a photo for {describe(variant)}"
-											title={dressPhoto ? "Showing the dress photo. Click to pick one for this variant." : undefined}
 											class="border-text-muted text-muted-foreground hover:bg-muted flex aspect-[3/4] h-10 items-center justify-center overflow-hidden rounded-[10px] border border-dashed"
 											onclick={() => (pickingFor = i)}
 										>
-											{#if dressPhoto}
-												<img src={dressPhoto} alt="" class="size-full object-cover opacity-50" />
-											{:else}
-												<ImageIcon class="size-4" />
-											{/if}
+											<ImageIcon class="size-4" />
 										</button>
 									{/if}
 								</Table.Cell>

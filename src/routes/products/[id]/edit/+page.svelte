@@ -209,24 +209,41 @@
 		saving = false;
 	}
 
+	/** What stops a save, or null. */
+	function blocker() {
+		const problem = formProblem();
+		if (problem) return problem;
+		// Any status a customer can be quoted from needs a real price. The DB
+		// enforces this too; this is so the user gets a sentence instead of a
+		// constraint name.
+		if (status !== "draft" && !(Number(price) > 0)) return "Set a price above zero before saving a published dress.";
+		return null;
+	}
+
 	/** @param {SubmitEvent} e */
 	function handleSubmit(e) {
 		e.preventDefault();
 		if (priceError) return;
-		const problem = formProblem();
+		const problem = blocker();
 		if (problem) {
 			saveError = problem;
 			return;
 		}
-		// Any status a customer can be quoted from needs a real price. The DB
-		// enforces this too; this is so the user gets a sentence instead of a
-		// constraint name.
-		if (status !== "draft" && !(Number(price) > 0)) {
-			saveError = "Set a price above zero before saving a published dress.";
-			return;
-		}
 		save(status);
 	}
+
+	/** For the leave dialog: save, then report whether it worked. */
+	async function saveAndLeave() {
+		if (priceError) return false;
+		const problem = blocker();
+		if (problem) {
+			saveError = problem;
+			return false;
+		}
+		await save(status);
+		return !saveError;
+	}
+
 </script>
 
 {#if loading}
@@ -235,7 +252,7 @@
 	<p class="text-destructive p-12 text-sm">Error: {loadError}</p>
 {:else}
 	<form class="flex min-h-0 flex-1 flex-col" onsubmit={handleSubmit}>
-		<UnsavedGuard {dirty} />
+		<UnsavedGuard {dirty} onsave={saveAndLeave} />
 		<StockDressFormLayout
 			crumbs={[{ label: "Edit" }]}
 			title={name || "Edit dress"}
