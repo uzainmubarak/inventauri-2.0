@@ -340,8 +340,8 @@
 							<Table.Row class="h-14">
 								<Table.Cell class="px-3">
 									{#if variant.image_url}
-										<span class="relative inline-flex size-10">
-											<img src={variant.image_url} alt="" class="ring-border size-10 rounded-[10px] object-cover ring-1" />
+										<span class="relative inline-flex aspect-[3/4] h-10">
+											<img src={variant.image_url} alt="" class="ring-border size-full rounded-[10px] object-cover ring-1" />
 											<button
 												type="button"
 												aria-label="Remove the photo of {describe(variant)}"
@@ -356,7 +356,7 @@
 											type="button"
 											aria-label="Add a photo for {describe(variant)}"
 											title={dressPhoto ? "Showing the dress photo. Click to pick one for this variant." : undefined}
-											class="border-text-muted text-muted-foreground hover:bg-muted flex size-10 items-center justify-center overflow-hidden rounded-[10px] border border-dashed"
+											class="border-text-muted text-muted-foreground hover:bg-muted flex aspect-[3/4] h-10 items-center justify-center overflow-hidden rounded-[10px] border border-dashed"
 											onclick={() => (pickingFor = i)}
 										>
 											{#if dressPhoto}

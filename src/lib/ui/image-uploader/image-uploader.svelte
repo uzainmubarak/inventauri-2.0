@@ -77,7 +77,7 @@
 		>
 			<div
 				class={cn(
-					"bg-muted relative size-28 overflow-hidden rounded-xl",
+					"bg-muted relative aspect-[3/4] w-28 overflow-hidden rounded-xl",
 					img.is_primary && "ring-primary ring-2"
 				)}
 			>
@@ -125,7 +125,7 @@
 
 	<button
 		type="button"
-		class="border-text-muted text-muted-foreground hover:bg-muted flex size-28 flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed text-xs font-medium"
+		class="border-text-muted text-muted-foreground hover:bg-muted flex aspect-[3/4] w-28 flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed text-xs font-medium"
 		onclick={() => (picking = true)}
 	>
 		<UploadIcon class="size-5" />

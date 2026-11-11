@@ -281,7 +281,7 @@
 								aria-current={v.id === variant.id ? "page" : undefined}
 								class="hover:bg-background flex items-center gap-3 px-4 py-2.5 {v.id === variant.id ? 'bg-accent shadow-[inset_2px_0_0_var(--gold)]' : ''}"
 							>
-								<span class="bg-[var(--bg3)] text-text-muted flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-lg">
+								<span class="bg-[var(--bg3)] text-text-muted flex aspect-[3/4] h-12 shrink-0 items-center justify-center overflow-hidden rounded-lg">
 									{#if thumb}<img src={thumb} alt="" class="size-full object-cover" />{:else}<ImageIcon class="size-4" />{/if}
 								</span>
 								<span class="flex min-w-0 flex-col gap-0.5">
@@ -386,7 +386,7 @@
 							{#if loadedImages.length}
 								<div class="flex flex-wrap gap-3">
 									{#each loadedImages as photo (photo.id)}
-										<img src={photo.image_url} alt="" class="size-24 rounded-lg object-cover {photo.is_primary ? 'ring-2 ring-[var(--gold)]' : ''}" />
+										<img src={photo.image_url} alt="" class="aspect-[3/4] h-32 rounded-lg object-cover {photo.is_primary ? 'ring-2 ring-[var(--gold)]' : ''}" />
 									{/each}
 								</div>
 							{:else}

@@ -93,7 +93,7 @@
 	}
 
 	.card-image {
-		height: 140px;
+		aspect-ratio: 3 / 4;
 		background: var(--bg2);
 		display: flex;
 		align-items: center;

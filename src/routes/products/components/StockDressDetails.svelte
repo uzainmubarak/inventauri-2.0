@@ -87,8 +87,8 @@
 {:else if error}
 	<p class="text-destructive text-sm">Error: {error}</p>
 {:else if fullDress && summary}
-	<div class="flex flex-col gap-3">
-		<div class="bg-muted text-text-muted flex h-60 items-center justify-center overflow-hidden rounded-xl">
+	<div class="flex gap-3">
+		<div class="bg-muted text-text-muted flex aspect-[3/4] w-64 shrink-0 items-center justify-center overflow-hidden rounded-xl">
 			{#if photos[photoIndex]}
 				<img src={photos[photoIndex].image_url} alt={fullDress.name} class="size-full object-cover" />
 			{:else}
@@ -96,13 +96,13 @@
 			{/if}
 		</div>
 		{#if photos.length > 1}
-			<div class="flex gap-2">
+			<div class="flex flex-col gap-2">
 				{#each photos as photo, i (photo.id)}
 					<button
 						type="button"
 						aria-label="Show photo {i + 1}"
 						aria-pressed={i === photoIndex}
-						class="bg-muted size-16 overflow-hidden rounded-lg {i === photoIndex ? 'ring-primary ring-2' : ''}"
+						class="bg-muted aspect-[3/4] w-12 overflow-hidden rounded-lg {i === photoIndex ? 'ring-primary ring-2' : ''}"
 						onclick={() => (photoIndex = i)}
 					>
 						<img src={photo.image_url} alt="" class="size-full object-cover" />

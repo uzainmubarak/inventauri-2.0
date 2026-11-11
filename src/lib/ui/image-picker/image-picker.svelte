@@ -160,7 +160,7 @@
 		>
 			<button
 				type="button"
-				class="border-text-muted text-muted-foreground hover:bg-muted flex aspect-square flex-col items-center justify-center gap-1 rounded-xl border border-dashed text-xs font-medium"
+				class="border-text-muted text-muted-foreground hover:bg-muted flex aspect-[3/4] flex-col items-center justify-center gap-1 rounded-xl border border-dashed text-xs font-medium"
 				onclick={() => fileInput?.click()}
 			>
 				<PlusIcon class="size-5" />
@@ -171,7 +171,7 @@
 			{#each pending as p (p.key)}
 				<div
 					class={cn(
-						"relative flex aspect-square flex-col items-center justify-center gap-1 overflow-hidden rounded-xl p-2 text-center text-xs",
+						"relative flex aspect-[3/4] flex-col items-center justify-center gap-1 overflow-hidden rounded-xl p-2 text-center text-xs",
 						p.status === "failed" ? "bg-destructive/10 text-destructive" : "bg-muted text-muted-foreground"
 					)}
 				>
@@ -197,7 +197,7 @@
 						aria-pressed={selected.has(g.id)}
 						aria-label="{selected.has(g.id) ? 'Deselect' : 'Select'} {g.file_name ?? 'photo'}"
 						class={cn(
-							"bg-muted relative aspect-square overflow-hidden rounded-xl",
+							"bg-muted relative aspect-[3/4] overflow-hidden rounded-xl",
 							selected.has(g.id) && "ring-primary ring-2"
 						)}
 						onclick={() => toggle(g.id)}

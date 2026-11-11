@@ -104,7 +104,7 @@
 				</Table.Cell>
 				<Table.Cell>
 					<button type="button" class="flex w-full min-w-0 items-center gap-3 text-left" onclick={() => onOpen(dress)}>
-						<span class="bg-[var(--bg3)] text-text-muted flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-lg">
+						<span class="bg-[var(--bg3)] text-text-muted flex aspect-[3/4] h-11 shrink-0 items-center justify-center overflow-hidden rounded-lg">
 							{#if r.image}
 								<img src={r.image.image_url} alt="" class="size-full object-cover" />
 							{:else}
