@@ -187,7 +187,9 @@
 
 	/** @param {number} index */
 	function undoDelete(index) {
-		updateVariant(index, { deleted: false });
+		// Drop the key rather than setting it false: the unsaved check compares the rows as
+		// text, so an undone row must be identical to how it started.
+		emit(variants.map((v, i) => (i === index ? Object.fromEntries(Object.entries(v).filter(([k]) => k !== "deleted")) : v)));
 	}
 
 	/**
