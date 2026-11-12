@@ -353,7 +353,7 @@
 									<Table.Cell class="px-3" colspan={colspanAfterName}>
 										<div class="flex items-center justify-between gap-3">
 											<span class="flex flex-col gap-0.5">
-												<span class="text-destructive text-[13px] font-medium">This variant will be deleted</span>
+												<span class="text-destructive text-[13px] font-medium">This variant will be deleted on save</span>
 												{#if trackQuantity && variant.id && Number(variant.quantity) > 0}
 													<span class="text-muted-foreground text-xs">Its {Number(variant.quantity)} in stock stop counting.</span>
 												{/if}

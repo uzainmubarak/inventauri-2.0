@@ -329,7 +329,7 @@
 					{#if deleting}
 						<div class="bg-destructive/5 border-destructive/25 flex items-center justify-between gap-3 rounded-xl border px-4 py-3" role="status">
 							<span class="flex flex-col gap-0.5">
-								<span class="text-destructive text-[13px] font-medium">This variant will be deleted when you save.</span>
+								<span class="text-destructive text-[13px] font-medium">This variant will be deleted on save.</span>
 								{#if variant.track_quantity && variant.quantity > 0}
 									<span class="text-muted-foreground text-xs">Its {variant.quantity} in stock stop counting.</span>
 								{/if}
