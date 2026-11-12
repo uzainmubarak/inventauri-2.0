@@ -59,7 +59,23 @@ Phone numbers are personal data. They are only readable by staff, and are remove
 4. **Waitlist when a variant is archived:** tell the shopper, or drop the request silently?
 5. **Lead time:** where it is entered (the dress form, or the order side).
 
-## 3. Not in this plan
+## 3. Removing a variant (form)
+
+Based on the Shopify variant list. Nothing is removed until the dress is saved.
+
+- Clicking remove marks the row: the row stays in the list, its name is struck through, and it reads "This variant will be archived" (not "deleted", since the history is kept).
+- An **Undo** link on the row clears the mark.
+- Saving applies it: the variant is archived, as in section 1. Its quantity stops counting toward the dress total.
+- Leaving the page without saving drops the mark.
+
+## 4. Empty and zero in number fields
+
+- Empty stays empty and is saved as null. A typed 0 is saved as 0.
+- Clicking a number field selects its contents.
+- Opening stock needs no exception: the Track quantity switch decides whether it counts, so an empty value there writes nothing.
+- The grey hint text per field is to be decided by the designer, from the user's approval.
+
+## 5. Not in this plan
 
 - Payment on the web store.
 - Order handling (covered by the Orders module).
