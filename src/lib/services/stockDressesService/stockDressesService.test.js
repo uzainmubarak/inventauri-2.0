@@ -213,6 +213,34 @@ describe("updateStockDressWithDetails", () => {
 		expect(Number(after.stock_dress_variants[0].price_override)).toBe(80000);
 	});
 
+	it("writes nothing for an empty variant quantity, and a typed 0 empties the stock", async () => {
+		const { data } = await create({
+			variants: [{ price_override: null, quantity: 5, axisValues: [{ axis: "size", value: "XL" }] }],
+		});
+		const { data: full } = await getStockDressById(data.dress.id);
+		const edit = (/** @type {number | null} */ quantity) =>
+			updateStockDressWithDetails(data.dress.id, {
+				dress: { ...base },
+				currentImages: [],
+				images: [],
+				currentOptions: [],
+				options: [],
+				currentVariants: full.stock_dress_variants,
+				variants: full.stock_dress_variants.map((/** @type {any} */ v) => ({
+					id: v.id,
+					price_override: null,
+					quantity,
+					axisValues: [{ axis: "size", value: "XL" }],
+				})),
+			});
+		await edit(null);
+		let { data: after } = await getStockDressById(data.dress.id);
+		expect(after.stock_dress_variants[0].quantity).toBe(5);
+		await edit(0);
+		({ data: after } = await getStockDressById(data.dress.id));
+		expect(after.stock_dress_variants[0].quantity).toBe(0);
+	});
+
 	it("saves a variant's own photo on create, swaps it and removes it on edit", async () => {
 		const own = (/** @type {any} */ d) => d.stock_dress_images.filter((/** @type {any} */ i) => i.variant_id);
 		const { data } = await create({

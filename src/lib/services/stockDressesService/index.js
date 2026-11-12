@@ -201,7 +201,7 @@ async function syncVariantPhoto(dressId, variantId, wantedUrl, existing = []) {
  *   dress: { sku?: string | null, name: string, garment_type: string, category: string, subcategory?: string | null, description?: string | null, notes?: string | null, tags?: string[], price: number, compare_at_price?: number | null, cost?: number | null, track_quantity?: boolean, made_to_order?: boolean, weight_grams?: number | null, length_cm?: number | null, width_cm?: number | null, height_cm?: number | null, status?: string },
  *   images?: { image_url: string, is_primary?: boolean, caption?: string }[],
  *   options?: { name: string, values: { value: string, price_adjustment?: number }[] }[],
- *   variants?: { sku?: string | null, price_override?: number, quantity?: number, image_url?: string | null, axisValues: { axis: 'size' | 'color' | 'fabric' | 'other', value: string }[] }[],
+ *   variants?: { sku?: string | null, price_override?: number, quantity?: number | null, image_url?: string | null, axisValues: { axis: 'size' | 'color' | 'fabric' | 'other', value: string }[] }[],
  *   opening_quantity?: number
  * }} formData
  * @returns {Promise<{ data: { dress: any } | null, error: string | null }>}
@@ -351,7 +351,7 @@ export async function createStockDressWithDetails(formData) {
  *   currentOptions: { id: string }[],
  *   options: { id?: string, name: string, values: { value: string, price_adjustment?: number }[] }[],
  *   currentVariants: { id: string, quantity?: number, stock_dress_variant_values?: { axis: string }[] }[],
- *   variants: { id?: string, sku?: string | null, price_override?: number, quantity?: number, image_url?: string | null, axisValues: { axis: 'size' | 'color' | 'fabric' | 'other', value: string }[] }[]
+ *   variants: { id?: string, sku?: string | null, price_override?: number, quantity?: number | null, image_url?: string | null, axisValues: { axis: 'size' | 'color' | 'fabric' | 'other', value: string }[] }[]
  * }} formData
  * @returns {Promise<{ data: { dress: any } | null, error: string | null }>}
  */
@@ -474,7 +474,8 @@ export async function updateStockDressWithDetails(dressId, formData) {
 				const photoError = await syncVariantPhoto(dress.id, variant.id, variant.image_url, own);
 				if (photoError) return { data: { dress }, error: `Dress saved, but a variant's photo failed: ${photoError}` };
 			}
-			const delta = trackQuantity && saved ? (Number(variant.quantity) || 0) - (Number(saved.quantity) || 0) : 0;
+			// An empty quantity means no change, so it writes nothing. A typed 0 is a real count.
+			const delta = trackQuantity && saved && variant.quantity != null ? Number(variant.quantity) - (Number(saved.quantity) || 0) : 0;
 			if (delta !== 0) {
 				const { error: moveError } = await recordMovement({
 					dress_id: dress.id,

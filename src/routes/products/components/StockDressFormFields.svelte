@@ -28,6 +28,9 @@
 	 * `madeToOrder` is the dress's own flag: off, a dress with an empty rack reads as
 	 * sold out; on, it stays orderable.
 	 *
+	 * `priceRequired` is the error under Price, set by the page when an active dress is
+	 * saved without a price above 0.
+	 *
 	 * `quantity` is the dress-level count. It only counts when the dress has no
 	 * variants; with variants it is stored and hidden, and the variant
 	 * quantities are what count. `editing` is true on the edit page.
@@ -57,6 +60,7 @@
 	 *   editing?: boolean,
  *   dressId?: string,
 	 *   priceError?: string | null,
+	 *   priceRequired?: string | null,
 	 * }}
 	 */
 	let {
@@ -84,6 +88,7 @@
 		editing = false,
 		dressId,
 		priceError = $bindable(),
+		priceRequired = null,
 	} = $props();
 
 	let shippingOpen = $state(false);
@@ -117,7 +122,7 @@
 			: null;
 	});
 
-	const activeVariants = $derived(variants.filter(/** @param {any} v */ (v) => v.status !== "archived"));
+	const activeVariants = $derived(variants.filter(/** @param {any} v */ (v) => v.status !== "archived" && !v.deleted));
 	const totalQuantity = $derived(
 		activeVariants.length > 0
 			? activeVariants.reduce(/** @param {number} sum @param {any} v */ (sum, v) => sum + (Number(v.quantity) || 0), 0)
@@ -179,8 +184,8 @@
 
 		<FormSection title="Pricing">
 			<div class="grid gap-4 @lg:grid-cols-3">
-				<Field label="Price" for="dress-price">
-					<NumberField id="dress-price" prefix="PKR" min="0" step="0.01" bind:value={price} />
+				<Field label="Price" for="dress-price" error={priceRequired}>
+					<NumberField id="dress-price" prefix="PKR" min="0" step="0.01" placeholder="e.g. 185,000" aria-invalid={!!priceRequired} bind:value={price} />
 				</Field>
 				<Field label="Compare-at price" for="dress-compare" error={compareAtInvalid ? priceError : null}>
 					<NumberField
@@ -188,13 +193,13 @@
 						prefix="PKR"
 						min="0"
 						step="0.01"
-						placeholder="The “was” price"
+						placeholder="e.g. 220,000"
 						aria-invalid={compareAtInvalid}
 						bind:value={compareAtPrice}
 					/>
 				</Field>
 				<Field label="Cost" for="dress-cost" hint="Internal only.">
-					<NumberField id="dress-cost" prefix="PKR" min="0" step="0.01" bind:value={cost} />
+					<NumberField id="dress-cost" prefix="PKR" min="0" step="0.01" placeholder="What it cost you" bind:value={cost} />
 				</Field>
 			</div>
 			<div class="grid gap-3 @md:grid-cols-2">
@@ -234,7 +239,7 @@
 							? "A change is saved as an adjustment in the stock history."
 							: "Saved as the opening stock."}
 				>
-					<NumberField id="dress-quantity" min="0" bind:value={quantity} />
+					<NumberField id="dress-quantity" min="0" placeholder="How many on the rack" bind:value={quantity} />
 				</Field>
 			{/if}
 		</FormSection>
@@ -273,10 +278,10 @@
 					</div>
 					<div class="grid gap-4 @md:grid-cols-2">
 						<Field label="Shortest" for="lead-min">
-							<NumberField id="lead-min" suffix="weeks" placeholder="2" disabled />
+							<NumberField id="lead-min" suffix="weeks" placeholder="e.g. 2" disabled />
 						</Field>
 						<Field label="Longest" for="lead-max">
-							<NumberField id="lead-max" suffix="weeks" placeholder="4" disabled />
+							<NumberField id="lead-max" suffix="weeks" placeholder="e.g. 4" disabled />
 						</Field>
 					</div>
 					<p class="text-muted-foreground text-[13px]">How long a new piece takes. Customers will see it on the dress once orders can save it.</p>
@@ -301,16 +306,16 @@
 			{#if shippingOpen}
 				<div id="shipping-fields" class="grid grid-cols-2 gap-4 px-6 pb-6 @lg:grid-cols-4">
 					<Field label="Weight" for="dress-weight">
-						<NumberField id="dress-weight" suffix="g" min="0" bind:value={weightGrams} />
+						<NumberField id="dress-weight" suffix="g" min="0" placeholder="e.g. 1500" bind:value={weightGrams} />
 					</Field>
 					<Field label="Length" for="dress-length">
-						<NumberField id="dress-length" suffix="cm" min="0" step="0.01" bind:value={lengthCm} />
+						<NumberField id="dress-length" suffix="cm" min="0" step="0.01" placeholder="Length" bind:value={lengthCm} />
 					</Field>
 					<Field label="Width" for="dress-width">
-						<NumberField id="dress-width" suffix="cm" min="0" step="0.01" bind:value={widthCm} />
+						<NumberField id="dress-width" suffix="cm" min="0" step="0.01" placeholder="Width" bind:value={widthCm} />
 					</Field>
 					<Field label="Height" for="dress-height">
-						<NumberField id="dress-height" suffix="cm" min="0" step="0.01" bind:value={heightCm} />
+						<NumberField id="dress-height" suffix="cm" min="0" step="0.01" placeholder="Height" bind:value={heightCm} />
 					</Field>
 				</div>
 			{/if}

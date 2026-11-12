@@ -6,6 +6,8 @@
 	 * Numeric input with a fixed unit on one side, e.g. prefix "Rs" for money or
 	 * suffix "cm" for a length. Props: `value` (bindable), `prefix`, `suffix`.
 	 * The border and focus ring sit on the wrapper so the unit stays inside them.
+	 * Empty stays empty (`value` is null, never 0), and focusing selects the whole
+	 * value so typing replaces it. The grey hint is the `placeholder`.
 	 */
 	let {
 		value = $bindable(),
@@ -18,6 +20,9 @@
 		prefix?: string;
 		suffix?: string;
 	} = $props();
+
+	// A click would drop the selection again on mouseup, so that one mouseup is skipped.
+	let justFocused = false;
 </script>
 
 <div
@@ -36,7 +41,15 @@
 	<input
 		type="number"
 		bind:value
-		class="placeholder:text-muted-foreground min-w-0 flex-1 bg-transparent px-2.5 text-right font-mono text-[13px] outline-none disabled:cursor-not-allowed"
+		onfocus={(e) => {
+			e.currentTarget.select();
+			justFocused = true;
+		}}
+		onmouseup={(e) => {
+			if (justFocused) e.preventDefault();
+			justFocused = false;
+		}}
+		class="placeholder:text-muted-foreground/85 min-w-0 flex-1 bg-transparent px-2.5 text-right font-mono text-[13px] outline-none disabled:cursor-not-allowed"
 		{...restProps}
 	/>
 	{#if suffix}

@@ -157,7 +157,7 @@
 					<NumberField
 						prefix="+ PKR"
 						step="0.01"
-						placeholder="0"
+						placeholder="No change"
 						aria-label="Price adjustment for {value.value || 'this value'}"
 						bind:value={value.price_adjustment}
 					/>
@@ -195,7 +195,7 @@
 					}}
 					onblur={commitDraft}
 				/>
-				<NumberField prefix="+ PKR" placeholder="0" disabled aria-label="Price adjustment for the next value" />
+				<NumberField prefix="+ PKR" placeholder="No change" disabled aria-label="Price adjustment for the next value" />
 				<span></span>
 			</div>
 		</div>

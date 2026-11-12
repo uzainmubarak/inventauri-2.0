@@ -4,6 +4,7 @@
 	import { recordMovement } from "$lib/services/stockMovementsService";
 		import { optionIssues, optionsForSave, optionsFromDress } from "$lib/products/options";
 	import { findDuplicateVariants, variantsForSave } from "$lib/products/variantMatrix";
+	import { numOrNull } from "$lib/products/numbers";
 	import StockDressFormFields from "../../components/StockDressFormFields.svelte";
 	import StockDressFormLayout from "../../components/StockDressFormLayout.svelte";
 	import UnsavedGuard from "../../components/UnsavedGuard.svelte";
@@ -44,6 +45,18 @@
 	let variants = $state([]);
 	/** @type {string | null} */
 	let priceError = $state(null);
+
+	// Shown under Price after a save attempt, and gone as soon as the price is fixed.
+	let triedSave = $state(false);
+	const priceRequired = $derived(triedSave && status !== "draft" && !(Number(price) > 0) ? "Price must be above 0." : null);
+	/** True (and the field is focused) when an active dress has no price above 0. */
+	function priceMissing() {
+		if (status === "draft" || Number(price) > 0) return false;
+		triedSave = true;
+		document.getElementById("dress-price")?.focus();
+		return true;
+	}
+
 
 	// Snapshots of what's currently in the DB, used to diff against the
 	// edited lists on save (see updateStockDressWithDetails).
@@ -129,6 +142,7 @@
 			image_url: ownPhoto(data, v.id),
 			status: v.status,
 		}));
+		triedSave = false;
 		baseline = snapshot();
 	}
 
@@ -159,14 +173,14 @@
 				notes: notes || null,
 				tags,
 				price: Number(price) || 0,
-				compare_at_price: compareAtPrice ? Number(compareAtPrice) : null,
-				cost: cost ? Number(cost) : null,
+				compare_at_price: numOrNull(compareAtPrice),
+				cost: numOrNull(cost),
 				track_quantity: trackQuantity,
 				made_to_order: madeToOrder,
-				weight_grams: weightGrams ? Number(weightGrams) : null,
-				length_cm: lengthCm ? Number(lengthCm) : null,
-				width_cm: widthCm ? Number(widthCm) : null,
-				height_cm: heightCm ? Number(heightCm) : null,
+				weight_grams: numOrNull(weightGrams),
+				length_cm: numOrNull(lengthCm),
+				width_cm: numOrNull(widthCm),
+				height_cm: numOrNull(heightCm),
 				status: target,
 			},
 			currentImages,
@@ -192,7 +206,9 @@
 
 		// The count only moves through the ledger, so a changed quantity is
 		// posted as an adjustment for the difference, never written directly.
-		const delta = (Number(quantity) || 0) - originalQuantity;
+		// An empty count means no change; a typed 0 empties the stock.
+		const counted = numOrNull(quantity);
+		const delta = counted === null ? 0 : counted - originalQuantity;
 		if (trackQuantity && delta !== 0) {
 			const { error: moveError } = await recordMovement({
 				dress_id: dressId ?? "",
@@ -216,9 +232,8 @@
 		const problem = formProblem();
 		if (problem) return problem;
 		// Any status a customer can be quoted from needs a real price. The DB
-		// enforces this too; this is so the user gets a sentence instead of a
-		// constraint name.
-		if (status !== "draft" && !(Number(price) > 0)) return "Set a price above zero before saving a published dress.";
+		// enforces this too; this is so the user gets a message instead of a
+		// constraint name. The message sits under Price, so no sentence is returned.
 		return null;
 	}
 
@@ -226,6 +241,7 @@
 	function handleSubmit(e) {
 		e.preventDefault();
 		if (priceError) return;
+		if (priceMissing()) return;
 		const problem = blocker();
 		if (problem) {
 			saveError = problem;
@@ -250,7 +266,7 @@
 
 	/** For the leave dialog: save, then report whether it worked. */
 	async function saveAndLeave() {
-		if (priceError) return false;
+		if (priceError || priceMissing()) return false;
 		const problem = blocker();
 		if (problem) {
 			saveError = problem;
@@ -302,6 +318,7 @@
 				bind:options
 				bind:variants
 				bind:priceError
+				{priceRequired}
 				editing
 				{dressId}
 			/>

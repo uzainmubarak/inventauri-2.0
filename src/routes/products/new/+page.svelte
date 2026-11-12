@@ -3,6 +3,7 @@
 	import { createStockDressWithDetails } from "$lib/services/stockDressesService";
 		import { optionIssues, optionsForSave } from "$lib/products/options";
 	import { findDuplicateVariants, variantsForSave } from "$lib/products/variantMatrix";
+	import { numOrNull } from "$lib/products/numbers";
 	import StockDressFormFields from "../components/StockDressFormFields.svelte";
 	import StockDressFormLayout from "../components/StockDressFormLayout.svelte";
 	import UnsavedGuard from "../components/UnsavedGuard.svelte";
@@ -19,7 +20,7 @@
 	let compareAtPrice = $state("");
 	let cost = $state("");
 	let trackQuantity = $state(false);
-	let quantity = $state(0);
+	let quantity = $state(/** @type {number | string} */ (""));
 	// Only the name is required. A dress with no price yet is a draft until it has one.
 	let status = $state("draft");
 	// On by default, as in the database: the same design can be made again.
@@ -37,6 +38,18 @@
 
 	/** @type {string | null} */
 	let priceError = $state(null);
+
+	// Shown under Price after a save attempt, and gone as soon as the price is fixed.
+	let triedSave = $state(false);
+	const priceRequired = $derived(triedSave && status !== "draft" && !(Number(price) > 0) ? "Price must be above 0." : null);
+	/** True (and the field is focused) when an active dress has no price above 0. */
+	function priceMissing() {
+		if (status === "draft" || Number(price) > 0) return false;
+		triedSave = true;
+		document.getElementById("dress-price")?.focus();
+		return true;
+	}
+
 	let saving = $state(false);
 	/** @type {string | null} */
 	let error = $state(null);
@@ -53,7 +66,8 @@
 		category = "party_wear";
 		tags = [];
 		trackQuantity = madeToOrder = false;
-		quantity = 0;
+		quantity = "";
+		triedSave = false;
 		status = "draft";
 		images = [];
 		options = [];
@@ -82,14 +96,14 @@
 				notes: notes || null,
 				tags,
 				price: Number(price) || 0,
-				compare_at_price: compareAtPrice ? Number(compareAtPrice) : null,
-				cost: cost ? Number(cost) : null,
+				compare_at_price: numOrNull(compareAtPrice),
+				cost: numOrNull(cost),
 				track_quantity: trackQuantity,
 				made_to_order: madeToOrder,
-				weight_grams: weightGrams ? Number(weightGrams) : null,
-				length_cm: lengthCm ? Number(lengthCm) : null,
-				width_cm: widthCm ? Number(widthCm) : null,
-				height_cm: heightCm ? Number(heightCm) : null,
+				weight_grams: numOrNull(weightGrams),
+				length_cm: numOrNull(lengthCm),
+				width_cm: numOrNull(widthCm),
+				height_cm: numOrNull(heightCm),
 				status: target,
 			},
 			images,
@@ -127,10 +141,7 @@
 		}
 		// Anything a customer could be quoted from needs a real price. Drafts
 		// are explicitly allowed to be incomplete.
-		if (status !== "draft" && !(Number(price) > 0)) {
-			error = "Set a price above zero before setting this dress to Active.";
-			return;
-		}
+		if (priceMissing()) return;
 		save(status);
 	}
 </script>
@@ -169,6 +180,7 @@
 			bind:options
 			bind:variants
 			bind:priceError
+			{priceRequired}
 		/>
 
 	</StockDressFormLayout>
