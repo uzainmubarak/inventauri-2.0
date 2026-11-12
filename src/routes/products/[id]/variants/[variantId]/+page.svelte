@@ -1,7 +1,9 @@
 <script>
 	import { page } from "$app/state";
+	import { goto } from "$app/navigation";
+	import { numOrNull } from "$lib/products/numbers";
 	import { getStockDressById } from "$lib/services/stockDressesService";
-	import { updateVariant } from "$lib/services/stockDressVariantsService";
+	import { archiveVariant, updateVariant } from "$lib/services/stockDressVariantsService";
 	import { addImage, deleteImage, setPrimaryImage, setImagePosition } from "$lib/services/stockDressImagesService";
 	import { recordMovement } from "$lib/services/stockMovementsService";
 	import { Button } from "$lib/ui/button";
@@ -56,7 +58,9 @@
 	let loadedSnapshot = $state("");
 	/** @type {any[]} */
 	let loadedImages = $state([]);
-	const dirty = $derived(JSON.stringify(form) !== loadedSnapshot);
+	/** Marked for deletion: nothing happens until Save variant, which archives it. */
+	let deleting = $state(false);
+	const dirty = $derived(deleting || JSON.stringify(form) !== loadedSnapshot);
 
 	$effect(() => {
 		load(page.params.id ?? "", page.params.variantId ?? "");
@@ -67,6 +71,7 @@
 		loading = true;
 		loadError = null;
 		saveError = null;
+		deleting = false;
 		const { data, error } = await getStockDressById(dressId);
 		if (error) {
 			loading = false;
@@ -104,8 +109,6 @@
 		loading = false;
 	}
 
-	/** @param {number | string | null | undefined} value */
-	const num = (value) => (value === "" || value === null || value === undefined ? null : Number(value));
 	/** @param {number | string} n */
 	const money = (n) => Number(n).toLocaleString();
 	/** @param {string} axis */
@@ -131,18 +134,32 @@
 		saving = true;
 		saveError = null;
 
+		if (deleting) {
+			// Archived, never removed: the movements behind it keep their history.
+			const { error } = await archiveVariant(variant.id);
+			saving = false;
+			if (error) {
+				saveError = error;
+				return;
+			}
+			deleting = false;
+			loadedSnapshot = JSON.stringify(form);
+			await goto(`/products/${dress.id}/edit`);
+			return;
+		}
+
 		const barcode = form.barcode.trim();
 		const { error } = await updateVariant(variant.id, {
 			// A blank SKU is allowed (the service stores null).
 			sku: form.sku,
-			price_override: num(form.priceOverride),
-			compare_at_price: num(form.compareAt),
-			cost: num(form.cost),
+			price_override: numOrNull(form.priceOverride),
+			compare_at_price: numOrNull(form.compareAt),
+			cost: numOrNull(form.cost),
 			track_quantity: form.trackQuantity,
-			weight_grams: num(form.weight),
-			length_cm: num(form.length),
-			width_cm: num(form.width),
-			height_cm: num(form.height),
+			weight_grams: numOrNull(form.weight),
+			length_cm: numOrNull(form.length),
+			width_cm: numOrNull(form.width),
+			height_cm: numOrNull(form.height),
 			// Emptying the box keeps the old barcode: it is filled in once and
 			// frozen, so a blank is never what anyone means.
 			...(barcode && barcode !== variant.barcode ? { barcode } : {}),
@@ -162,7 +179,9 @@
 
 		// The count only moves through the ledger: a changed quantity is posted
 		// as an adjustment for the difference, never written directly.
-		const delta = (Number(form.quantity) || 0) - (variant.quantity ?? 0);
+		// An empty count means no change; a typed 0 empties the stock.
+		const counted = numOrNull(form.quantity);
+		const delta = counted === null ? 0 : counted - (variant.quantity ?? 0);
 		if (form.trackQuantity && delta !== 0) {
 			const { error: moveError } = await recordMovement({
 				dress_id: dress.id,
@@ -270,6 +289,11 @@
 			saveLabel="Save variant"
 			ondiscard={() => load(dress.id, variant.id)}
 		>
+			{#snippet actions()}
+				{#if !deleting}
+					<Button type="button" variant="outline" class="text-destructive" onclick={() => (deleting = true)}>Delete variant</Button>
+				{/if}
+			{/snippet}
 			<div class="grid items-start gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
 				<aside class="bg-card ring-foreground/10 flex flex-col overflow-hidden rounded-xl ring-1">
 					<a
@@ -302,6 +326,18 @@
 				</aside>
 
 				<div class="flex min-w-0 flex-col gap-6">
+					{#if deleting}
+						<div class="bg-destructive/5 border-destructive/25 flex items-center justify-between gap-3 rounded-xl border px-4 py-3" role="status">
+							<span class="flex flex-col gap-0.5">
+								<span class="text-destructive text-[13px] font-medium">This variant will be deleted when you save.</span>
+								{#if variant.track_quantity && variant.quantity > 0}
+									<span class="text-muted-foreground text-xs">Its {variant.quantity} in stock stop counting.</span>
+								{/if}
+							</span>
+							<Button type="button" variant="link" size="sm" class="text-foreground" onclick={() => (deleting = false)}>Undo</Button>
+						</div>
+					{/if}
+					<div class="flex min-w-0 flex-col gap-6 {deleting ? 'opacity-50' : ''}" inert={deleting}>
 					<FormSection title="Variant">
 						<div class="flex flex-wrap gap-2">
 							{#each variant.stock_dress_variant_values ?? [] as v (v.id)}
@@ -324,11 +360,11 @@
 
 					<FormSection title="Price">
 						<div class="grid gap-4 @lg:grid-cols-3">
-							<Field label="Price override" for="variant-price">
-								<NumberField id="variant-price" prefix="PKR" min="0" step="0.01" placeholder={money(dress.price)} bind:value={form.priceOverride} />
+							<Field label="Price" for="variant-price">
+								<NumberField id="variant-price" prefix="PKR" min="0" step="0.01" placeholder="Dress price: {money(dress.price)}" bind:value={form.priceOverride} />
 							</Field>
 							<Field label="Compare-at price" for="variant-compare">
-								<NumberField id="variant-compare" prefix="PKR" min="0" step="0.01" bind:value={form.compareAt} />
+								<NumberField id="variant-compare" prefix="PKR" min="0" step="0.01" placeholder="Same as dress" bind:value={form.compareAt} />
 							</Field>
 							<Field label="Cost" for="variant-cost">
 								<NumberField
@@ -336,7 +372,7 @@
 									prefix="PKR"
 									min="0"
 									step="0.01"
-									placeholder={dress.cost == null ? "" : money(dress.cost)}
+									placeholder="Same as dress"
 									bind:value={form.cost}
 								/>
 							</Field>
@@ -356,7 +392,7 @@
 						</div>
 						<div class="grid gap-4 @lg:grid-cols-3">
 							<Field label="Quantity on hand" for="variant-qty" hint="A change is saved as an adjustment in the stock history.">
-								<NumberField id="variant-qty" min="0" disabled={!form.trackQuantity} bind:value={form.quantity} />
+								<NumberField id="variant-qty" min="0" placeholder="Count" disabled={!form.trackQuantity} bind:value={form.quantity} />
 							</Field>
 							<Field label="SKU" for="variant-sku" hint="Leave empty for none. Changing it does not change the barcode.">
 								<Input id="variant-sku" bind:value={form.sku} placeholder="No SKU" class="font-mono text-[13px]" />
@@ -370,22 +406,23 @@
 					<FormSection title="Shipping">
 						<div class="grid grid-cols-2 gap-4 @lg:grid-cols-4">
 							<Field label="Weight" for="variant-weight">
-								<NumberField id="variant-weight" suffix="g" min="0" placeholder={dress.weight_grams == null ? "" : String(dress.weight_grams)} bind:value={form.weight} />
+								<NumberField id="variant-weight" suffix="g" min="0" placeholder="Same as dress" bind:value={form.weight} />
 							</Field>
 							<Field label="Length" for="variant-length">
-								<NumberField id="variant-length" suffix="cm" min="0" step="0.01" placeholder={dress.length_cm == null ? "" : String(dress.length_cm)} bind:value={form.length} />
+								<NumberField id="variant-length" suffix="cm" min="0" step="0.01" placeholder="Same as dress" bind:value={form.length} />
 							</Field>
 							<Field label="Width" for="variant-width">
-								<NumberField id="variant-width" suffix="cm" min="0" step="0.01" placeholder={dress.width_cm == null ? "" : String(dress.width_cm)} bind:value={form.width} />
+								<NumberField id="variant-width" suffix="cm" min="0" step="0.01" placeholder="Same as dress" bind:value={form.width} />
 							</Field>
 							<Field label="Height" for="variant-height">
-								<NumberField id="variant-height" suffix="cm" min="0" step="0.01" placeholder={dress.height_cm == null ? "" : String(dress.height_cm)} bind:value={form.height} />
+								<NumberField id="variant-height" suffix="cm" min="0" step="0.01" placeholder="Same as dress" bind:value={form.height} />
 							</Field>
 						</div>
 						<p class="text-muted-foreground text-[13px]">
 							Weight and packed size for the courier. An empty field uses the dress value.
 						</p>
 					</FormSection>
+					</div>
 				</div>
 			</div>
 		</StockDressFormLayout>

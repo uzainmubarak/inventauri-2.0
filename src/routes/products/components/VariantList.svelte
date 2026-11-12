@@ -12,6 +12,7 @@
 	import { ImagePicker } from "$lib/ui/image-picker";
 	import { getStockSettings } from "$lib/services/stockSettingsService";
 	import { newUid } from "$lib/products/options";
+	import { numOrNull } from "$lib/products/numbers";
 	import {
 		axesOfVariants,
 		findDuplicateVariants,
@@ -28,6 +29,8 @@
 	 * Props: `variants` (rows), `trackQuantity` (shows the Quantity column),
 	 * `onChange(next)`, `dressId` (saved variants link to their own page),
 	 * A row's `image_url` is its own photo, picked from the gallery.
+	 * The cross on a row marks it `deleted`: it stays in the list, struck through, with an
+	 * Undo, and is only removed when the form is saved (the saved variant is archived).
 	 * @type {{
 	 *   variants: any[],
 	 *   trackQuantity?: boolean,
@@ -165,7 +168,7 @@
 		const have = new Set(kept.map((v) => variantSignature(v.axisValues ?? [])));
 		const added = combinations
 			.filter((axisValues) => !have.has(variantSignature(axisValues)))
-			.map((axisValues) => ({ key: newUid(), axisValues, quantity: 0, price_override: null, status: "active" }));
+			.map((axisValues) => ({ key: newUid(), axisValues, quantity: null, price_override: null, status: "active" }));
 
 		matrixNotice = truncated
 			? `${total} combinations would be created; showing the first ${MAX_VARIANTS}. Remove some values to generate the rest.`
@@ -173,17 +176,18 @@
 		emit([...kept, ...added]);
 	}
 
+	/**
+	 * Nothing is removed yet: the row is marked and the save applies it. Saved variants are
+	 * archived (stock_movements.variant_id is ON DELETE RESTRICT, and the history stays),
+	 * new ones are simply left out. @param {number} index
+	 */
+	function markDeleted(index) {
+		updateVariant(index, { deleted: true });
+	}
+
 	/** @param {number} index */
-	function removeVariant(index) {
-		const variant = variants[index];
-		// A saved variant may already have movements behind it, and
-		// stock_movements.variant_id is ON DELETE RESTRICT. Archiving is both
-		// what the schema allows and what preserves the history.
-		if (variant.id) {
-			emit(variants.map((v, i) => (i === index ? { ...v, status: "archived" } : v)));
-			return;
-		}
-		emit(variants.filter((_, i) => i !== index));
+	function undoDelete(index) {
+		updateVariant(index, { deleted: false });
 	}
 
 	/**
@@ -211,6 +215,7 @@
 	const visibleVariants = $derived(variants.filter(/** @param {any} v */ (v) => v.status !== "archived"));
 	const canGenerate = $derived(axes.some((a) => a.values.some((v) => v.trim())));
 	const duplicates = $derived(findDuplicateVariants(variants));
+	const colspanAfterName = $derived(trackQuantity ? 4 : 3);
 
 	/** @param {any} variant */
 	const rowKey = (variant) => variant.id ?? variant.key;
@@ -335,6 +340,27 @@
 					<Table.Body>
 						{#each visibleVariants as variant (rowKey(variant))}
 							{@const i = indexOf(variant)}
+							{#if variant.deleted}
+								<Table.Row class="bg-destructive/5 h-14 shadow-[inset_2px_0_0_var(--destructive)]">
+									<Table.Cell class="px-3">
+										<span class="bg-muted ring-border block aspect-[3/4] h-10 rounded-[10px] opacity-45 ring-1"></span>
+									</Table.Cell>
+									<Table.Cell class="px-3">
+										<span class="text-muted-foreground font-medium line-through">{describe(variant)}</span>
+									</Table.Cell>
+									<Table.Cell class="px-3" colspan={colspanAfterName}>
+										<div class="flex items-center justify-between gap-3">
+											<span class="flex flex-col gap-0.5">
+												<span class="text-destructive text-[13px] font-medium">This variant will be deleted</span>
+												{#if trackQuantity && variant.id && Number(variant.quantity) > 0}
+													<span class="text-muted-foreground text-xs">Its {Number(variant.quantity)} in stock stop counting.</span>
+												{/if}
+											</span>
+											<Button type="button" variant="link" size="sm" class="text-foreground" onclick={() => undoDelete(i)}>Undo</Button>
+										</div>
+									</Table.Cell>
+								</Table.Row>
+							{:else}
 							<Table.Row class="h-14">
 								<Table.Cell class="px-3">
 									{#if variant.image_url}
@@ -385,8 +411,7 @@
 										aria-label="Price of {describe(variant)}"
 										placeholder="Dress price"
 										value={variant.price_override}
-										oninput={(e) =>
-											updateVariant(i, { price_override: e.currentTarget.value ? Number(e.currentTarget.value) : null })}
+										oninput={(e) => updateVariant(i, { price_override: numOrNull(e.currentTarget.value) })}
 									/>
 								</Table.Cell>
 								{#if trackQuantity}
@@ -395,23 +420,25 @@
 										class="ml-auto h-8 w-24"
 										min="0"
 										aria-label="Quantity of {describe(variant)}"
-										value={variant.quantity ?? 0}
-										oninput={(e) => updateVariant(i, { quantity: e.currentTarget.value ? Number(e.currentTarget.value) : 0 })}
+										placeholder="Count"
+										value={variant.quantity}
+										oninput={(e) => updateVariant(i, { quantity: numOrNull(e.currentTarget.value) })}
 									/>
 									</Table.Cell>
 								{/if}
 								<Table.Cell class="px-1">
-									<Button variant="ghost" size="icon" aria-label="Remove {describe(variant)}" onclick={() => removeVariant(i)}>
+									<Button variant="ghost" size="icon" aria-label="Delete {describe(variant)}" onclick={() => markDeleted(i)}>
 										<XIcon />
 									</Button>
 								</Table.Cell>
 							</Table.Row>
+							{/if}
 						{/each}
 					</Table.Body>
 				</Table.Root>
 			</div>
 		{:else}
-			<p class="text-muted-foreground text-sm">No variants yet. Generate them from the axes above, or add one.</p>
+			<p class="text-muted-foreground text-sm">No variants yet. Generate them from the axes above.</p>
 		{/if}
 
 		{#if duplicates.length}

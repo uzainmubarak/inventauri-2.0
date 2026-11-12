@@ -86,7 +86,7 @@ export function axesOfVariants(variants) {
 /**
  * The names of variants that appear more than once among the live ones.
  * Two variants with the same values would get the same SKU.
- * @param {{ axisValues?: AxisValue[], status?: string }[]} variants
+ * @param {{ axisValues?: AxisValue[], status?: string, deleted?: boolean }[]} variants
  * @returns {string[]}
  */
 export function findDuplicateVariants(variants) {
@@ -95,7 +95,7 @@ export function findDuplicateVariants(variants) {
 	/** @type {string[]} */
 	const duplicates = [];
 	for (const variant of variants) {
-		if (variant.status === "archived") continue;
+		if (variant.status === "archived" || variant.deleted) continue;
 		const values = (variant.axisValues ?? []).filter((v) => v.value.trim());
 		const signature = variantSignature(values);
 		if (!signature) continue;
@@ -107,19 +107,19 @@ export function findDuplicateVariants(variants) {
 }
 
 /**
- * Variants as the services take them. Archived rows are left out: on an edit,
- * leaving a saved variant out is what archives it. Blank values are dropped,
+ * Variants as the services take them. Archived rows and rows marked `deleted` are
+ * left out: on an edit, leaving a saved variant out is what archives it. Blank values are dropped,
  * and a new row with no values at all carries nothing, so it is left out too.
- * @param {{ id?: string, sku?: string | null, status?: string, quantity?: number | null, price_override?: number | null, image_url?: string | null, axisValues?: AxisValue[] }[]} variants
+ * @param {{ id?: string, sku?: string | null, status?: string, deleted?: boolean, quantity?: number | null, price_override?: number | null, image_url?: string | null, axisValues?: AxisValue[] }[]} variants
  */
 export function variantsForSave(variants) {
 	return variants
-		.filter((v) => v.status !== "archived")
+		.filter((v) => v.status !== "archived" && !v.deleted)
 		.map((v) => ({
 			...(v.id ? { id: v.id } : {}),
 			sku: v.sku ?? null,
 			price_override: v.price_override ?? null,
-			quantity: v.quantity ?? 0,
+			quantity: v.quantity ?? null,
 			image_url: v.image_url ?? null,
 			axisValues: (v.axisValues ?? [])
 				.filter((av) => av.value.trim())

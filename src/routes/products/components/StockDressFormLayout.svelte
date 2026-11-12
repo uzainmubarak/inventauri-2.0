@@ -13,6 +13,7 @@
 	 * Discard and Save slides in at the top and stays until one is chosen),
 	 * `saving`, `saveLabel`, `ondiscard`, `nudge` (bump the number to shake the
 	 * save pill once, e.g. when something is blocked until the form is saved),
+	 * `actions` (optional buttons at the right of the title, e.g. Delete variant),
 	 * `children` (the fields). Save submits the surrounding form.
 	 * @type {{
 	 *   crumbs: { label: string, href?: string }[],
@@ -23,10 +24,11 @@
 	 *   saveLabel?: string,
 	 *   ondiscard: () => void,
 	 *   nudge?: number,
+	 *   actions?: import("svelte").Snippet,
 	 *   children: import("svelte").Snippet
 	 * }}
 	 */
-	let { crumbs, title, error = null, dirty = false, saving = false, saveLabel = "Save", ondiscard, nudge = 0, children } = $props();
+	let { crumbs, title, error = null, dirty = false, saving = false, saveLabel = "Save", ondiscard, nudge = 0, actions, children } = $props();
 
 	/** @type {HTMLElement | undefined} */
 	let scroller = $state();
@@ -102,6 +104,7 @@
 				</nav>
 				<h1 class="font-serif text-4xl leading-tight font-semibold">{title}</h1>
 			</div>
+			{#if actions}{@render actions()}{/if}
 		</div>
 		{#if error}
 			<p role={compact ? undefined : "alert"} class="bg-destructive/10 text-destructive mt-4 rounded-lg px-3 py-2 text-sm">

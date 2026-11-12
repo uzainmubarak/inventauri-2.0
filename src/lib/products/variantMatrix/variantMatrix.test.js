@@ -78,6 +78,13 @@ describe("findDuplicateVariants", () => {
 	it("ignores variants with no values", () => expect(findDuplicateVariants([{ axisValues: [] }, { axisValues: [] }])).toEqual([]));
 });
 
+describe("findDuplicateVariants and deleted rows", () => {
+	it("ignores a row marked deleted", () => {
+		const row = [{ axis: "size", value: "M" }];
+		expect(findDuplicateVariants([{ axisValues: row }, { axisValues: row, deleted: true }])).toEqual([]);
+	});
+});
+
 describe("variantsForSave", () => {
 	it("leaves archived rows out, which is what archives a saved variant", () =>
 		expect(variantsForSave([{ id: "a", status: "archived" }, { id: "b", status: "active", axisValues: [] }]).map((v) => v.id)).toEqual(["b"]));
@@ -92,4 +99,14 @@ describe("variantsForSave", () => {
 
 	it("keeps the price override and quantity", () =>
 		expect(variantsForSave([{ id: "x", price_override: 90, quantity: 3, axisValues: [] }])[0]).toMatchObject({ price_override: 90, quantity: 3 }));
+
+	it("leaves out a row marked deleted", () =>
+		expect(variantsForSave([{ id: "x", deleted: true, axisValues: [] }, { id: "y", axisValues: [] }]).map((v) => v.id)).toEqual(["y"]));
+
+	it("keeps an empty quantity empty", () =>
+		expect(variantsForSave([{ id: "x", quantity: null, axisValues: [] }])[0].quantity).toBe(null));
+
+	it("keeps a typed 0 quantity", () =>
+		expect(variantsForSave([{ id: "x", quantity: 0, axisValues: [] }])[0].quantity).toBe(0));
 });
+
